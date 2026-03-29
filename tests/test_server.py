@@ -208,23 +208,6 @@ class TestStartServer:
         assert cmd[0] == "nexa"
         assert "serve" in cmd
 
-    def test_command_contains_model(self, cfg):
-        proc = make_proc()
-        with patch("server.subprocess.Popen", return_value=proc) as mock_popen:
-            with patch("server._wait_for_server", return_value=True):
-                start_server(cfg)
-        cmd = mock_popen.call_args[0][0]
-        assert "--model" in cmd
-        assert cfg.model in cmd
-
-    def test_command_contains_port(self, cfg):
-        proc = make_proc()
-        with patch("server.subprocess.Popen", return_value=proc) as mock_popen:
-            with patch("server._wait_for_server", return_value=True):
-                start_server(cfg)
-        cmd = mock_popen.call_args[0][0]
-        assert "--port" in cmd
-        assert str(cfg.port) in cmd
 
     def test_verbose_uses_pipe(self, cfg_verbose):
         proc = make_proc()

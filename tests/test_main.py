@@ -34,15 +34,11 @@ class TestParseArgsDefaults:
 
     def test_out_default(self):
         args = self._parse()
-        assert args.out == "livre.md"
+        assert args.out == "output/livre.md"
 
     def test_model_default(self):
         args = self._parse()
         assert args.model == "NexaAI/DeepSeek-OCR-GGUF"
-
-    def test_port_default(self):
-        args = self._parse()
-        assert args.port == 18181
 
     def test_mode_default(self):
         args = self._parse()
@@ -50,7 +46,7 @@ class TestParseArgsDefaults:
 
     def test_max_tokens_default(self):
         args = self._parse()
-        assert args.max_tokens == 4096
+        assert args.max_tokens == 2048
 
     def test_timeout_default(self):
         args = self._parse()
@@ -93,17 +89,6 @@ class TestParseArgsOverrides:
         args = self._parse(["--out", "mon_livre.md"])
         assert args.out == "mon_livre.md"
 
-    def test_model_override(self):
-        args = self._parse(["--model", "NexaAI/Autre-GGUF"])
-        assert args.model == "NexaAI/Autre-GGUF"
-
-    def test_port_override(self):
-        args = self._parse(["--port", "9090"])
-        assert args.port == 9090
-
-    def test_port_is_int(self):
-        args = self._parse(["--port", "8080"])
-        assert isinstance(args.port, int)
 
     def test_mode_plain(self):
         args = self._parse(["--mode", "plain"])

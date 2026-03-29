@@ -15,8 +15,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
-from images import ImageCollectionError, collect_images, rename_images
+from src.config import Config
+from src.images import ImageCollectionError, collect_images, rename_images
 
 # Octets minimaux pour créer de vrais fichiers image
 JPEG_BYTES = bytes([0xFF, 0xD8, 0xFF, 0xD9])

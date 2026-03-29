@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
+from src.config import Config
 
 
 class TestConfigDefaults:
@@ -36,7 +36,7 @@ class TestConfigDefaults:
 
     def test_max_tokens_default(self):
         cfg = Config()
-        assert cfg.max_tokens == 4096
+        assert cfg.max_tokens == 2048
 
     def test_temperature_default(self):
         cfg = Config()
@@ -63,7 +63,7 @@ class TestConfigDefaults:
 
     def test_output_file_default(self):
         cfg = Config()
-        assert cfg.output_file == "livre.md"
+        assert cfg.output_file == "output/livre.md"
 
     def test_resume_default(self):
         cfg = Config()

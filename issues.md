@@ -10,9 +10,6 @@ rename_images par date de création: du plus vieux au plus récent. Permet de re
 Chaque instance crée son propre dict alors que la valeur ne change jamais.
 Mieux placé comme constante au niveau module ou comme `ClassVar`.
 
-### `temperature` non exposé en CLI
-`config.py:18` — La température influence la qualité OCR mais n'est pas configurable
-via `--temperature` dans `main.py`.
 
 ### Padding du renommage non documenté
 `images.py:71` — `width = len(str(len(images)))` donne un padding minimal basé sur
