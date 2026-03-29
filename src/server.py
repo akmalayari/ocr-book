@@ -33,10 +33,10 @@ def _wait_for_server(proc, port: int, timeout_s: int) -> bool:
         if proc.poll() is not None:
 
             stdout, stderr = proc.communicate()
-            
+            stderr_text = stderr.decode() if stderr else "(non disponible)"
             raise NexaServerError(
                 "Le serveur s'est arrêté avant d'être prêt.\n"
-                f"stderr:\n{stderr.decode()}"
+                f"stderr:\n{stderr_text}"
             )
 
         try:
@@ -91,26 +91,26 @@ def stop_server(proc: subprocess.Popen) -> None:
         logger.info("Serveur Nexa arrêté.")
 
 
+def _is_port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 @contextmanager
 def nexa_server(cfg: Config):
     """
     Context manager : démarre le serveur à l'entrée, l'arrête à la sortie.
+    Si un serveur tourne déjà sur le port configuré, s'y connecte directement
+    sans en démarrer un nouveau (et sans l'arrêter à la sortie).
 
     Usage :
         with nexa_server(cfg) as proc:
             ...
     """
-    #Leve une erreur si le port est deja utilise
-    def check_port_or_fail(port):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-
-            if s.connect_ex(("127.0.0.1", port)) == 0:
-
-                raise NexaServerError(
-                    f"Le port {port} est déjà utilisé."
-                )
-            
-    check_port_or_fail(cfg.port)
+    if _is_port_in_use(cfg.port):
+        logger.info("Serveur déjà actif sur le port %d, connexion directe.", cfg.port)
+        yield None
+        return
 
     proc = start_server(cfg)
 
