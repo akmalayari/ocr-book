@@ -22,8 +22,8 @@ Améliorations différées : `issues.md`.
 
 ## Conventions
 
-- **Commits** : un fichier par commit, message bref en français (`fix(module): description`)
-- **Langue** : code et commits en français
+- **Commits** : un fichier par commit, message bref en anglais (`fix(module): description`)
+- **Langue** : code et commits en anglais
 - **Pas de README** sauf demande explicite
 
 ## Préférences de travail
@@ -37,5 +37,5 @@ Améliorations différées : `issues.md`.
 
 - Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
-- Ne pas explorer `venv/` (contenu non pertinent, très volumineux)
+- Ne pas explorer `venv/` ni `output` ni `photos` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
