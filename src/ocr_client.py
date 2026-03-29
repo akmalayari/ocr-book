@@ -70,8 +70,10 @@ def ocr_image(image_path: Path | str, cfg: Config) -> str:
                 },
             ],
         }],
-        "max_tokens":  cfg.max_tokens,
-        "stream":      False,
+        "max_completion_tokens": cfg.max_tokens,
+        "temperature":           cfg.temperature,
+        "enable_think":          False,
+        "stream":                False,
     }
 
     url = f"http://127.0.0.1:{cfg.port}/v1/chat/completions"
