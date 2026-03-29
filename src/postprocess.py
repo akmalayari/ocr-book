@@ -50,4 +50,4 @@ def extract_done_pages(output_text: str) -> set[str]:
     Lit un fichier de sortie existant et retourne les page_id déjà traités.
     Permet la reprise après interruption.
     """
-    return set(re.findall(r'<!-- Page (.+?) ', output_text))
+    return set(re.findall(r'<!-- Page (\S+) -->', output_text))
