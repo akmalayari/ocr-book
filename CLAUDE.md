@@ -48,3 +48,8 @@ Documentation sur le stack spécifique utilisé dans le projet.
 REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
 
 Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
+
+## Troubleshooting
+- Run `python src/main.py --no-resume`.
+- Check `ocr_run.log`.
+- Run tests `python -m pytest tests/ -v`.

@@ -1,0 +1,41 @@
+23:00:42  INFO      ════════════════════════════════════════════════════════════
+23:00:42  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+23:00:42  INFO        Images  : C:\path\to\Documents\Code\ocr-livre\photos
+23:00:42  INFO        Sortie  : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+23:00:42  INFO        Mode    : markdown
+23:00:42  INFO        Reprise : False
+23:00:42  INFO      ════════════════════════════════════════════════════════════
+23:00:42  INFO      1 image(s) trouvée(s) dans photos
+23:00:44  INFO      Démarrage serveur : nexa serve NexaAI/DeepSeek-OCR-GGUF
+23:00:45  INFO      Serveur Nexa prêt sur le port 18181.
+23:00:45  ERROR     [1/1] page_1.jpg — ERREUR (0.1s) : Erreur HTTP 500 : 500 Server Error: Internal Server Error for url: http://127.0.0.1:18181/v1/cv
+23:00:45  INFO      Serveur Nexa arrêté.
+23:00:45  INFO      ────────────────────────────────────────────────────────────
+23:00:45  INFO      Terminé en 0.0 min  |  0 pages OK  |  0 skippées  |  1 erreurs
+23:00:45  WARNING   Aucune page traitée avec succès — fichier de sortie supprimé.
+23:00:51  INFO      ════════════════════════════════════════════════════════════
+23:00:51  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+23:00:51  INFO        Images  : C:\path\to\Documents\Code\ocr-livre\photos
+23:00:51  INFO        Sortie  : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+23:00:51  INFO        Mode    : markdown
+23:00:51  INFO        Reprise : False
+23:00:51  INFO      ════════════════════════════════════════════════════════════
+23:00:51  INFO      1 image(s) trouvée(s) dans photos
+23:00:51  INFO      Serveur déjà actif sur le port 18181, connexion directe.
+23:00:51  ERROR     [1/1] page_1.jpg — ERREUR (0.0s) : Erreur HTTP 500 : 500 Server Error: Internal Server Error for url: http://127.0.0.1:18181/v1/cv
+23:00:51  INFO      ────────────────────────────────────────────────────────────
+23:00:51  INFO      Terminé en 0.0 min  |  0 pages OK  |  0 skippées  |  1 erreurs
+23:00:51  WARNING   Aucune page traitée avec succès — fichier de sortie supprimé.
+23:32:41  INFO      ════════════════════════════════════════════════════════════
+23:32:41  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+23:32:41  INFO        Images  : C:\path\to\Documents\Code\ocr-livre\photos
+23:32:41  INFO        Sortie  : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+23:32:41  INFO        Mode    : markdown
+23:32:41  INFO        Reprise : False
+23:32:41  INFO      ════════════════════════════════════════════════════════════
+23:32:41  INFO      1 image(s) trouvée(s) dans photos
+23:32:41  INFO      Serveur déjà actif sur le port 18181, connexion directe.
+23:32:48  ERROR     [1/1] page_1.jpg — ERREUR (6.9s) : Erreur HTTP 500 : 500 Server Error: Internal Server Error for url: http://127.0.0.1:18181/v1/chat/completions
+23:32:48  INFO      ────────────────────────────────────────────────────────────
+23:32:48  INFO      Terminé en 0.1 min  |  0 pages OK  |  0 skippées  |  1 erreurs
+23:32:48  WARNING   Aucune page traitée avec succès — fichier de sortie supprimé.
