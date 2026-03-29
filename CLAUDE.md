@@ -38,8 +38,9 @@ Améliorations différées : `issues.md`.
 
 - Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
-- Ne pas explorer `venv/` ni `output` ni `photos` (contenu non pertinent, très volumineux)
+- Ne pas explorer `venv/` ni `output` ni `photos` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
+- Ne consulter et ne modifier les tests que si explicitement demandé.
 
 ## Ressources
 Documentation sur le stack spécifique utilisé dans le projet.
