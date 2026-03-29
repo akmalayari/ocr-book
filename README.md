@@ -111,3 +111,11 @@ automatiquement ignorées.
 | 0    | Succès total                           |
 | 1    | Erreur fatale (serveur, config…)       |
 | 2    | Terminé avec des erreurs sur certaines pages |
+
+## Tests
+
+```bash
+pip install pytest pytest-cov
+python -m pytest tests/ -v
+python -m pytest tests/ --cov=. --cov-report=term-missing
+```
