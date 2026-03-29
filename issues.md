@@ -1,5 +1,8 @@
 # Issues — à traiter plus tard
 
+## Features
+rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
+
 ## Style / architecture
 
 ### `PROMPTS` comme constante de module
