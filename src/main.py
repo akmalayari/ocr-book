@@ -3,7 +3,7 @@ main.py — Point d'entrée CLI du pipeline OCR livre
 
 Usage :
     python main.py                          # config par défaut
-    python main.py --images ./photos --out livre.md
+    python main.py --images ./photos --out output/livre.md
     python main.py --mode plain             # OCR texte brut
     python main.py --no-resume              # recommencer depuis le début
     python main.py --rename-only            # renommer les images sans OCR
@@ -30,14 +30,12 @@ def parse_args() -> argparse.Namespace:
     # Chemins
     p.add_argument("--images", default="./photos",
                    help="Dossier contenant les photos de pages (défaut: ./photos)")
-    p.add_argument("--out", default="livre.md",
-                   help="Fichier Markdown de sortie (défaut: livre.md)")
+    p.add_argument("--out", default="output/livre.md",
+                   help="Fichier Markdown de sortie (défaut: output/livre.md)")
 
     # Modèle / serveur
     p.add_argument("--model", default="NexaAI/DeepSeek-OCR-GGUF",
                    help="Modèle Nexa à utiliser")
-    p.add_argument("--port", type=int, default=18181,
-                   help="Port du serveur Nexa (défaut: 18181)")
 
     # OCR
     p.add_argument("--mode", choices=["markdown", "plain", "figure"],
@@ -72,7 +70,6 @@ def main() -> int:
         images_dir=args.images,
         output_file=args.out,
         model=args.model,
-        port=args.port,
         prompt_mode=args.mode,
         max_tokens=args.max_tokens,
         request_timeout_s=args.timeout,

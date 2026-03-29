@@ -10,6 +10,7 @@ import sys
 from contextlib import contextmanager
 
 import requests
+import socket
 
 from config import Config
 
@@ -20,18 +21,38 @@ class NexaServerError(RuntimeError):
     pass
 
 
-def _wait_for_server(port: int, timeout_s: int) -> bool:
-    """Attendre que le serveur réponde sur /v1/models."""
+def _wait_for_server(proc, port: int, timeout_s: int) -> bool:
+
     url = f"http://127.0.0.1:{port}/v1/models"
+
     deadline = time.time() + timeout_s
+
     while time.time() < deadline:
+
+        # Vérifier si le process est mort
+        if proc.poll() is not None:
+
+            stdout, stderr = proc.communicate()
+
+            print("STDOUT:", stdout)
+            print("STDERR:", stderr)
+
+            raise NexaServerError(
+                "Le serveur s'est arrêté avant d'être prêt.\n"
+                f"stderr:\n{stderr.decode()}"
+            )
+
         try:
-            r = requests.get(url, timeout=2)
+            r = requests.get(url, timeout=1)
+
             if r.status_code == 200:
                 return True
-        except requests.ConnectionError:
+
+        except requests.RequestException:
             pass
-        time.sleep(1)
+
+        time.sleep(0.5)
+
     return False
 
 
@@ -40,11 +61,8 @@ def start_server(cfg: Config) -> subprocess.Popen:
     Lance `nexa serve` en arrière-plan et attend qu'il soit prêt.
     Retourne le processus.
     """
-    cmd = [
-        "nexa", "serve",
-        "--model", cfg.model,
-        "--port",  str(cfg.port),
-    ]
+    cmd = ["nexa", "serve", cfg.model]
+
     logger.info("Démarrage serveur : %s", " ".join(cmd))
 
     proc = subprocess.Popen(
@@ -53,7 +71,7 @@ def start_server(cfg: Config) -> subprocess.Popen:
         stderr=subprocess.PIPE if cfg.verbose else subprocess.DEVNULL,
     )
 
-    if not _wait_for_server(cfg.port, cfg.server_timeout_s):
+    if not _wait_for_server(proc,cfg.port, cfg.server_timeout_s):
         proc.kill()
         raise NexaServerError(
             f"Le serveur Nexa n'a pas répondu après {cfg.server_timeout_s}s. "
@@ -85,6 +103,18 @@ def nexa_server(cfg: Config):
         with nexa_server(cfg) as proc:
             ...
     """
+    #Leve une erreur si le port est deja utilise
+    def check_port_or_fail(port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+
+                raise NexaServerError(
+                    f"Le port {port} est déjà utilisé."
+                )
+            
+    check_port_or_fail(cfg.port)
+
     proc = start_server(cfg)
 
     # Arrêt propre sur Ctrl+C

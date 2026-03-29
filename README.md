@@ -92,7 +92,6 @@ automatiquement ignorées.
 --images PATH       Dossier des photos          (défaut: ./photos)
 --out FILE          Fichier Markdown de sortie  (défaut: livre.md)
 --model MODEL       Modèle Nexa                 (défaut: NexaAI/DeepSeek-OCR-GGUF)
---port PORT         Port serveur Nexa           (défaut: 18181)
 --mode MODE         markdown | plain | figure   (défaut: markdown)
 --max-tokens N      Tokens max par page         (défaut: 4096)
 --timeout N         Timeout par image (s)       (défaut: 180)

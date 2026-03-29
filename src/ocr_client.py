@@ -71,11 +71,10 @@ def ocr_image(image_path: Path | str, cfg: Config) -> str:
             ],
         }],
         "max_tokens":  cfg.max_tokens,
-        "temperature": cfg.temperature,
         "stream":      False,
     }
 
-    url = f"http://127.0.0.1:{cfg.port}/v1/chat/completions"
+    url = f"http://127.0.0.1:{cfg.port}/v1/cv"
 
     try:
         resp = requests.post(url, json=payload, timeout=cfg.request_timeout_s)
