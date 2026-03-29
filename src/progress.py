@@ -25,6 +25,7 @@ def setup_logging(cfg: Config) -> None:
         logging.StreamHandler(),
     ]
     if cfg.log_file:
+        Path(cfg.log_file).parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(cfg.log_file, encoding="utf-8"))
 
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt, handlers=handlers)
