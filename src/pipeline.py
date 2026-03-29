@@ -41,8 +41,11 @@ def run_pipeline(cfg: Config) -> Stats:
     stats = Stats(total=len(images))
 
     # ── Pipeline ─────────────────────────────────────────────────────────────
+    output_is_new = not (cfg.resume and cfg.output_path.exists())
+    cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with nexa_server(cfg):
-        mode = "a" if (cfg.resume and cfg.output_path.exists()) else "w"
+        mode = "a" if not output_is_new else "w"
         with cfg.output_path.open(mode, encoding="utf-8") as out:
 
             if mode == "w":
@@ -82,5 +85,12 @@ def run_pipeline(cfg: Config) -> Stats:
                     stats.record_error()
 
     stats.log_summary()
-    logger.info("Fichier de sortie : %s", cfg.output_path.resolve())
+
+    # Supprimer le fichier s'il vient d'être créé mais qu'aucune page n'a abouti
+    if output_is_new and stats.done == 0 and cfg.output_path.exists():
+        cfg.output_path.unlink()
+        logger.warning("Aucune page traitée avec succès — fichier de sortie supprimé.")
+    else:
+        logger.info("Fichier de sortie : %s", cfg.output_path.resolve())
+
     return stats
