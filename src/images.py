@@ -66,7 +66,6 @@ def rename_images(
         Liste des nouveaux chemins.
     """
     folder = Path(folder)
-    extensions = cfg.extensions
     images = sorted(
         p for p in folder.iterdir()
         if p.is_file() and p.suffix.lower() in extensions
