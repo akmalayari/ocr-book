@@ -32,6 +32,7 @@ Améliorations différées : `issues.md`.
 - Ne pas proposer de corrections au-delà du scope demandé
 - Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
 - Réponses courtes ; pas de récapitulatif en fin de message sauf si le changement est complexe
+- add et commit a chaque modification de fichier: si la modification concerne un seul fichier, add et commit ce fichier, si si elle concerne plusieurs fichiers, grouper le add et commit.
 
 ## Limiter la consommation de tokens
 
@@ -39,3 +40,10 @@ Améliorations différées : `issues.md`.
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
 - Ne pas explorer `venv/` ni `output` ni `photos` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
+
+## Ressources
+Documentation sur le stack spécifique utilisé dans le projet.
+
+REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
+
+Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
