@@ -74,7 +74,7 @@ def ocr_image(image_path: Path | str, cfg: Config) -> str:
         "stream":      False,
     }
 
-    url = f"http://127.0.0.1:{cfg.port}/v1/cv"
+    url = f"http://127.0.0.1:{cfg.port}/v1/chat/completions"
 
     try:
         resp = requests.post(url, json=payload, timeout=cfg.request_timeout_s)
