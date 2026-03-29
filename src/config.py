@@ -43,7 +43,7 @@ class Config:
     collapse_blank_lines: bool = True
 
     # ── Logging ──────────────────────────────────────────────────────────────
-    log_file: str = "ocr_run.log"
+    log_file: str = "output/ocr_run.log"
     verbose: bool = False
 
     @property
