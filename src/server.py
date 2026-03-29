@@ -81,9 +81,15 @@ def start_server(cfg: Config) -> subprocess.Popen:
 
 
 def stop_server(proc: subprocess.Popen) -> None:
-    """Arrêt propre du serveur."""
+    """Arrêt propre du serveur (inclut les sous-processus enfants)."""
     if proc and proc.poll() is None:
-        proc.terminate()
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+            )
+        else:
+            proc.terminate()
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
