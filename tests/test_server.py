@@ -59,6 +59,7 @@ def make_proc(poll_return=None):
     """Crée un mock Popen. poll_return=None → processus vivant."""
     proc = MagicMock(spec=subprocess.Popen)
     proc.poll.return_value = poll_return
+    proc.pid = 12345
     return proc
 
 
@@ -83,16 +84,18 @@ class TestNexaServerError:
 class TestWaitForServer:
 
     def test_returns_true_on_200_immediately(self):
+        proc = make_proc()
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         with patch("server.requests.get", return_value=mock_resp) as mock_get:
             with patch("server.time.sleep"):
-                result = _wait_for_server(port=19999, timeout_s=5)
+                result = _wait_for_server(proc, port=19999, timeout_s=5)
         assert result is True
         mock_get.assert_called_once()
 
     def test_returns_true_after_retry(self):
         """Simule : échec × 2 puis succès."""
+        proc = make_proc()
         ok_resp = MagicMock()
         ok_resp.status_code = 200
         side_effects = [
@@ -103,57 +106,61 @@ class TestWaitForServer:
         with patch("server.requests.get", side_effect=side_effects):
             with patch("server.time.sleep"):
                 with patch("server.time.time", side_effect=[0, 1, 2, 3, 100]):
-                    result = _wait_for_server(port=19999, timeout_s=10)
+                    result = _wait_for_server(proc, port=19999, timeout_s=10)
         assert result is True
 
     def test_returns_false_on_timeout(self):
+        proc = make_proc()
         with patch("server.requests.get", side_effect=requests.ConnectionError):
             with patch("server.time.sleep"):
-                # time.time() simule : start=0, puis chaque appel avance de 2s
                 time_values = iter([0] + [i * 2 for i in range(1, 20)])
                 with patch("server.time.time", side_effect=time_values):
-                    result = _wait_for_server(port=19999, timeout_s=3)
+                    result = _wait_for_server(proc, port=19999, timeout_s=3)
         assert result is False
 
     def test_returns_false_when_status_not_200(self):
         """Un serveur qui répond 500 ne doit pas être considéré comme prêt."""
+        proc = make_proc()
         bad_resp = MagicMock()
         bad_resp.status_code = 500
         time_values = iter([0] + [i * 2 for i in range(1, 20)])
         with patch("server.requests.get", return_value=bad_resp):
             with patch("server.time.sleep"):
                 with patch("server.time.time", side_effect=time_values):
-                    result = _wait_for_server(port=19999, timeout_s=3)
+                    result = _wait_for_server(proc, port=19999, timeout_s=3)
         assert result is False
 
     def test_polls_correct_url(self):
+        proc = make_proc()
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         with patch("server.requests.get", return_value=mock_resp) as mock_get:
             with patch("server.time.sleep"):
-                _wait_for_server(port=12345, timeout_s=5)
+                _wait_for_server(proc, port=12345, timeout_s=5)
         called_url = mock_get.call_args[0][0]
         assert "12345" in called_url
         assert "/v1/models" in called_url
 
     def test_sleeps_between_attempts(self):
         """Vérifie que time.sleep est appelé entre les tentatives."""
+        proc = make_proc()
         ok_resp = MagicMock()
         ok_resp.status_code = 200
         side_effects = [requests.ConnectionError(), ok_resp]
         with patch("server.requests.get", side_effect=side_effects):
             with patch("server.time.sleep") as mock_sleep:
                 with patch("server.time.time", side_effect=[0, 1, 2, 100]):
-                    _wait_for_server(port=19999, timeout_s=10)
+                    _wait_for_server(proc, port=19999, timeout_s=10)
         mock_sleep.assert_called()
 
     def test_uses_short_timeout_for_get_requests(self):
         """Chaque GET doit avoir son propre timeout court (≤ 5s)."""
+        proc = make_proc()
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         with patch("server.requests.get", return_value=mock_resp) as mock_get:
             with patch("server.time.sleep"):
-                _wait_for_server(port=19999, timeout_s=5)
+                _wait_for_server(proc, port=19999, timeout_s=5)
         _, kwargs = mock_get.call_args
         assert "timeout" in kwargs
         assert kwargs["timeout"] <= 5
@@ -234,24 +241,28 @@ class TestStopServer:
 
     def test_terminates_running_process(self):
         proc = make_proc(poll_return=None)
-        stop_server(proc)
+        with patch("server.sys.platform", "linux"):
+            stop_server(proc)
         proc.terminate.assert_called_once()
 
     def test_waits_after_terminate(self):
         proc = make_proc(poll_return=None)
-        stop_server(proc)
+        with patch("server.sys.platform", "linux"):
+            stop_server(proc)
         proc.wait.assert_called_once()
 
     def test_kills_if_wait_times_out(self):
         proc = make_proc(poll_return=None)
         proc.wait.side_effect = subprocess.TimeoutExpired(cmd="nexa", timeout=5)
-        stop_server(proc)
+        with patch("server.sys.platform", "linux"):
+            stop_server(proc)
         proc.kill.assert_called_once()
 
     def test_does_nothing_if_process_already_dead(self):
         """poll() != None → processus déjà terminé → pas de terminate/kill."""
         proc = make_proc(poll_return=0)  # code retour 0 = processus terminé
-        stop_server(proc)
+        with patch("server.sys.platform", "linux"):
+            stop_server(proc)
         proc.terminate.assert_not_called()
         proc.kill.assert_not_called()
 
@@ -261,7 +272,8 @@ class TestStopServer:
 
     def test_wait_timeout_is_5_seconds(self):
         proc = make_proc(poll_return=None)
-        stop_server(proc)
+        with patch("server.sys.platform", "linux"):
+            stop_server(proc)
         _, kwargs = proc.wait.call_args
         assert kwargs.get("timeout") == 5
 

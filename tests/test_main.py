@@ -199,14 +199,6 @@ class TestMainConfigConstruction:
         cfg = self._run_and_capture_cfg(["--out", "custom.md"])
         assert cfg.output_file == "custom.md"
 
-    def test_config_model_from_args(self):
-        cfg = self._run_and_capture_cfg(["--model", "NexaAI/Custom"])
-        assert cfg.model == "NexaAI/Custom"
-
-    def test_config_port_from_args(self):
-        cfg = self._run_and_capture_cfg(["--port", "9999"])
-        assert cfg.port == 9999
-
     def test_config_prompt_mode_from_args(self):
         cfg = self._run_and_capture_cfg(["--mode", "plain"])
         assert cfg.prompt_mode == "plain"

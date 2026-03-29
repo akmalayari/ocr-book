@@ -284,11 +284,11 @@ class TestExtractDonePages:
         result = extract_done_pages(text)
         assert len(result) == 1
 
-    def test_extracts_error_page_id(self):
-        """Les blocs ERREUR utilisent le même format de commentaire."""
+    def test_does_not_extract_error_page_id(self):
+        """Les blocs ERREUR ne sont pas détectés comme 'faits' (retentés à la reprise)."""
         text = "<!-- Page page_005 — ERREUR: Timeout -->\n"
         result = extract_done_pages(text)
-        assert "page_005" in result
+        assert "page_005" not in result
 
     def test_roundtrip_format_then_extract(self):
         """format_page_block → extract_done_pages doit retrouver le même page_id."""
@@ -297,12 +297,12 @@ class TestExtractDonePages:
         result = extract_done_pages(block)
         assert page_id in result
 
-    def test_roundtrip_error_format_then_extract(self):
-        """format_error_block → extract_done_pages doit retrouver le même page_id."""
+    def test_roundtrip_error_format_does_not_extract(self):
+        """format_error_block → extract_done_pages ne retourne pas le page_id (reprise)."""
         page_id = "page_007"
         block = format_error_block(page_id, "Erreur quelconque")
         result = extract_done_pages(block)
-        assert page_id in result
+        assert page_id not in result
 
     def test_large_document_with_many_pages(self):
         """Test de performance/exactitude sur 100 pages."""

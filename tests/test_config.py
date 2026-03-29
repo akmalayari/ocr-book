@@ -63,7 +63,7 @@ class TestConfigDefaults:
 
     def test_output_file_default(self):
         cfg = Config()
-        assert cfg.output_file == "output/livre.md"
+        assert cfg.output_file == "./output/livre.md"
 
     def test_resume_default(self):
         cfg = Config()

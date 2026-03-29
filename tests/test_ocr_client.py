@@ -206,7 +206,7 @@ class TestOcrImagePayload:
 
     def test_payload_contains_max_tokens(self, jpeg_file, cfg):
         payload = self._get_payload(jpeg_file, cfg)
-        assert payload["max_tokens"] == cfg.max_tokens
+        assert payload["max_completion_tokens"] == cfg.max_tokens
 
     def test_payload_temperature_is_zero(self, jpeg_file, cfg):
         payload = self._get_payload(jpeg_file, cfg)

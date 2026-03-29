@@ -253,10 +253,11 @@ class TestPipelineOCRErrors:
         assert stats.done == 0
 
     def test_error_page_id_in_error_block(self, tmp_cfg):
-        paths = make_images(tmp_cfg, 1)
-        side_effects = [OCRError("Timeout 5s")]
+        # 2 images : la première échoue, la deuxième réussit → fichier conservé
+        paths = make_images(tmp_cfg, 2)
+        side_effects = [OCRError("Timeout 5s"), "Page 2 OK"]
         run_with_mocks(tmp_cfg, side_effects, image_paths=paths)
-        content = Path(tmp_cfg.output_file).read_text()
+        content = Path(tmp_cfg.output_file).read_text(encoding="utf-8")
         # Le nom de la page doit apparaître dans le bloc d'erreur
         assert "page_001" in content
 
@@ -272,11 +273,11 @@ class TestPipelineIncrementalWrite:
         """
         paths = make_images(tmp_cfg, 2)
         # Utilise le vrai fichier — vérifie juste que le contenu est écrit
-        run_with_mocks(tmp_cfg, ["Page 1 complète", "Page 2 complète"],
+        run_with_mocks(tmp_cfg, ["Page 1 complete", "Page 2 complete"],
                        image_paths=paths)
-        content = Path(tmp_cfg.output_file).read_text()
-        assert "Page 1 complète" in content
-        assert "Page 2 complète" in content
+        content = Path(tmp_cfg.output_file).read_text(encoding="utf-8")
+        assert "Page 1 complete" in content
+        assert "Page 2 complete" in content
 
     def test_stats_total_set_correctly(self, tmp_cfg):
         paths = make_images(tmp_cfg, 7)
