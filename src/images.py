@@ -45,7 +45,12 @@ def collect_images(cfg: Config) -> list[Path]:
     return images
 
 
-def rename_images(folder: str | Path, prefix: str = "page", dry_run: bool = False) -> list[Path]:
+def rename_images(
+        folder: str | Path, 
+        extensions: tuple = (".jpg", ".jpeg", ".png", ".webp"), 
+        prefix: str = "page", 
+        dry_run: bool = False
+        ) -> list[Path]:
     """
     Renomme les images d'un dossier avec un padding numérique uniforme :
       DSC_0042.jpg → page_001.jpg
@@ -61,7 +66,7 @@ def rename_images(folder: str | Path, prefix: str = "page", dry_run: bool = Fals
         Liste des nouveaux chemins.
     """
     folder = Path(folder)
-    extensions = (".jpg", ".jpeg", ".png", ".webp")
+    extensions = cfg.extensions
     images = sorted(
         p for p in folder.iterdir()
         if p.is_file() and p.suffix.lower() in extensions

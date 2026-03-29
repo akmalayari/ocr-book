@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--mode", choices=["markdown", "plain", "figure"],
                    default="markdown",
                    help="Mode OCR (défaut: markdown)")
-    p.add_argument("--max-tokens", type=int, default=4096,
+    p.add_argument("--max-tokens", type=int, default=2048,
                    help="Tokens max par page (défaut: 4096)")
     p.add_argument("--timeout", type=int, default=180,
                    help="Timeout par image en secondes (défaut: 180)")
@@ -83,7 +83,7 @@ def main() -> int:
     # ── Mode renommage uniquement ─────────────────────────────────────────────
     if args.rename_only:
         logger.info("Renommage des images dans : %s", cfg.images_dir)
-        rename_images(cfg.images_dir, prefix=args.rename_prefix, dry_run=args.dry_run)
+        rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run)
         return 0
 
     # ── Pipeline OCR ─────────────────────────────────────────────────────────

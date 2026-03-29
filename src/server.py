@@ -33,10 +33,7 @@ def _wait_for_server(proc, port: int, timeout_s: int) -> bool:
         if proc.poll() is not None:
 
             stdout, stderr = proc.communicate()
-
-            print("STDOUT:", stdout)
-            print("STDERR:", stderr)
-
+            
             raise NexaServerError(
                 "Le serveur s'est arrêté avant d'être prêt.\n"
                 f"stderr:\n{stderr.decode()}"
