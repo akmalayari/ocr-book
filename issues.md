@@ -28,16 +28,25 @@ Les requêtes texte seul fonctionnent. Le modèle lui-même est fonctionnel via 
 
 **Cause probable :** Bug dans le pathway multimodal du serveur REST Nexa sur Windows.
 
-**Piste explorée : SDK Python direct (`VLM` class)**
-Contourner le serveur HTTP en chargeant le modèle en-process via `nexaai.VLM.from_()` +
-`apply_chat_template()` + `generate()`. API disponible et cohérente, mais cette route
-a déjà été tentée et a rencontré des problèmes (à documenter ici si reproductibles).
+**Pistes explorées :**
+
+`/v1/cv` — endpoint existant, retourne 400 si `model` absent, 500
+`SDKError(Operation not supported)` avec le modèle. Écarté : la classe `CV` du SDK
+attend `det_model_path` + `rec_model_path` + `char_dict_path` (pipeline PaddleOCR),
+incompatible avec DeepSeek-OCR-GGUF qui est un VLM GGUF. L'endpoint `/v1/cv` ne
+sait pas gérer ce type de modèle.
+
+`nexaai.CV` (Python direct) — tentée, bugs rencontrés (cohérent avec le diagnostic
+ci-dessus : mauvais type de modèle).
+
+`nexaai.VLM` (Python direct) — tentée, semblait inadaptée à DeepSeek-OCR (probablement
+en raison des chemins mmproj/tokenizer spécifiques ou du format de prompt).
 
 **Autres pistes à explorer :**
-- Tester avec une version antérieure de nexaai (ex. 1.0.43 ou avant).
-- Tester `nexa serve` en mode verbose pour voir les logs internes du SDK.
+- Tester `nexa serve --verbose` pour voir les logs internes du SDK au moment de l'erreur.
 - Vérifier si le problème est lié à la taille de l'image (4.4 MB, ~6 MB en base64).
 - Tester avec une image PNG ou WebP au lieu de JPEG.
+- Tester avec une version antérieure de nexaai.
 
 ## À creuser
 
