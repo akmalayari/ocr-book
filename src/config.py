@@ -8,15 +8,23 @@ from pathlib import Path
 
 @dataclass
 class Config:
-    # ── Serveur Nexa ──────────────────────────────────────────────────────────
+    # ── Modèle VLM ───────────────────────────────────────────────────────────
     model: str = "NexaAI/DeepSeek-OCR-GGUF"
-    port: int = 18181
-    server_timeout_s: int = 60       # attente max démarrage serveur
+
+    # ── Paramètres ModelConfig ────────────────────────────────────────────────
+    n_ctx: int        = 4096
+    n_threads: int    = 4
+    n_gpu_layers: int = 999
+    n_batch: int      = 2048
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int = 2048
+    max_tokens: int   = 2048
     temperature: float = 0.0
-    request_timeout_s: int = 180     # timeout par image
+
+    # ── Pré-traitement ───────────────────────────────────────────────────────
+    #   "none"     → image originale
+    #   "binarize" → binarisation adaptative (GAUSSIAN_C, blockSize=31, C=10)
+    preprocess_mode: str = "binarize"
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
     #   "markdown"  → structure complète (titres, tableaux, listes)
@@ -24,9 +32,9 @@ class Config:
     #   "figure"    → analyse d'une figure ou d'un graphique
     prompt_mode: str = "markdown"
     PROMPTS: dict = field(default_factory=lambda: {
-        "markdown": "<image>\n<|grounding|>Convert the document to markdown.",
-        "plain":    "<image>\nFree OCR.",
-        "figure":   "<image>\nParse the figure.",
+        "markdown": "Convert the document to markdown.",
+        "plain":    "Free OCR.",
+        "figure":   "Parse the figure.",
     })
 
     # ── Images ───────────────────────────────────────────────────────────────
@@ -35,7 +43,7 @@ class Config:
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
-    resume: bool = True              # reprendre si interruption
+    resume: bool = True
 
     # ── Post-traitement ──────────────────────────────────────────────────────
     remove_isolated_page_numbers: bool = True
@@ -57,3 +65,12 @@ class Config:
     @property
     def output_path(self) -> Path:
         return Path(self.output_file)
+
+    def to_model_config(self):
+        from nexaai.nexa_sdk.types import ModelConfig
+        return ModelConfig(
+            n_ctx=self.n_ctx,
+            n_threads=self.n_threads,
+            n_gpu_layers=self.n_gpu_layers,
+            n_batch=self.n_batch,
+        )
