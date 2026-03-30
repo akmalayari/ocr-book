@@ -17,40 +17,34 @@ le nombre d'images au moment du renommage. Si on ajoute des images plus tard et 
 re-renomme, les anciens fichiers (`page_01.jpg`) et les nouveaux (`page_001.jpg`)
 seront incohérents. À documenter ou à fixer avec un minimum de 3 chiffres.
 
-## Bug bloquant
+## ~~Bug bloquant~~ — RÉSOLU
 
-### HTTP 500 — `SDKError(Multimodal generation failed)` sur `nexa serve`
-`ocr_client.py:79` — Les requêtes image+texte vers `/v1/chat/completions` retournent
-systématiquement HTTP 500 (`{"code":-201201,"error":"SDKError(Multimodal generation failed)"}`).
-Les requêtes texte seul fonctionnent. Le modèle lui-même est fonctionnel via `nexa infer`.
+### HTTP 500 — `SDKError(Multimodal generation failed)` sur `nexa serve` ✓ contourné
 
-**Environnement :** Windows 11, NexaSDK Bridge v1.0.45-rc1, Python package nexaai 1.0.44.
+**Cause :** DeepSeek-OCR-GGUF est un VLM (GGUF + mmproj). Le serveur REST `nexa serve`
+ne sait pas gérer ce type de modèle sur Windows — bug dans son pathway multimodal.
 
-**Cause probable :** Bug dans le pathway multimodal du serveur REST Nexa sur Windows.
+**Solution adoptée :** Appel Python direct via `nexaai.VLM`, sans serveur REST.
+Voir `docs/nexa_vlm.md` pour le détail complet.
 
-**Pistes explorées :**
+Pattern fonctionnel (`draft/nexa_vlm.py`) :
 
-`/v1/cv` — endpoint existant, retourne 400 si `model` absent, 500
-`SDKError(Operation not supported)` avec le modèle. Écarté : la classe `CV` du SDK
-attend `det_model_path` + `rec_model_path` + `char_dict_path` (pipeline PaddleOCR),
-incompatible avec DeepSeek-OCR-GGUF qui est un VLM GGUF. L'endpoint `/v1/cv` ne
-sait pas gérer ce type de modèle.
+```python
+vlm = VLM.from_("NexaAI/DeepSeek-OCR-GGUF")
+msg = VlmChatMessage(role="user", contents=[
+    VlmContent(type="image", text=str(image_path)),
+    VlmContent(type="text", text=prompt),
+])
+formatted = vlm.apply_chat_template([msg])
+config = GenerationConfig(image_paths=[str(image_path)])
+result = vlm.generate(formatted, config=config)
+```
 
-`nexaai.CV` (Python direct) — tentée, bugs rencontrés (cohérent avec le diagnostic
-ci-dessus : mauvais type de modèle).
+**Bug résiduel :** Sur Windows, la C lib (`nexa_bridge.dll`) retourne des données de
+profiling corrompues dans `stop_reason` après génération — `UnicodeDecodeError` dans
+`ProfileData.from_c_struct`. La génération elle-même réussit. Contourné par
+monkey-patch de `ProfileData.from_c_struct` (voir `draft/nexa_vlm.py`).
 
-`nexaai.VLM` (Python direct) — tentée, semblait inadaptée à DeepSeek-OCR (probablement
-en raison des chemins mmproj/tokenizer spécifiques ou du format de prompt).
+**À faire :** Intégrer ce pattern dans `ocr_client.py` en remplacement des appels HTTP.
 
-**Autres pistes à explorer :**
-- Tester `nexa serve --verbose` pour voir les logs internes du SDK au moment de l'erreur.
-- Vérifier si le problème est lié à la taille de l'image (4.4 MB, ~6 MB en base64).
-- Tester avec une image PNG ou WebP au lieu de JPEG.
-- Tester avec une version antérieure de nexaai.
 
-## À creuser
-
-### Redimensionnement des images avant envoi OCR
-`ocr_client.py:56` — Les photos haute résolution sont encodées en base64 entièrement
-en mémoire avant envoi. Aucune compression/resize. À vérifier si l'API Nexa impose
-une taille maximale, et si oui, ajouter un resize automatique avec opencv.
