@@ -53,7 +53,6 @@ def ocr_image(image_path: Path | str, vlm, cfg: Config) -> tuple[str, dict]:
     gen_config = GenerationConfig(
         image_paths=[str(input_path.resolve())],
         max_tokens=cfg.max_tokens,
-        temperature=cfg.temperature,
     )
 
     t0 = time.perf_counter()
