@@ -43,13 +43,15 @@ class Stats:
     errors: int = 0
     total_chars: int = 0
     times: list[float] = field(default_factory=list)
+    latencies: list[float] = field(default_factory=list)
     start_time: float = field(default_factory=time.time)
 
     # ── Mise à jour ──────────────────────────────────────────────────────────
 
-    def record_success(self, elapsed: float, chars: int) -> None:
+    def record_success(self, elapsed: float, chars: int, latency: float = 0.0) -> None:
         self.done += 1
         self.times.append(elapsed)
+        self.latencies.append(latency)
         self.total_chars += chars
 
     def record_skip(self) -> None:
@@ -63,6 +65,10 @@ class Stats:
     @property
     def avg_time(self) -> float:
         return sum(self.times) / len(self.times) if self.times else 0.0
+
+    @property
+    def avg_latency(self) -> float:
+        return sum(self.latencies) / len(self.latencies) if self.latencies else 0.0
 
     @property
     def elapsed_total(self) -> float:
@@ -81,9 +87,10 @@ class Stats:
     def log_page(self, index: int, name: str, elapsed: float, chars: int) -> None:
         eta = self.eta_s
         eta_str = f"  ETA ~{eta/60:.0f}min" if eta else ""
+        latency = self.latencies[-1] if self.latencies else elapsed
         logging.getLogger(__name__).info(
-            "[%d/%d] %-30s  %5.1fs  %d car.%s",
-            index, self.total, name, elapsed, chars, eta_str,
+            "[%d/%d] %-30s  %5.1fs (latence %.1fs)  %d car.%s",
+            index, self.total, name, elapsed, latency, chars, eta_str,
         )
 
     def log_summary(self) -> None:
@@ -96,6 +103,6 @@ class Stats:
         )
         if self.done:
             logger.info(
-                "Vitesse moyenne : %.1fs/page  |  %d caractères total",
-                self.avg_time, self.total_chars,
+                "Vitesse moyenne : %.1fs/page  |  Latence moy. : %.1fs  |  %d caractères total",
+                self.avg_time, self.avg_latency, self.total_chars,
             )
