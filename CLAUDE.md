@@ -20,6 +20,8 @@ Dépendances : `requirements.txt`. Venv dans `venv/`. Lancer depuis `src/` : `py
 
 Améliorations différées : `issues.md`.
 
+Explorations et tests informels : `draft/`.
+
 ## Conventions
 
 - **Commits** : un fichier par commit, message bref en anglais (`fix(module): description`)
@@ -49,7 +51,9 @@ REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
 
 Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
 
+DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
+
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.
 - Check `ocr_run.log`.
-- Run tests `python -m pytest tests/ -v`.
+- (if above is not enough) Run tests `python -m pytest tests/ -v`.
