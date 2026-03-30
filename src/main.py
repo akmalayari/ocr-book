@@ -6,17 +6,20 @@ Usage :
     python main.py --images ./photos --out output/livre.md
     python main.py --mode plain             # OCR texte brut
     python main.py --no-resume              # recommencer depuis le début
+    python main.py --preprocess none        # sans pré-traitement
     python main.py --rename-only            # renommer les images sans OCR
     python main.py --verbose                # logs détaillés
 """
 
+import patch  # noqa: F401 — doit être importé avant nexaai
+
 import argparse
-import sys
 import logging
+import sys
 
 from config import Config
-from pipeline import run_pipeline
 from images import rename_images
+from pipeline import run_pipeline
 from progress import setup_logging
 
 
@@ -33,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out", default="output/livre.md",
                    help="Fichier Markdown de sortie (défaut: output/livre.md)")
 
-    # Modèle / serveur
+    # Modèle
     p.add_argument("--model", default="NexaAI/DeepSeek-OCR-GGUF",
                    help="Modèle Nexa à utiliser")
 
@@ -42,9 +45,10 @@ def parse_args() -> argparse.Namespace:
                    default="markdown",
                    help="Mode OCR (défaut: markdown)")
     p.add_argument("--max-tokens", type=int, default=2048,
-                   help="Tokens max par page (défaut: 4096)")
-    p.add_argument("--timeout", type=int, default=180,
-                   help="Timeout par image en secondes (défaut: 180)")
+                   help="Tokens max par page (défaut: 2048)")
+    p.add_argument("--preprocess", choices=["none", "binarize"],
+                   default="binarize",
+                   help="Pré-traitement image (défaut: binarize)")
 
     # Comportement
     p.add_argument("--no-resume", action="store_true",
@@ -72,7 +76,7 @@ def main() -> int:
         model=args.model,
         prompt_mode=args.mode,
         max_tokens=args.max_tokens,
-        request_timeout_s=args.timeout,
+        preprocess_mode=args.preprocess,
         resume=not args.no_resume,
         verbose=args.verbose,
     )
@@ -89,10 +93,11 @@ def main() -> int:
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
     logger.info("Pipeline OCR — %s", cfg.model)
-    logger.info("  Images  : %s", cfg.images_path.resolve())
-    logger.info("  Sortie  : %s", cfg.output_path.resolve())
-    logger.info("  Mode    : %s", cfg.prompt_mode)
-    logger.info("  Reprise : %s", cfg.resume)
+    logger.info("  Images      : %s", cfg.images_path.resolve())
+    logger.info("  Sortie      : %s", cfg.output_path.resolve())
+    logger.info("  Mode        : %s", cfg.prompt_mode)
+    logger.info("  Prétraitement : %s", cfg.preprocess_mode)
+    logger.info("  Reprise     : %s", cfg.resume)
     logger.info("═" * 60)
 
     try:
@@ -101,7 +106,7 @@ def main() -> int:
         logger.error("Erreur fatale : %s", e)
         return 1
 
-    return 0 if stats.errors == 0 else 2  # code 2 = terminé avec des erreurs
+    return 0 if stats.errors == 0 else 2
 
 
 if __name__ == "__main__":
