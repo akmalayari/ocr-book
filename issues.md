@@ -6,8 +6,8 @@
 Appliquer un mode OCR différent selon le contenu de la page.
 
 **Comportement confirmé des prompts (tests sur pages 1–5) :**
-- `"plain"` — retourne le texte selon la trame du document. Usage principal.
-- `"layout"` — idem `"plain"` mais ajoute les grounding boxes des blocs de texte (`<|ref|>...<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`).
+- `"plain"` — retourne le texte selon la trame du document. Usage principal. Boucle sur les pages denses (tableaux, texte serré).
+- `"layout"` — idem `"plain"` mais ajoute les grounding boxes des blocs de texte (`<|ref|>...<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`). Boucle sur les balises `<tr>`/`<td>` dans les pages avec tableaux.
 - `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
 - `"parse"` — analyse fine des éléments de l'image en anglais.
 - `"classic"` (supprimé, non pertinent) — retournait chaque phrase accompagnée de sa grounding box ; trop verbeux, dépasse systématiquement `n_ctx`.
@@ -38,21 +38,22 @@ ou aux paramètres de génération.
 Tester le prompt `"plain"` vs `"layout"` sur les mêmes pages pour comparer.
 Modifier les paramètres de génération (`GenerationConfig`).
 
-### 2. Context length exceeded sur pages denses
-Plusieurs pages échouent avec `[-200004] Context length exceeded` avec `n_ctx=8192` :
-pages 2, 3, 4, 5 en mode `"plain"` ; pages 3, 4 en mode `"layout"`.
-Cause : pages denses en texte ou en tableaux dépassent la fenêtre de contexte.
+### 2. Boucles de génération sur pages denses ou avec tableaux
+Le modèle entre en boucle (génération infinie répétitive) sur certaines pages :
+- `"plain"` : page_2, page_3, page_4 (dès le début pour page_4)
+- `"layout"` : page_3 et page_4 — boucle spécifiquement sur les balises `<tr>`/`<td>`
+
+Note : plus d'erreur `Context length exceeded` depuis le passage à `n_ctx=16384`.
 
 **Pistes :**
-- Augmenter `n_ctx` (16384 ou 32768) — coût mémoire à évaluer.
-- Découper les images hautes en deux avant OCR.
-- Réduire `max_tokens` pour libérer de la place au prompt+image.
+- Ajouter un paramètre `repetition_penalty` dans `GenerationConfig`.
+- Limiter `max_tokens` pour couper la génération avant la boucle.
+- Tester si la binarisation agressive (`blockSize`, `C`) contribue au problème.
 
-### 3. `"layout"` sur page_5 retourne une bbox globale
-`page_5.jpg` (texte + tableau + graphe) produit `<|ref|>image<|/ref|><|det|>[[0, 0, 999, 997]]<|/det|>` — le modèle détecte l'image entière comme un seul bloc au lieu d'en décomposer les éléments. Probablement dû à la qualité/flou de la photo. À re-tester avec une image nette.
+### 3. Pages de mauvaise qualité (floues) — tous les prompts échouent
+`page_5.jpg` (floue) : hallucinations ou boucles quel que soit le prompt. `"describe"` évoque du bengali. `"layout"` retourne une bbox globale `[[0, 0, 999, 997]]` au lieu de décomposer les éléments.
 
-### 4. `"describe"` sur page floue hallucine la langue
-`page_5.jpg` (floue) : `"describe"` évoque du bengali alors que le document est en français. Indique que la qualité d'image affecte fortement ce mode.
+**Piste :** améliorer la qualité de la photo source. Hors scope logiciel.
 
 ## Architecture
 
