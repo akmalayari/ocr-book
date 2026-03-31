@@ -18,7 +18,7 @@ class Config:
     n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int   = 2048
+    max_tokens: int   = 4096
     temperature: float = 0.0
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
@@ -27,18 +27,16 @@ class Config:
     preprocess_mode: str = "binarize"
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
-    #   "markdown"  → structure complète (titres, tableaux, listes)
     #   "plain"     → texte brut sans mise en forme
-    #   "figure"    → analyse d'une figure ou d'un graphique
-    #   "classic"   → OCR générique pour images non-document
+    #   "layout"    → texte brut avec balises spatiales
     #   "describe"  → description générale de l'image
+    #   "parse"     → analyse détaillée des éléments de l'image
     prompt_mode: str = "plain"
     PROMPTS: dict = field(default_factory=lambda: {
-        "markdown": "<|grounding|>Convert the document to markdown.",
         "plain":    "Free OCR.",
-        "figure":   "Parse the figure.",
-        "classic":  "<|grounding|>OCR this image.",
-        "describe": "Describe this image in detail."
+        "layout":   "<|grounding|>Convert the document to markdown.",
+        "describe": "Describe this image in detail.",
+        "parse":    "Parse the figure."
     })
 
     # ── Images ───────────────────────────────────────────────────────────────
@@ -60,7 +58,7 @@ class Config:
 
     @property
     def prompt(self) -> str:
-        return self.PROMPTS.get(self.prompt_mode, self.PROMPTS["markdown"])
+        return self.PROMPTS.get(self.prompt_mode, self.PROMPTS[Config.prompt_mode])
 
     @property
     def images_path(self) -> Path:

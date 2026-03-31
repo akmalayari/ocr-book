@@ -5,18 +5,24 @@
 ### 1. Détection automatique des pages avec images non textuelles
 Appliquer un mode OCR différent selon le contenu de la page.
 
+**Comportement confirmé des prompts (tests sur pages 1–5) :**
+- `"plain"` — retourne le texte selon la trame du document. Usage principal.
+- `"layout"` — idem `"plain"` mais ajoute les grounding boxes des blocs de texte (`<|ref|>...<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`).
+- `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
+- `"parse"` — analyse fine des éléments de l'image en anglais.
+- `"classic"` (supprimé, non pertinent) — retournait chaque phrase accompagnée de sa grounding box ; trop verbeux, dépasse systématiquement `n_ctx`.
+
 **Approches à tester (par ordre de priorité) :**
 
-1. **Heuristique OpenCV (option retenue pour démarrer)** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Problème ouvert : pages mixtes (voir point 3).
+1. **Heuristique OpenCV (option retenue pour démarrer)** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Problème ouvert : pages mixtes (voir point 2).
 
 2. **Pages mixtes** — deux sous-pistes :
-   - Utiliser `rec` (`<image>\nLocate <|ref|>xxxx<|/ref|> in the image.`) pour détecter le bounding box de l'illustration, puis OCR `"plain"` sur le texte et `"describe"` sur la zone image. Nécessite de comprendre le format de sortie du mode `rec`.
-   - **Confirmé par test** : le prompt `"markdown"` (préfixe `<|grounding|>`) produit des balises `<|ref|>texte<|/ref|><|det|>[[x1, y1, x2, y2]]<|/det|>` donnant la bounding box de chaque élément détecté. Exploitable pour localiser une illustration sans passer par `rec` : extraire la bbox depuis la sortie `markdown`, recadrer l'image, appliquer `"describe"` sur la zone. Nécessite un parser de ces balises + nettoyage en post-traitement pour le texte normal.
-   - Utiliser le mode `"figure"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
+   - Le mode `"layout"` produit des balises `<|ref|>texte<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`. Exploitable pour localiser une illustration : extraire sa bbox, recadrer l'image, appliquer `"describe"` sur la zone. Nécessite un parser de ces balises + nettoyage en post-traitement pour le texte normal.
+   - Utiliser le mode `"parse"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
 
-3. **Prompt adaptatif (option 3)** — prompt unique couvrant texte et image, ex. `"If this is a figure or illustration, describe it. Otherwise, Free OCR."`. Non documenté par DeepSeek-OCR, comportement à tester.
+3. **Prompt adaptatif** — prompt unique couvrant texte et image, ex. `"If this is a figure or illustration, describe it. Otherwise, Free OCR."`. Non documenté par DeepSeek-OCR, comportement à tester.
 
-**Prérequis :** tester chaque mode (`plain`, `markdown`, `figure`, `classic`, `describe`) sur des pages représentatives pour cartographier ce que chacun produit et ne produit pas.
+**Langue des descriptions :** `"describe"` et `"parse"` répondent en anglais indépendamment de la langue du document. À tester : un prompt explicite comme `"Describe this image in French."` ou `"Describe this image in the same language as the document."`.
 
 ### 2. Rename images in order of creation date
 rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
@@ -29,8 +35,24 @@ identifiée — peut être liée au modèle lui-même (quantization Q8_0), au pr
 ou aux paramètres de génération.
 
 **Pistes :** Tester d'autres valeurs de `blockSize`/`C` pour la binarisation.
-Tester le prompt `"markdown"` vs `"plain"` sur les mêmes pages pour comparer.
+Tester le prompt `"plain"` vs `"layout"` sur les mêmes pages pour comparer.
 Modifier les paramètres de génération (`GenerationConfig`).
+
+### 2. Context length exceeded sur pages denses
+Plusieurs pages échouent avec `[-200004] Context length exceeded` avec `n_ctx=8192` :
+pages 2, 3, 4, 5 en mode `"plain"` ; pages 3, 4 en mode `"layout"`.
+Cause : pages denses en texte ou en tableaux dépassent la fenêtre de contexte.
+
+**Pistes :**
+- Augmenter `n_ctx` (16384 ou 32768) — coût mémoire à évaluer.
+- Découper les images hautes en deux avant OCR.
+- Réduire `max_tokens` pour libérer de la place au prompt+image.
+
+### 3. `"layout"` sur page_5 retourne une bbox globale
+`page_5.jpg` (texte + tableau + graphe) produit `<|ref|>image<|/ref|><|det|>[[0, 0, 999, 997]]<|/det|>` — le modèle détecte l'image entière comme un seul bloc au lieu d'en décomposer les éléments. Probablement dû à la qualité/flou de la photo. À re-tester avec une image nette.
+
+### 4. `"describe"` sur page floue hallucine la langue
+`page_5.jpg` (floue) : `"describe"` évoque du bengali alors que le document est en français. Indique que la qualité d'image affecte fortement ce mode.
 
 ## Architecture
 
