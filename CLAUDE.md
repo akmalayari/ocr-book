@@ -19,7 +19,7 @@ src/
 
 Dépendances : `requirements.txt`. Venv dans `venv/`. Lancer depuis `src/` : `python main.py`.
 
-Améliorations différées : `issues.md`.
+Travaux en cours : `issues.md`.
 
 Explorations et tests informels : `draft/`.
 

@@ -54,3 +54,6 @@ data/
 output/
 photos/
 draft/
+
+# Claude folders
+memory/

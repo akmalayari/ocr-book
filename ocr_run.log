@@ -139,3 +139,12 @@
 16:24:56  INFO      Terminé en 0.4 min  |  1 pages OK  |  0 skippées  |  0 erreurs
 16:24:56  INFO      Vitesse moyenne : 23.4s/page  |  Latence moy. : 23.3s  |  8034 caractères total
 16:24:56  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+23:05:25  INFO      ════════════════════════════════════════════════════════════
+23:05:25  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+23:05:25  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos\page_1.jpg
+23:05:25  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+23:05:25  INFO        Mode        : plain
+23:05:25  INFO        Prétraitement : binarize
+23:05:25  INFO        Reprise     : True
+23:05:25  INFO      ════════════════════════════════════════════════════════════
+23:05:25  ERROR     Erreur fatale : [WinError 267] The directory name is invalid: 'photos\\page_1.jpg'

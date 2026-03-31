@@ -1,4 +1,4 @@
-# Issues — à traiter plus tard
+# Issues — travaux en cours
 
 ## Features
 
