@@ -24,6 +24,7 @@ from progress import setup_logging
 
 
 def parse_args() -> argparse.Namespace:
+    _cfg = Config()
     p = argparse.ArgumentParser(
         description="Pipeline OCR livre → Markdown via DeepSeek-OCR (Nexa)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -31,24 +32,24 @@ def parse_args() -> argparse.Namespace:
     )
 
     # Chemins
-    p.add_argument("--images", default="./photos",
-                   help="Dossier contenant les photos de pages (défaut: ./photos)")
-    p.add_argument("--out", default="output/livre.md",
-                   help="Fichier Markdown de sortie (défaut: output/livre.md)")
+    p.add_argument("--images", default=_cfg.images_dir,
+                   help="Dossier contenant les photos de pages")
+    p.add_argument("--out", default=_cfg.output_file,
+                   help="Fichier Markdown de sortie")
 
     # Modèle
-    p.add_argument("--model", default="NexaAI/DeepSeek-OCR-GGUF",
+    p.add_argument("--model", default=_cfg.model,
                    help="Modèle Nexa à utiliser")
 
     # OCR
     p.add_argument("--mode", choices=["markdown", "plain", "figure"],
-                   default="markdown",
-                   help="Mode OCR (défaut: markdown)")
-    p.add_argument("--max-tokens", type=int, default=2048,
-                   help="Tokens max par page (défaut: 2048)")
+                   default=_cfg.prompt_mode,
+                   help="Mode OCR")
+    p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
+                   help="Tokens max par page")
     p.add_argument("--preprocess", choices=["none", "binarize"],
-                   default="binarize",
-                   help="Pré-traitement image (défaut: binarize)")
+                   default=_cfg.preprocess_mode,
+                   help="Pré-traitement image")
 
     # Comportement
     p.add_argument("--no-resume", action="store_true",
