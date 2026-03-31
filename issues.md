@@ -11,6 +11,7 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 2. **Pages mixtes** — deux sous-pistes :
    - Utiliser `rec` (`<image>\nLocate <|ref|>xxxx<|/ref|> in the image.`) pour détecter le bounding box de l'illustration, puis OCR `"plain"` sur le texte et `"describe"` sur la zone image. Nécessite de comprendre le format de sortie du mode `rec`.
+   - **Confirmé par test** : le prompt `"markdown"` (préfixe `<|grounding|>`) produit des balises `<|ref|>texte<|/ref|><|det|>[[x1, y1, x2, y2]]<|/det|>` donnant la bounding box de chaque élément détecté. Exploitable pour localiser une illustration sans passer par `rec` : extraire la bbox depuis la sortie `markdown`, recadrer l'image, appliquer `"describe"` sur la zone. Nécessite un parser de ces balises + nettoyage en post-traitement pour le texte normal.
    - Utiliser le mode `"figure"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
 
 3. **Prompt adaptatif (option 3)** — prompt unique couvrant texte et image, ex. `"If this is a figure or illustration, describe it. Otherwise, Free OCR."`. Non documenté par DeepSeek-OCR, comportement à tester.
