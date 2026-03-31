@@ -2,25 +2,24 @@
 
 ## Features
 
+### Détection automatique des pages avec images non textuelles
+Appliquer un mode OCR différent selon le contenu de la page.
+
+**Approches à tester (par ordre de priorité) :**
+
+1. **Heuristique OpenCV (option retenue pour démarrer)** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Problème ouvert : pages mixtes (voir point 3).
+
+2. **Pages mixtes** — deux sous-pistes :
+   - Utiliser `rec` (`<image>\nLocate <|ref|>xxxx<|/ref|> in the image.`) pour détecter le bounding box de l'illustration, puis OCR `"plain"` sur le texte et `"describe"` sur la zone image. Nécessite de comprendre le format de sortie du mode `rec`.
+   - Utiliser le mode `"figure"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
+
+3. **Prompt adaptatif (option 3)** — prompt unique couvrant texte et image, ex. `"If this is a figure or illustration, describe it. Otherwise, Free OCR."`. Non documenté par DeepSeek-OCR, comportement à tester.
+
+**Prérequis :** tester chaque mode (`plain`, `markdown`, `figure`, `classic`, `describe`) sur des pages représentatives pour cartographier ce que chacun produit et ne produit pas.
+
 rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
 
 ## Bugs actifs
-
-### Output tronqué avec marqueur `répéte`
-`pipeline.py` / `ocr_client.py` — Le modèle interrompt sa transcription en cours de page
-et émet un résumé en bullet points précédé du mot-clé `**répéte**`. Constaté sur des pages
-denses (output/livre.md, page_2, lignes ~39-45).
-
-**Cause probable :** Le modèle atteint la limite de son contexte ou sa fenêtre d'attention
-en cours de génération. Il bascule sur un mode "résumé/répétition" au lieu de s'arrêter
-proprement. Peut aussi être lié à la qualité de la binarisation sur certaines zones (moins probable).
-
-**Pistes :**
-- Tester `n_ctx` plus élevé (8192) dans `Config` (à tester en priorité).
-- Vérifier si le texte tronqué se produit systématiquement sur les mêmes pages (densité
-  de texte, mise en page complexe) ou de façon aléatoire.
-- Tester un pré-traitement alternatif sur les pages problématiques.
-- Ajouter détection du marqueur `répéte` dans `postprocess.py` pour lever une alerte.
 
 ### Précision OCR imparfaite malgré binarize_adaptive
 Le modèle commet des erreurs de transcription même après binarisation. Cause non
