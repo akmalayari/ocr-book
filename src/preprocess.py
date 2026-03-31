@@ -8,17 +8,10 @@ from pathlib import Path
 import cv2
 
 
-def preprocess_image(image_path: Path) -> Path:
+def preprocess_image(image_path: Path, block_size: int, c: int) -> Path:
     """
-    Applique une binarisation adaptative à l'image.
-
-    Paramètres validés sur DeepSeek-OCR-GGUF :
-    - ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY
-    - blockSize=31, C=10
-
-    Retourne le chemin vers un fichier JPEG temporaire.
-    Le fichier temporaire persiste jusqu'à la fin du processus
-    (delete=False) ; le pipeline n'a pas à le gérer explicitement.
+    Applique une binarisation adaptative GAUSSIAN_C à l'image.
+    Retourne le chemin vers un fichier JPEG temporaire (delete=False).
     """
     img = cv2.imread(str(image_path))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -26,7 +19,7 @@ def preprocess_image(image_path: Path) -> Path:
         gray, 255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
-        31, 10,
+        block_size, c,
     )
     tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
     cv2.imwrite(tmp.name, bw)

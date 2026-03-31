@@ -46,9 +46,9 @@ def collect_images(cfg: Config) -> list[Path]:
 
 
 def rename_images(
-        folder: str | Path, 
-        extensions: tuple = (".jpg", ".jpeg", ".png", ".webp"), 
-        prefix: str = "page", 
+        folder: str | Path,
+        extensions: tuple,
+        prefix: str = "page",
         dry_run: bool = False
         ) -> list[Path]:
     """

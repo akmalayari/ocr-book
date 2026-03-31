@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     # Utilitaires
     p.add_argument("--rename-only", action="store_true",
                    help="Renommer les images en page_001.jpg, page_002.jpg… sans OCR")
-    p.add_argument("--rename-prefix", default="page",
+    p.add_argument("--rename-prefix", default=_cfg.rename_prefix,
                    help="Préfixe pour --rename-only (défaut: page)")
     p.add_argument("--dry-run", action="store_true",
                    help="Avec --rename-only : affiche les renommages sans les faire")
