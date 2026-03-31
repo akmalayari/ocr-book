@@ -8,8 +8,9 @@ Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via DeepSe
 src/
   main.py        — CLI argparse, point d'entrée
   config.py      — Config dataclass (toutes les valeurs par défaut ici)
-  server.py      — Démarrage/arrêt serveur Nexa (context manager)
-  ocr_client.py  — Requête HTTP vers le serveur, retourne le texte OCR
+  patch.py       — Monkey-patch nexaai sur Windows (UnicodeDecodeError dans ProfileData) ; doit être importé avant tout nexaai
+  ocr_client.py  — OCR d'une image via nexaai.VLM, retourne le texte et les métadonnées
+  preprocess.py  — Pré-traitement des images avant OCR (binarisation adaptative)
   postprocess.py — Nettoyage texte + gestion des blocs page dans le .md
   images.py      — Collecte et renommage des images
   pipeline.py    — Orchestration complète
@@ -24,7 +25,7 @@ Explorations et tests informels : `draft/`.
 
 ## Conventions
 
-- **Commits** : un fichier par commit, message bref en anglais (`fix(module): description`)
+- **Commits** : message bref en anglais (`fix(module): description`)
 - **Langue** : code et commits en anglais
 - **Pas de README** sauf demande explicite
 
@@ -40,7 +41,7 @@ Explorations et tests informels : `draft/`.
 
 - Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
-- Ne pas explorer `venv/` ni `output` ni `photos` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
+- Ne pas explorer `venv/` ni `output/` ni `photos/` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
 - Ne consulter et ne modifier les tests que si explicitement demandé.
 
@@ -54,6 +55,9 @@ Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference
 DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
 
 DeepSeekOCR GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
+
+Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
+
 
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.
