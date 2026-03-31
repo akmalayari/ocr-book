@@ -53,7 +53,11 @@ Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference
 
 DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
 
+DeepSeekOCR GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
+
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.
 - Check `ocr_run.log`.
-- (if above is not enough) Run tests `python -m pytest tests/ -v`.
+- Find what's wrong.
+
+As a last resort only: run tests `python -m pytest tests/ -v`.

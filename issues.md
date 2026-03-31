@@ -17,6 +17,7 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Prérequis :** tester chaque mode (`plain`, `markdown`, `figure`, `classic`, `describe`) sur des pages représentatives pour cartographier ce que chacun produit et ne produit pas.
 
+### Rename images in order of creation date
 rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
 
 ## Bugs actifs

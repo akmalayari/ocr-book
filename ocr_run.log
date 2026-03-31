@@ -1,0 +1,141 @@
+16:33:46  INFO      ════════════════════════════════════════════════════════════
+16:33:46  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:33:46  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:33:46  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:33:46  INFO        Mode        : markdown
+16:33:46  INFO        Prétraitement : binarize
+16:33:46  INFO        Reprise     : False
+16:33:46  INFO      ════════════════════════════════════════════════════════════
+16:33:46  INFO      2 image(s) trouvée(s) dans photos
+16:33:46  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:33:50  INFO      Modèle chargé.
+16:33:50  ERROR     Erreur fatale : GenerationConfig.__init__() got an unexpected keyword argument 'temperature'
+16:34:35  INFO      ════════════════════════════════════════════════════════════
+16:34:35  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:34:35  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:34:35  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:34:35  INFO        Mode        : markdown
+16:34:35  INFO        Prétraitement : binarize
+16:34:35  INFO        Reprise     : False
+16:34:35  INFO      ════════════════════════════════════════════════════════════
+16:34:35  INFO      2 image(s) trouvée(s) dans photos
+16:34:35  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:34:37  INFO      Modèle chargé.
+16:34:58  INFO      [1/2] page_1.jpg                       20.9s (latence 20.8s)  6747 car.  ETA ~0min
+16:35:20  INFO      [2/2] page_2.jpg                       21.9s (latence 21.7s)  5836 car.
+16:35:20  INFO      ────────────────────────────────────────────────────────────
+16:35:20  INFO      Terminé en 0.8 min  |  2 pages OK  |  0 skippées  |  0 erreurs
+16:35:20  INFO      Vitesse moyenne : 21.4s/page  |  Latence moy. : 21.3s  |  12583 caractères total
+16:35:20  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+18:08:47  INFO      ════════════════════════════════════════════════════════════
+18:08:47  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+18:08:47  INFO        Images      : C:\path\to\Documents\Legal
+18:08:47  INFO        Sortie      : C:\path\to\Documents\Legal\livre.md
+18:08:47  INFO        Mode        : markdown
+18:08:47  INFO        Prétraitement : binarize
+18:08:47  INFO        Reprise     : True
+18:08:47  INFO      ════════════════════════════════════════════════════════════
+18:08:47  INFO      5 image(s) trouvée(s) dans C:\path\to\Documents\Legal
+18:08:47  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+18:08:54  INFO      Modèle chargé.
+18:08:54  ERROR     Erreur fatale : OpenCV(4.13.0) D:\a\opencv-python\opencv-python\opencv\modules\imgproc\src\color.cpp:199: error: (-215:Assertion failed) !_src.empty() in function 'cv::cvtColor'
+
+16:05:42  INFO      ════════════════════════════════════════════════════════════
+16:05:42  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:05:42  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:05:42  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:05:42  INFO        Mode        : markdown
+16:05:42  INFO        Prétraitement : binarize
+16:05:42  INFO        Reprise     : False
+16:05:42  INFO      ════════════════════════════════════════════════════════════
+16:05:42  INFO      2 image(s) trouvée(s) dans photos
+16:05:42  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:05:48  INFO      Modèle chargé.
+16:06:10  INFO      [1/2] page_1.jpg                       22.7s (latence 22.5s)  6747 car.  ETA ~0min
+16:06:30  INFO      [2/2] page_2.jpg                       19.8s (latence 19.5s)  5836 car.
+16:06:30  INFO      ────────────────────────────────────────────────────────────
+16:06:30  INFO      Terminé en 0.8 min  |  2 pages OK  |  0 skippées  |  0 erreurs
+16:06:30  INFO      Vitesse moyenne : 21.2s/page  |  Latence moy. : 21.0s  |  12583 caractères total
+16:06:30  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:07:12  INFO      ════════════════════════════════════════════════════════════
+16:07:12  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:07:12  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:07:12  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:07:12  INFO        Mode        : markdown
+16:07:12  INFO        Prétraitement : binarize
+16:07:12  INFO        Reprise     : False
+16:07:12  INFO      ════════════════════════════════════════════════════════════
+16:07:12  INFO      2 image(s) trouvée(s) dans photos
+16:07:12  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:07:17  INFO      Modèle chargé.
+16:07:37  INFO      [1/2] page_1.jpg                       20.3s (latence 20.1s)  6747 car.  ETA ~0min
+16:08:01  INFO      [2/2] page_2.jpg                       23.8s (latence 23.7s)  5836 car.
+16:08:01  INFO      ────────────────────────────────────────────────────────────
+16:08:01  INFO      Terminé en 0.8 min  |  2 pages OK  |  0 skippées  |  0 erreurs
+16:08:01  INFO      Vitesse moyenne : 22.1s/page  |  Latence moy. : 21.9s  |  12583 caractères total
+16:08:01  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:09:31  INFO      ════════════════════════════════════════════════════════════
+16:09:31  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:09:31  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:09:31  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:09:31  INFO        Mode        : markdown
+16:09:31  INFO        Prétraitement : binarize
+16:09:31  INFO        Reprise     : False
+16:09:31  INFO      ════════════════════════════════════════════════════════════
+16:09:31  INFO      2 image(s) trouvée(s) dans photos
+16:09:31  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:09:36  INFO      Modèle chargé.
+16:09:56  INFO      [1/2] page_1.jpg                       20.2s (latence 20.0s)  6747 car.  ETA ~0min
+16:10:16  INFO      [2/2] page_2.jpg                       19.5s (latence 19.4s)  5836 car.
+16:10:16  INFO      ────────────────────────────────────────────────────────────
+16:10:16  INFO      Terminé en 0.8 min  |  2 pages OK  |  0 skippées  |  0 erreurs
+16:10:16  INFO      Vitesse moyenne : 19.8s/page  |  Latence moy. : 19.7s  |  12583 caractères total
+16:10:16  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:12:30  INFO      ════════════════════════════════════════════════════════════
+16:12:30  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:12:30  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:12:30  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:12:30  INFO        Mode        : markdown
+16:12:30  INFO        Prétraitement : binarize
+16:12:30  INFO        Reprise     : False
+16:12:30  INFO      ════════════════════════════════════════════════════════════
+16:12:30  INFO      1 image(s) trouvée(s) dans photos
+16:12:30  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:12:34  INFO      Modèle chargé.
+16:12:51  INFO      [1/1] page_2.jpg                       17.3s (latence 17.2s)  5836 car.
+16:12:51  INFO      ────────────────────────────────────────────────────────────
+16:12:51  INFO      Terminé en 0.4 min  |  1 pages OK  |  0 skippées  |  0 erreurs
+16:12:51  INFO      Vitesse moyenne : 17.3s/page  |  Latence moy. : 17.2s  |  5836 caractères total
+16:12:51  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:15:27  INFO      ════════════════════════════════════════════════════════════
+16:15:27  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:15:27  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:15:27  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:15:27  INFO        Mode        : markdown
+16:15:27  INFO        Prétraitement : binarize
+16:15:27  INFO        Reprise     : False
+16:15:27  INFO      ════════════════════════════════════════════════════════════
+16:15:27  INFO      1 image(s) trouvée(s) dans photos
+16:15:27  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:15:30  INFO      Modèle chargé.
+16:15:48  INFO      [1/1] page_2.jpg                       17.8s (latence 17.7s)  5836 car.
+16:15:48  INFO      ────────────────────────────────────────────────────────────
+16:15:48  INFO      Terminé en 0.3 min  |  1 pages OK  |  0 skippées  |  0 erreurs
+16:15:48  INFO      Vitesse moyenne : 17.8s/page  |  Latence moy. : 17.7s  |  5836 caractères total
+16:15:48  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:24:30  INFO      ════════════════════════════════════════════════════════════
+16:24:30  INFO      Pipeline OCR — NexaAI/DeepSeek-OCR-GGUF
+16:24:30  INFO        Images      : C:\path\to\Documents\Code\ocr-livre\photos
+16:24:30  INFO        Sortie      : C:\path\to\Documents\Code\ocr-livre\output\livre.md
+16:24:30  INFO        Mode        : plain
+16:24:30  INFO        Prétraitement : binarize
+16:24:30  INFO        Reprise     : False
+16:24:30  INFO      ════════════════════════════════════════════════════════════
+16:24:30  INFO      1 image(s) trouvée(s) dans photos
+16:24:30  INFO      Chargement du modèle NexaAI/DeepSeek-OCR-GGUF ...
+16:24:32  INFO      Modèle chargé.
+16:24:56  INFO      [1/1] page_2.jpg                       23.4s (latence 23.3s)  8034 car.
+16:24:56  INFO      ────────────────────────────────────────────────────────────
+16:24:56  INFO      Terminé en 0.4 min  |  1 pages OK  |  0 skippées  |  0 erreurs
+16:24:56  INFO      Vitesse moyenne : 23.4s/page  |  Latence moy. : 23.3s  |  8034 caractères total
+16:24:56  INFO      Fichier de sortie : C:\path\to\Documents\Code\ocr-livre\output\livre.md
