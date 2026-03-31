@@ -2,7 +2,7 @@
 
 ## Features
 
-### Détection automatique des pages avec images non textuelles
+### 1. Détection automatique des pages avec images non textuelles
 Appliquer un mode OCR différent selon le contenu de la page.
 
 **Approches à tester (par ordre de priorité) :**
@@ -17,12 +17,12 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Prérequis :** tester chaque mode (`plain`, `markdown`, `figure`, `classic`, `describe`) sur des pages représentatives pour cartographier ce que chacun produit et ne produit pas.
 
-### Rename images in order of creation date
+### 2. Rename images in order of creation date
 rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
 
 ## Bugs actifs
 
-### Précision OCR imparfaite malgré binarize_adaptive
+### 1. Précision OCR imparfaite malgré binarize_adaptive
 Le modèle commet des erreurs de transcription même après binarisation. Cause non
 identifiée — peut être liée au modèle lui-même (quantization Q8_0), au prompt,
 ou aux paramètres de génération.
@@ -33,14 +33,14 @@ Modifier les paramètres de génération (`GenerationConfig`).
 
 ## Architecture
 
-### `PROMPTS` comme constante de module
+### 1. `PROMPTS` comme constante de module
 `config.py` — `PROMPTS` est un dict statique dans un `dataclass` avec `field(default_factory=...)`.
 Chaque instance crée son propre dict alors que la valeur ne change jamais.
 Mieux placé comme constante au niveau module ou comme `ClassVar`.
 
 ## Style
 
-### Padding du renommage non documenté
+### 1. Padding du renommage non documenté
 `images.py:71` — `width = len(str(len(images)))` donne un padding minimal basé sur
 le nombre d'images au moment du renommage. Si on ajoute des images plus tard et qu'on
 re-renomme, les anciens fichiers (`page_01.jpg`) et les nouveaux (`page_001.jpg`)
