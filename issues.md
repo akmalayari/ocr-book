@@ -56,11 +56,6 @@ Cause : pages denses en texte ou en tableaux dépassent la fenêtre de contexte.
 
 ## Architecture
 
-### 1. `PROMPTS` comme constante de module
-`config.py` — `PROMPTS` est un dict statique dans un `dataclass` avec `field(default_factory=...)`.
-Chaque instance crée son propre dict alors que la valeur ne change jamais.
-Mieux placé comme constante au niveau module ou comme `ClassVar`.
-
 ## Style
 
 ### 1. Padding du renommage non documenté

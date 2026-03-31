@@ -2,8 +2,9 @@
 config.py — Configuration centrale du pipeline OCR
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 
 @dataclass
@@ -34,12 +35,12 @@ class Config:
     #   "describe"  → description générale de l'image
     #   "parse"     → analyse détaillée des éléments de l'image
     prompt_mode: str = "plain"
-    PROMPTS: dict = field(default_factory=lambda: {
+    PROMPTS: ClassVar[dict] = {
         "plain":    "Free OCR.",
         "layout":   "<|grounding|>Convert the document to markdown.",
         "describe": "Describe this image in detail.",
         "parse":    "Parse the figure."
-    })
+    }
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
