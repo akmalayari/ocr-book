@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
                    help="Modèle Nexa à utiliser")
 
     # OCR
-    p.add_argument("--mode", choices=["markdown", "plain", "figure"],
+    p.add_argument("--mode", choices=["markdown", "plain", "figure", "classic", "describe"],
                    default=_cfg.prompt_mode,
                    help="Mode OCR")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,

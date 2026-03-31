@@ -12,10 +12,10 @@ class Config:
     model: str = "NexaAI/DeepSeek-OCR-GGUF"
 
     # ── Paramètres ModelConfig ────────────────────────────────────────────────
-    n_ctx: int        = 4096
+    n_ctx: int        = 8192
     n_threads: int    = 4
     n_gpu_layers: int = 999
-    n_batch: int      = 2048
+    n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
     max_tokens: int   = 2048
@@ -30,16 +30,20 @@ class Config:
     #   "markdown"  → structure complète (titres, tableaux, listes)
     #   "plain"     → texte brut sans mise en forme
     #   "figure"    → analyse d'une figure ou d'un graphique
-    prompt_mode: str = "markdown"
+    #   "classic"   → OCR générique pour images non-document
+    #   "describe"  → description générale de l'image
+    prompt_mode: str = "plain"
     PROMPTS: dict = field(default_factory=lambda: {
-        "markdown": "Convert the document to markdown.",
+        "markdown": "<|grounding|>Convert the document to markdown.",
         "plain":    "Free OCR.",
         "figure":   "Parse the figure.",
+        "classic":  "<|grounding|>OCR this image.",
+        "describe": "Describe this image in detail."
     })
 
     # ── Images ───────────────────────────────────────────────────────────────
     images_dir: str = "./photos"
-    extensions: tuple = (".jpg", ".jpeg", ".png", ".webp")
+    extensions: tuple = (".jpg", ".jpeg", ".png", ".webp", ".pdf")
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
@@ -51,7 +55,7 @@ class Config:
     collapse_blank_lines: bool = True
 
     # ── Logging ──────────────────────────────────────────────────────────────
-    log_file: str = "output/ocr_run.log"
+    log_file: str = "ocr_run.log"
     verbose: bool = False
 
     @property
