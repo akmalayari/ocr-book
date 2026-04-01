@@ -30,13 +30,16 @@ rename_images par date de création: du plus vieux au plus récent. Permet de re
 ## Bugs actifs
 
 ### 1. Précision OCR imparfaite malgré binarize_adaptive
-Le modèle commet des erreurs de transcription même après binarisation. Cause non
-identifiée — peut être liée au modèle lui-même (quantization Q8_0), au prompt,
-ou aux paramètres de génération.
+Le modèle commet des erreurs de transcription même après binarisation.
 
-**Pistes :** Tester d'autres valeurs de `blockSize`/`C` pour la binarisation.
-Tester le prompt `"plain"` vs `"layout"` sur les mêmes pages pour comparer.
-Modifier les paramètres de génération (`GenerationConfig`).
+**Résultats des tests de quantization (2026-04-01) :**
+- Q8_0 → BF16 : légère amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 probablement équivalent à BF16.
+- BF16 : ~60s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable.
+
+**Pistes restantes :**
+- Prompt plus directif (ex: `"Transcribe the text exactly as it appears."` ou prompt en français).
+- Qualité des photos sources — hors scope logiciel.
+- Modèle alternatif (Qwen2-VL, etc.) potentiellement plus précis sur du français dense.
 
 ### 2. Boucles de génération sur pages denses ou avec tableaux
 Le modèle entre en boucle (génération infinie répétitive) sur certaines pages.
@@ -66,11 +69,6 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 **Pistes restantes :**
 - Limiter `max_tokens` pour couper la génération avant la boucle.
 - Prompt adaptatif selon le contenu (Feature 1).
-
-### 3. Pages de mauvaise qualité (floues) — tous les prompts échouent
-`page_5.jpg` (floue) : hallucinations ou boucles quel que soit le prompt. `"describe"` évoque du bengali. `"layout"` retourne une bbox globale `[[0, 0, 999, 997]]` au lieu de décomposer les éléments.
-
-**Piste :** améliorer la qualité de la photo source. Hors scope logiciel.
 
 ## Architecture
 
