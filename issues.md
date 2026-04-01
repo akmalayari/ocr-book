@@ -43,18 +43,29 @@ Le modèle entre en boucle (génération infinie répétitive) sur certaines pag
 
 **Résultats avec `plain` + binarize seul :** page_2, page_3, page_4 bouclent.
 
-**Résultats avec `plain` + GaussianBlur(5,5) + binarize (2026-04-01) :**
+Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
+
+**`plain` :**
 - page_1 : succès
 - page_2 : échec (boucle)
 - page_3 : succès, y compris le tableau textuel
-- page_4 : mitigé — pas de boucle mais retranscription du tableau numérique incorrecte
-- page_5 : échec — génération d'un tableau infini de chiffres (probablement l'axe Y du graphique sur la photo)
+- page_4 : mitigé — pas de boucle, retranscription du tableau numérique incorrecte
+- page_5 : échec — génération d'un tableau infini de chiffres (probablement axe Y du graphique)
+
+**`layout` :**
+- page_1 : pareil que `plain`
+- page_2 : succès — plus de boucle
+- page_3 : pareil que `plain`
+- page_4 : mitigé — tableau détecté, noms des colonnes approximatifs, cases vides, texte sous le tableau oublié
+- page_5 : échec — boucle sur balises `<tr>`/`<td>`
 
 `repetition_penalty` testé, sans effet sur les boucles.
 
+**Conclusion :** aucun prompt ne couvre tous les cas. page_4/5 (tableau numérique, graphique) sont des candidats pour la détection automatique (Feature 1) + mode `"describe"`/`"parse"`.
+
 **Pistes restantes :**
 - Limiter `max_tokens` pour couper la génération avant la boucle.
-- Pour page_4/5 : contenu non textuel (tableaux numériques, graphiques) → candidat pour le mode `"describe"` ou `"parse"` une fois la détection automatique en place (Feature 1).
+- Prompt adaptatif selon le contenu (Feature 1).
 
 ### 3. Pages de mauvaise qualité (floues) — tous les prompts échouent
 `page_5.jpg` (floue) : hallucinations ou boucles quel que soit le prompt. `"describe"` évoque du bengali. `"layout"` retourne une bbox globale `[[0, 0, 999, 997]]` au lieu de décomposer les éléments.
