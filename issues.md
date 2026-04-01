@@ -39,16 +39,22 @@ Tester le prompt `"plain"` vs `"layout"` sur les mêmes pages pour comparer.
 Modifier les paramètres de génération (`GenerationConfig`).
 
 ### 2. Boucles de génération sur pages denses ou avec tableaux
-Le modèle entre en boucle (génération infinie répétitive) sur certaines pages :
-- `"plain"` : page_2, page_3, page_4 (dès le début pour page_4)
-- `"layout"` : page_3 et page_4 — boucle spécifiquement sur les balises `<tr>`/`<td>`
+Le modèle entre en boucle (génération infinie répétitive) sur certaines pages.
 
-Note : plus d'erreur `Context length exceeded` depuis le passage à `n_ctx=16384`.
+**Résultats avec `plain` + binarize seul :** page_2, page_3, page_4 bouclent.
 
-**Pistes :**
-- Ajouter un paramètre `repetition_penalty` dans `GenerationConfig`.
+**Résultats avec `plain` + GaussianBlur(5,5) + binarize (2026-04-01) :**
+- page_1 : succès
+- page_2 : échec (boucle)
+- page_3 : succès, y compris le tableau textuel
+- page_4 : mitigé — pas de boucle mais retranscription du tableau numérique incorrecte
+- page_5 : échec — génération d'un tableau infini de chiffres (probablement l'axe Y du graphique sur la photo)
+
+`repetition_penalty` testé, sans effet sur les boucles.
+
+**Pistes restantes :**
 - Limiter `max_tokens` pour couper la génération avant la boucle.
-- Tester si la binarisation agressive (`blockSize`, `C`) contribue au problème.
+- Pour page_4/5 : contenu non textuel (tableaux numériques, graphiques) → candidat pour le mode `"describe"` ou `"parse"` une fois la détection automatique en place (Feature 1).
 
 ### 3. Pages de mauvaise qualité (floues) — tous les prompts échouent
 `page_5.jpg` (floue) : hallucinations ou boucles quel que soit le prompt. `"describe"` évoque du bengali. `"layout"` retourne une bbox globale `[[0, 0, 999, 997]]` au lieu de décomposer les éléments.
@@ -56,6 +62,8 @@ Note : plus d'erreur `Context length exceeded` depuis le passage à `n_ctx=16384
 **Piste :** améliorer la qualité de la photo source. Hors scope logiciel.
 
 ## Architecture
+
+Tout est ok.
 
 ## Style
 
