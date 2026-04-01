@@ -27,21 +27,27 @@ def collect_images(cfg: Config) -> list[Path]:
     Raises:
         ImageCollectionError si le dossier est vide ou inexistant.
     """
-    folder = cfg.images_path
-    if not folder.exists():
-        raise ImageCollectionError(f"Dossier images introuvable : {folder}")
+    path = cfg.images_path
+    if not path.exists():
+        raise ImageCollectionError(f"Chemin introuvable : {path}")
+
+    if path.is_file():
+        if path.suffix.lower() not in cfg.extensions:
+            raise ImageCollectionError(f"Extension non supportée : {path.suffix}")
+        logger.info("1 image : %s", path)
+        return [path]
 
     images = sorted(
-        p for p in folder.iterdir()
+        p for p in path.iterdir()
         if p.is_file() and p.suffix.lower() in cfg.extensions
     )
 
     if not images:
         raise ImageCollectionError(
-            f"Aucune image ({', '.join(cfg.extensions)}) dans : {folder}"
+            f"Aucune image ({', '.join(cfg.extensions)}) dans : {path}"
         )
 
-    logger.info("%d image(s) trouvée(s) dans %s", len(images), folder)
+    logger.info("%d image(s) trouvée(s) dans %s", len(images), path)
     return images
 
 
