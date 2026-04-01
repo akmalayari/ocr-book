@@ -38,8 +38,9 @@ Vérifie ta mémoire des sessions précédentes : `memory/`
 - Lire les fichiers directement (Glob/Grep/Read) sans passer par un sous-agent sauf si la recherche est vraiment ouverte
 - Ne pas proposer de corrections au-delà du scope demandé
 - Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
-- Réponses courtes ; pas de récapitulatif en fin de message sauf si le changement est complexe
+- Pas de récapitulatif en fin de message sauf si le changement est complexe
 - add et commit a chaque modification de fichier: si la modification concerne un seul fichier, add et commit ce fichier, si si elle concerne plusieurs fichiers, grouper le add et commit.
+- draft/ est gitignored. 
 
 ## Limiter la consommation de tokens
 
@@ -52,16 +53,17 @@ Vérifie ta mémoire des sessions précédentes : `memory/`
 ## Ressources
 Documentation sur le stack spécifique utilisé dans le projet.
 
-REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
+- REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
 
-Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
+- Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
 
-DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
+- DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
 
-DeepSeekOCR GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
+- DeepSeekOCR GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
 
 Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
 
+- Signature correcte pour instancier le VLM: VLM.from_(model=..., quant=..., config=...)
 
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.

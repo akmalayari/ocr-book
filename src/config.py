@@ -22,8 +22,8 @@ class Config:
 
     # ── Inférence ────────────────────────────────────────────────────────────
     max_tokens: int        = 2048
-    #temperature: float     = 0.0
-    #repetition_penalty: float = 1.1
+    temperature: float     = 0.0
+    repetition_penalty: float = 1.1
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
     #   "none"     → image originale
@@ -83,11 +83,10 @@ class Config:
             n_gpu_layers=self.n_gpu_layers,
             n_batch=self.n_batch,
         )
-'''
+
     def to_sampler_config(self):
         from nexaai.nexa_sdk.types import SamplerConfig
         return SamplerConfig(
             temperature=self.temperature,
             repetition_penalty=self.repetition_penalty,
         )
-'''
