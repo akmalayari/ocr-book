@@ -19,8 +19,9 @@ class Config:
     n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int   = 4096
-    temperature: float = 0.0
+    max_tokens: int        = 4096
+    temperature: float     = 0.0
+    repetition_penalty: float = 1.1
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
     #   "none"     → image originale
@@ -44,10 +45,8 @@ class Config:
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
-
-    # ── Images ───────────────────────────────────────────────────────────────
-    images_dir: str = "./photos"
-    extensions: tuple = (".jpg", ".jpeg", ".png", ".webp", ".pdf")
+    images_dir: str    = "./photos"
+    extensions: tuple  = (".jpg", ".jpeg", ".png", ".webp", ".pdf")
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
@@ -81,4 +80,11 @@ class Config:
             n_threads=self.n_threads,
             n_gpu_layers=self.n_gpu_layers,
             n_batch=self.n_batch,
+        )
+
+    def to_sampler_config(self):
+        from nexaai.nexa_sdk.types import SamplerConfig
+        return SamplerConfig(
+            temperature=self.temperature,
+            repetition_penalty=self.repetition_penalty,
         )
