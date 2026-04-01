@@ -43,7 +43,7 @@ def run_pipeline(cfg: Config) -> Stats:
 
     # ── Chargement du VLM ────────────────────────────────────────────────────
     logger.info("Chargement du modèle %s ...", cfg.model)
-    vlm = VLM.from_(model=cfg.model, config=cfg.to_model_config())
+    vlm = VLM.from_(model=cfg.model, quant=cfg.quant, config=cfg.to_model_config())
     logger.info("Modèle chargé.")
 
     # ── Pipeline ─────────────────────────────────────────────────────────────

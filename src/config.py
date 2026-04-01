@@ -11,6 +11,8 @@ from typing import ClassVar
 class Config:
     # ── Modèle VLM ───────────────────────────────────────────────────────────
     model: str = "NexaAI/DeepSeek-OCR-GGUF"
+    quant: str = "bf16"
+    QUANTS: ClassVar[tuple] = ("q8_0", "bf16")
 
     # ── Paramètres ModelConfig ────────────────────────────────────────────────
     n_ctx: int        = 8192

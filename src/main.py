@@ -40,6 +40,8 @@ def parse_args() -> argparse.Namespace:
     # Modèle
     p.add_argument("--model", default=_cfg.model,
                    help="Modèle Nexa à utiliser")
+    p.add_argument("--quant", choices=list(_cfg.QUANTS), default=_cfg.quant,
+                   help="Quantization du modèle")
 
     # OCR
     p.add_argument("--mode", choices=list(_cfg.PROMPTS.keys()),
@@ -75,6 +77,7 @@ def main() -> int:
         images_dir=args.images,
         output_file=args.out,
         model=args.model,
+        quant=args.quant,
         prompt_mode=args.mode,
         max_tokens=args.max_tokens,
         preprocess_mode=args.preprocess,
