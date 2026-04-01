@@ -34,6 +34,7 @@ Le modèle commet des erreurs de transcription même après binarisation.
 
 **Résultats des tests de quantization (2026-04-01) :**
 - Q8_0 → BF16 : légère amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 probablement équivalent à BF16.
+- BF16 sur page_5 : hallucine toujours sur les données du graphe, mais parvient à retranscrire approximativement le tableau et quelques paragraphes — finit par boucler. Q8_0 bouclait immédiatement. Impact réel de la quantization sur les pages difficiles.
 - BF16 : ~60s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable.
 
 **Pistes restantes :**
