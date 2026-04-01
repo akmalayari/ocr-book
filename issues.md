@@ -71,6 +71,11 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - Limiter `max_tokens` pour couper la génération avant la boucle.
 - Prompt adaptatif selon le contenu (Feature 1).
 
+## Améliorations confirmées à implémenter
+
+### 1. GaussianBlur avant binarisation
+`GaussianBlur(5,5)` avant `adaptiveThreshold` supprime les granulés et produit un texte plus net — validé sur pages 1–5. À intégrer dans `preprocess.py` mode `"binarize"`.
+
 ## Architecture
 
 Tout est ok.
