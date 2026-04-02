@@ -69,7 +69,6 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 **Conclusion :** aucun prompt ne couvre tous les cas. page_4/5 (tableau numérique, graphique) sont des candidats pour la détection automatique (Feature 1) + mode `"describe"`/`"parse"`.
 
 **Pistes restantes :**
-- Limiter `max_tokens` pour couper la génération avant la boucle.
 - Prompt adaptatif selon le contenu (Feature 1).
 
 ### 3. Courbure de page
@@ -88,10 +87,6 @@ Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajout
 1. **Bilateral filter** — lisse le bruit en préservant les contours, alternative à GaussianBlur avant binarisation.
 2. **Sauvola binarization** (`scikit-image`) — conçue pour les documents dégradés, tient compte de la variance locale. Potentiellement meilleure qu'`adaptiveThreshold` sur texte mal contrasté.
 3. **Real-ESRGAN** — super-résolution x2/x4 par modèle neural, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde (`basicsr`).
-
-## Améliorations confirmées à implémenter
-
-OK
 
 ## Architecture
 

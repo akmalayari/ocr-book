@@ -58,17 +58,24 @@ Vérifie ta mémoire des sessions précédentes : `memory/`
 ## Ressources
 Documentation sur le stack spécifique utilisé dans le projet.
 
-- REST API Nexa : https://docs.nexa.ai/en/nexa-sdk-go/NexaAPI
+### Nexa
 
-- Nexa SDK Python API : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
-
-- DeepSeekOCR HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
-
-- DeepSeekOCR GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
-
-Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
+- Reference API Python  : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
 
 - Signature correcte pour instancier le VLM: VLM.from_(model=..., quant=..., config=...)
+
+### DeepSeekOCR
+
+- HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
+
+- GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
+
+- Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
+
+### page-dewarp
+
+- Reference API : https://page-dewarp.vercel.app/api/
+
 
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.
