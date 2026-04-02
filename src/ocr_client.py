@@ -38,7 +38,13 @@ def ocr_image(image_path: Path | str, vlm, cfg: Config) -> tuple[str, dict]:
         raise OCRError(f"Image introuvable : {image_path}")
 
     if cfg.preprocess_mode == "binarize":
-        input_path = preprocess_image(image_path, cfg.binarize_block_size, cfg.binarize_c)
+        input_path = preprocess_image(
+            image_path,
+            cfg.binarize_block_size,
+            cfg.binarize_c,
+            cfg.blur_ksize,
+            cfg.blur_sigma,
+        )
     else:
         input_path = image_path
 

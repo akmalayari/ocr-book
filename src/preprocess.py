@@ -8,15 +8,22 @@ from pathlib import Path
 import cv2
 
 
-def preprocess_image(image_path: Path, block_size: int, c: int) -> Path:
+def preprocess_image(
+    image_path: Path,
+    block_size: int,
+    c: int,
+    blur_ksize: int = 5,
+    blur_sigma: float = 0.0,
+) -> Path:
     """
-    Applique une binarisation adaptative GAUSSIAN_C à l'image.
+    Applique GaussianBlur puis une binarisation adaptative GAUSSIAN_C à l'image.
     Retourne le chemin vers un fichier JPEG temporaire (delete=False).
     """
     img = cv2.imread(str(image_path))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (blur_ksize, blur_ksize), blur_sigma)
     bw = cv2.adaptiveThreshold(
-        gray, 255,
+        blurred, 255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
         block_size, c,
