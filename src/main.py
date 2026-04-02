@@ -5,9 +5,12 @@ Usage :
     python main.py                          # config par défaut
     python main.py --images ./photos --out output/livre.md
     python main.py --mode plain             # OCR texte brut
+    python main.py --quant q8_0             # quantization (q8_0, f16, bf16)
+    python main.py --max-tokens 2048        # tokens max par page
     python main.py --no-resume              # recommencer depuis le début
-    python main.py --preprocess none        # sans pré-traitement
+    python main.py --preprocess none        # sans pré-traitement (défaut: binarize)
     python main.py --rename-only            # renommer les images sans OCR
+    python main.py --rename-only --dry-run  # affiche les renommages sans les faire
     python main.py --verbose                # logs détaillés
 """
 
