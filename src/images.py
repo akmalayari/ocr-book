@@ -78,7 +78,7 @@ def rename_images(
     )
 
     renamed = []
-    width = len(str(len(images)))  # padding : 3 chiffres pour 100-999 images
+    width = max(3, len(str(len(images))))
 
     for i, img in enumerate(images, 1):
         new_name = f"{prefix}_{str(i).zfill(width)}{img.suffix.lower()}"
