@@ -28,9 +28,9 @@ Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Conto
 | Quantization | Vitesse | Qualité |
 |---|---|---|
 | Q8_0 | ~20s/page | boucle immédiatement sur pages difficiles |
-| BF16 | ~60s/page | légèrement meilleure sur pages difficiles |
+| BF16 | ~50s/page | légèrement meilleure sur pages difficiles |
 
-**Statut : BF16 non retenu.** Rapport qualité/vitesse défavorable (×3 sur le temps, gain marginal). Q8_0 utilisé par défaut.
+**Statut : BF16 retenu.** L'augmentation en qualité vaut l'attente plus longue.
 
 ---
 
@@ -41,14 +41,14 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 | Mode | Prompt | Résultat |
 |---|---|---|
 | `plain` | `"Free OCR."` | texte brut propre sur pages simples, boucle sur pages denses |
-| `layout` | `"<|grounding|>Convert the document to markdown."` | ajoute grounding boxes, règle la boucle de page_2 mais boucle sur les tableaux (`<tr>`/`<td>`) |
+| `layout` | `"<\|grounding\|>Convert the document to markdown."` | ajoute grounding boxes, règle la boucle de page_2 mais boucle sur les tableaux (`<tr>`/`<td>`) |
 | `describe` | `"Describe this image in detail."` | description en anglais, indépendamment de la langue du document |
 | `parse` | `"Parse the figure."` | analyse fine des éléments visuels en anglais |
 | `classic` | (supprimé) | une grounding box par phrase, dépasse systématiquement `n_ctx` |
 
 **Statut :** `plain` retenu pour usage principal. `layout` utile sur certaines pages (page_2), contre-productif sur les tableaux. Aucun prompt universel ne couvre tous les types de page.
 
-**`repetition_penalty`** testé — sans effet sur les boucles de génération.
+**`repetition_penalty`** testé rapidement — apparemment sans effet sur les boucles de génération.
 
 ---
 
@@ -96,6 +96,6 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 
 | Paramètre | Valeur testée | Effet |
 |---|---|---|
-| `repetition_penalty` | 1.1 | sans effet sur les boucles de génération |
+| `repetition_penalty` | 1.1 | apparemment sans effet sur les boucles de génération |
 | `max_tokens` | 2048 | coupe la génération avant qu'elle parte en boucle infinie (à affiner) |
 | `temperature` | 0.0 | déterministe, retenu |
