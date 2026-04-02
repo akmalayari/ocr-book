@@ -33,12 +33,19 @@ Vérifie ta mémoire des sessions précédentes : `memory/`
 
 ## Préférences de travail
 
+### Général
 - Lire les fichiers directement (Glob/Grep/Read) sans passer par un sous-agent sauf si la recherche est vraiment ouverte
 - Ne pas proposer de corrections au-delà du scope demandé
 - Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
 - Pas de récapitulatif en fin de message sauf si le changement est complexe
+
+### Git
 - add et commit a chaque modification de fichier: si la modification concerne un seul fichier, add et commit ce fichier, si si elle concerne plusieurs fichiers, grouper le add et commit.
 - draft/ est gitignored. 
+
+### Issues
+- après avoir résolu une tache de issues.md, toujours mettre a jour issues.md.
+- eviter de laisser une section de issues.md vide: écrire "OK".
 
 ## Limiter la consommation de tokens
 
