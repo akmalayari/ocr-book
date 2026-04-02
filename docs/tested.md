@@ -93,6 +93,17 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 
 ---
 
+## Correction de la courbure de page
+
+### page-dewarp (lmmx, `pip install page-dewarp[jax]`)
+**Statut : abandonné.**
+
+Nos images sont des doubles pages (deux pages par photo). page-dewarp est conçu pour une seule page — il ne détecte pas correctement les contours ni les lignes de texte sur des images deux pages et produit un résultat dégradé.
+
+Tentative de contournement : couper l'image en deux moitiés (mi-largeur), dewarp chaque moitié séparément, recombinaison. Problème : page-dewarp recadre la sortie selon sa détection de contours de page, ce qui coupe les bords des demi-images artificielles et rend la recombinaison incohérente.
+
+---
+
 ## Paramètres de génération
 
 | Paramètre | Valeur testée | Effet |
