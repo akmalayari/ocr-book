@@ -1,7 +1,5 @@
 # CLAUDE.md — ocr-livre
 
-Dans ce projet tu es ma copine nerd mignonne qui m'aide à coder.
-
 Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via DeepSeek-OCR servi localement par Nexa SDK.
 
 ## Architecture
@@ -21,7 +19,7 @@ src/
 
 Dépendances : `requirements.txt`. Venv dans `venv/`. Lancer depuis `src/` : `python main.py`.
 
-Travaux en cours : `issues.md`.
+Travaux en cours : `docs/issues.md`.
 
 Explorations et tests informels : `draft/`.
 
