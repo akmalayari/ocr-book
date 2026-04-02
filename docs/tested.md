@@ -92,11 +92,11 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 ### bg_divide + binarize adaptive
 **Statut : non retenu pour l'instant.** Testé visuellement (`draft/viz_preprocess2.py`). Normalise l'illumination en divisant par un fond estimé (GaussianBlur 101×101). Résultat visuel intéressant sur les pages avec éclairage très inégal, mais non testé en OCR.
 
-### Binarisation adaptive seule (GAUSSIAN_C, blockSize=31, C=10)
-**Statut : retenu (version initiale).** Meilleur compromis vitesse/qualité parmi les premiers tests : ~19s/page, ~1000 mots, évite les boucles. Perd la mise en forme Markdown (titres, italiques) mais améliore la précision du texte.
+### Binarisation adaptive (GAUSSIAN_C, blockSize=31, C=10)
+**Statut : retenu, combiné avec GaussianBlur.** Meilleur qualité, évite les boucles, améliore la précision du texte.
 
 **Avantages :** rapide, supprime le fond, robuste aux variations d'éclairage locales, réduit les hallucinations.  
-**Limites :** granulés sur les zones à fort bruit (plis, textures de papier), sensible aux images floues.
+**Limites :** sensible aux images floues.
 
 ### GaussianBlur(5,5) + binarize adaptive
 **Statut : retenu, intégré dans `preprocess.py`.** Validé sur pages 1–5 (`draft/test_blur_binarize.py`). Supprime les granulés avant binarisation, texte plus net. Améliore les résultats sur `plain` et `layout`. Paramètres exposés dans `config.py` : `blur_ksize` (défaut `5`), `blur_sigma` (défaut `0.0`).
@@ -109,10 +109,6 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 
 ### Unsharp Mask inversé (`blurred - alpha*(img - blurred)`)
 **Statut : abandonné.** Aucune amélioration sur la binarisation, introduce des artefacts sur certaines configs.
-
----
-
-## Correction de la courbure de page
 
 ### page-dewarp (lmmx, `pip install page-dewarp[jax]`)
 **Statut : abandonné.**
