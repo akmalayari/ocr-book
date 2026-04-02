@@ -72,7 +72,14 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - Limiter `max_tokens` pour couper la génération avant la boucle.
 - Prompt adaptatif selon le contenu (Feature 1).
 
-### 3. Images floues
+### 3. Courbure de page
+Courbure due à la reliure — déforme les lignes de texte géométriquement.
+
+**Pistes à tester (par ordre de priorité) :**
+1. **page-dewarp (mzucker)** — script Python + OpenCV dédié aux photos de livres. Détecte les contours de page et les lignes de texte, estime la surface courbée, applique une transformation inverse. Pas de GPU. À tester dans `draft/` sur pages 1–5.
+2. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. À envisager seulement si page-dewarp est insuffisant.
+
+### 4. Images floues
 Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajoute des granulés sombres sur certaines configs. Les approches amplificatrices de hautes fréquences sont inefficaces sur du flou de mise au point.
 
 **Pistes à tester (par ordre de priorité) :**
