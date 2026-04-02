@@ -73,8 +73,9 @@ def rename_images(
     """
     folder = Path(folder)
     images = sorted(
-        p for p in folder.iterdir()
-        if p.is_file() and p.suffix.lower() in extensions
+        (p for p in folder.iterdir()
+         if p.is_file() and p.suffix.lower() in extensions),
+        key=lambda p: p.stat().st_ctime
     )
 
     renamed = []
