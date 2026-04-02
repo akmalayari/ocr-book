@@ -77,7 +77,9 @@ Courbure due à la reliure — déforme les lignes de texte géométriquement.
 Provoque également des erreurs sur les mots coupés en fin de ligne (`distri-\nbution` → `"des distinctions biutique négligeant"` au lieu de `"une distribution inégale"`) : la déformation géométrique au niveau du pli perturbe la reconnaissance de la césure.
 
 **Pistes à tester (par ordre de priorité) :**
-1. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. À envisager seulement si page-dewarp est insuffisant.
+1. **Lignes de texte + fit polynomial + `cv2.remap`** — dilatation horizontale `(30,1)` pour regrouper les caractères en blobs de ligne, fit polynomial sur les centroïdes, remap inverse. Pure OpenCV, aucune dépendance. À appliquer sur chaque moitié de l'image séparément (double page). Approche retenue en priorité.
+2. **DocTr** — transformer léger de déwarpage de documents, tourne sur CPU. Dépendance PyTorch/ONNX (~200 MB). À tester si l'approche OpenCV est insuffisante.
+3. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. Dernier recours.
 
 ### 4. Images floues
 Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajoute des granulés sombres sur certaines configs. Les approches amplificatrices de hautes fréquences sont inefficaces sur du flou de mise au point.
