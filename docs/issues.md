@@ -24,6 +24,8 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Langue des descriptions :** `"describe"` et `"parse"` répondent en anglais indépendamment de la langue du document. À tester : un prompt explicite comme `"Describe this image in French."` ou `"Describe this image in the same language as the document."`.
 
+### 2. Support PDF multi-pages
+Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
 
 ## Bugs actifs
 
