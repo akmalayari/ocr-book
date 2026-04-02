@@ -97,8 +97,4 @@ Tout est ok.
 
 ## Style
 
-### 1. Padding du renommage non documenté
-`images.py:71` — `width = len(str(len(images)))` donne un padding minimal basé sur
-le nombre d'images au moment du renommage. Si on ajoute des images plus tard et qu'on
-re-renomme, les anciens fichiers (`page_01.jpg`) et les nouveaux (`page_001.jpg`)
-seront incohérents. À documenter ou à fixer avec un minimum de 3 chiffres.
+Tout est ok.
