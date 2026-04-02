@@ -23,7 +23,7 @@ class Config:
     # ── Inférence ────────────────────────────────────────────────────────────
     max_tokens: int        = 2048
     temperature: float     = 0.0
-    repetition_penalty: float = 1.1
+    repetition_penalty: float = 1.5
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
     #   "none"     → image originale

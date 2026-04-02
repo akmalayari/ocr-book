@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.nexa.ai)"
+      "WebFetch(domain:docs.nexa.ai)",
+      "WebFetch(domain:page-dewarp.vercel.app)"
     ]
   }
 }
