@@ -24,8 +24,6 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Langue des descriptions :** `"describe"` et `"parse"` répondent en anglais indépendamment de la langue du document. À tester : un prompt explicite comme `"Describe this image in French."` ou `"Describe this image in the same language as the document."`.
 
-### 2. Rename images in order of creation date
-rename_images par date de création: du plus vieux au plus récent. Permet de reconstruire le livre dans l'ordre.
 
 ## Bugs actifs
 
@@ -91,10 +89,12 @@ Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajout
 
 ## Améliorations confirmées à implémenter
 
+OK
+
 ## Architecture
 
-Tout est ok.
+OK
 
 ## Style
 
-Tout est ok.
+OK
