@@ -79,7 +79,7 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 **Limites :** granulés sur les zones à fort bruit (plis, textures de papier), sensible aux images floues.
 
 ### GaussianBlur(5,5) + binarize adaptive
-**Statut : retenu, à intégrer dans `preprocess.py`.** Validé sur pages 1–5 (`draft/test_blur_binarize.py`). Supprime les granulés avant binarisation, texte plus net. Améliore les résultats sur `plain` et `layout`. Pas encore intégré dans `src/preprocess.py`.
+**Statut : retenu, intégré dans `preprocess.py`.** Validé sur pages 1–5 (`draft/test_blur_binarize.py`). Supprime les granulés avant binarisation, texte plus net. Améliore les résultats sur `plain` et `layout`. Paramètres exposés dans `config.py` : `blur_ksize` (défaut `5`), `blur_sigma` (défaut `0.0`).
 
 **Avantages :** même rapidité que binarize seule, réduit les artefacts de grain.  
 **Limites :** n'aide pas sur du flou de mise au point prononcé.

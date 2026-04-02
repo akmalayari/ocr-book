@@ -82,9 +82,6 @@ Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajout
 
 ## Améliorations confirmées à implémenter
 
-### 1. GaussianBlur avant binarisation
-`GaussianBlur(5,5)` avant `adaptiveThreshold` supprime les granulés et produit un texte plus net — validé sur pages 1–5. À intégrer dans `preprocess.py` mode `"binarize"`.
-
 ## Architecture
 
 Tout est ok.
