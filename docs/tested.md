@@ -51,6 +51,25 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 
 **`repetition_penalty`** testé rapidement — apparemment sans effet sur les boucles de génération.
 
+### Prompts custom testés (2026-04-03, BF16, binarize)
+
+| Prompt | Résultat |
+|---|---|
+| `"Describe this image in detail in french."` | description en anglais (instruction de langue ignorée) |
+| `"Describe this image in detail in the language of the document."` | description en anglais |
+| `"Décrit cette image en détail."` | description en anglais |
+| `"Décrit cette image en détail en français."` | description en anglais |
+| `"What is the language of the document?"` | répond `"pt"` puis fait l'OCR de la page |
+| `"Figure or text?"` | boucle sur le titre |
+| `"Does this document contain a figure?"` | décrit le document en anglais |
+| `"Does this document contain a figure? Yes \| No"` | écrit les titres puis un court paragraphe incohérent en français |
+| `"If this is a figure or illustration, describe it. Otherwise, Free OCR."` | décrit l'image en anglais même sur page de texte |
+| `"Transcribe the text exactly as it appears."` | OCR instable et désordonné, qualité inférieure à `"Free OCR."` |
+| `"Is there a figure in this document?"` | pages 1–3 : description générale ; page_4 : description détaillée du tableau ; page_5 : boucle |
+| `"OCR only the text, ignore any figures."` | ignore figures et tableaux, mais skip aussi certaines colonnes de texte (comportement partiel — voir issues Feature 1) |
+
+**Conclusion :** le modèle ignore systématiquement les instructions de langue. Les prompts de classification (yes/no, figure?) ne produisent pas de réponse structurée utilisable. `"OCR only the text, ignore any figures."` est le seul prompt qui filtre réellement les figures, mais de façon incomplète.
+
 ---
 
 ## Prétraitement des images

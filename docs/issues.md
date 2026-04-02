@@ -10,7 +10,6 @@ Appliquer un mode OCR différent selon le contenu de la page.
 - `"layout"` — idem `"plain"` mais ajoute les grounding boxes des blocs de texte (`<|ref|>...<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`). Boucle sur les balises `<tr>`/`<td>` dans les pages avec tableaux.
 - `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
 - `"parse"` — analyse fine des éléments de l'image en anglais.
-- `"classic"` (supprimé, non pertinent) — retournait chaque phrase accompagnée de sa grounding box ; trop verbeux, dépasse systématiquement `n_ctx`.
 
 **Approches à tester (par ordre de priorité) :**
 
@@ -20,9 +19,11 @@ Appliquer un mode OCR différent selon le contenu de la page.
    - Le mode `"layout"` produit des balises `<|ref|>texte<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`. Exploitable pour localiser une illustration : extraire sa bbox, recadrer l'image, appliquer `"describe"` sur la zone. Nécessite un parser de ces balises + nettoyage en post-traitement pour le texte normal.
    - Utiliser le mode `"parse"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
 
-3. **Prompt adaptatif** — prompt unique couvrant texte et image, ex. `"If this is a figure or illustration, describe it. Otherwise, Free OCR."`. Non documenté par DeepSeek-OCR, comportement à tester.
+3. **`"OCR only the text, ignore any figures."`** (testé, résultat partiel) — ignore figures et tableaux, mais skip aussi certaines colonnes de texte. Piste : utiliser la longueur du résultat comme signal de détection (résultat court/vide → page dominée par une figure → repasser en `"describe"`). À combiner avec l'heuristique OpenCV plutôt qu'en remplacement.
 
-**Langue des descriptions :** `"describe"` et `"parse"` répondent en anglais indépendamment de la langue du document. À tester : un prompt explicite comme `"Describe this image in French."` ou `"Describe this image in the same language as the document."`.
+4. **Prompts avec prefix grounding** — non testés : `"<|grounding|>Transcribe only text blocks."`, `<|grounding|>"OCR only the text, ignore any figures."`. Le prefix grounding permet au modèle de localiser les blocs — potentiellement plus précis sur les colonnes.
+
+**Langue des descriptions :** le modèle ignore systématiquement les instructions de langue (testé avec 5 formulations différentes). `"describe"` et `"parse"` répondent toujours en anglais. 
 
 ### 2. Support PDF multi-pages
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
@@ -33,9 +34,9 @@ Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pd
 Le modèle commet des erreurs de transcription même après binarisation.
 
 **Résultats des tests de quantization (2026-04-01) :**
-- Q8_0 → BF16 : légère amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 probablement équivalent à BF16.
+- Q8_0 → BF16 : amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 commet plus d'erreurs que BF16.
 - BF16 sur page_5 : hallucine toujours sur les données du graphe, mais parvient à retranscrire approximativement le tableau et quelques paragraphes — finit par boucler. Q8_0 bouclait immédiatement. Impact réel de la quantization sur les pages difficiles.
-- BF16 : ~60s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable.
+- BF16 : ~50s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable mais vaut le coup pour le gain de précision.
 
 **Pistes restantes :**
 - Prompt plus directif (ex: `"Transcribe the text exactly as it appears."` ou prompt en français).
