@@ -28,9 +28,10 @@ Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Conto
 | Quantization | Vitesse | Qualité |
 |---|---|---|
 | Q8_0 | ~20s/page | boucle immédiatement sur pages difficiles |
-| BF16 | ~50s/page | légèrement meilleure sur pages difficiles |
+| BF16 | ~50s/page | plus fidèle que F16 sur les passages difficiles |
+| F16  | ~50s/page | moins fidèle que BF16 — hallucinations et reformulations sur passages difficiles |
 
-**Statut : BF16 retenu.** L'augmentation en qualité vaut l'attente plus longue.
+**Statut : BF16 retenu.** Comparaison BF16 vs F16 (2026-04-02, `compare.py` mode sentence, page_1) : BF16 retranscrit fidèlement plusieurs passages où F16 hallucine ou reformule. BF16 reste imparfait (voir Bug #1 et #5).
 
 ---
 
