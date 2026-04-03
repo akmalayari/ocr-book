@@ -46,12 +46,32 @@ Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 | `layout` | `"<\|grounding\|>Convert the document to markdown."` | ajoute grounding boxes, règle la boucle de page_2 mais boucle sur les tableaux (`<tr>`/`<td>`) |
 | `describe` | `"Describe this image in detail."` | description en anglais, indépendamment de la langue du document |
 | `parse` | `"Parse the figure."` | analyse fine des éléments visuels en anglais |
-| `rec` | `"Locate <\|ref\|>{target}<\|/ref\|> in the image."` | testé sur 1 page : détection générique de toutes les régions (même vocab que `layout`), indépendamment du target — ne semble pas localiser l'élément demandé. À confirmer sur plus de pages. |
+| `rec` | `"Locate <\|ref\|>{target}<\|/ref\|> in the image."` | retourne la/les bbox correspondant au target. Voir section dédiée ci-dessous. |
 | `classic` | (supprimé) | une grounding box par phrase, dépasse systématiquement `n_ctx` |
 
 **Statut :** `plain` retenu pour usage principal. `layout` utile sur certaines pages (page_2), contre-productif sur les tableaux. Aucun prompt universel ne couvre tous les types de page.
 
 **`repetition_penalty`** testé rapidement — apparemment sans effet sur les boucles de génération.
+
+### Comportement du mode `rec` (2026-04-03, page_6, BF16, binarize)
+
+`Locate <|ref|>{target}<|/ref|> in the image.`
+
+| Prompt | Résultat |
+|---|---|
+| `Locate <\|ref\|>A figure or graph<\|/ref\|> in the image.` | 1 bbox exacte pour le graphique, s'arrête proprement (5.8s) |
+| `Locate <\|ref\|>A figure or graph<\|/ref\|> in the image. Describe it.` | identique — instruction post-bbox ignorée |
+| `Locate <\|ref\|>A figure or graph<\|/ref\|> in the image. Parse it.` | identique — instruction post-bbox ignorée |
+| `Locate <\|ref\|>every element<\|/ref\|> in the image.` | toutes les bboxes de la page (même résultat que `layout`) |
+| `Locate <\|ref\|>everything<\|/ref\|> in the image.` | toutes les bboxes de la page |
+| `Locate <\|ref\|>pliure du livre<\|/ref\|> in the image.` | toutes les bboxes de la page |
+| `Locate <\|ref\|>image<\|/ref\|> in the image.` | toutes les bboxes de la page + boucle `<td>` sur le tableau |
+
+**Comportement observé :** quand le modèle ne trouve pas l'élément demandé (ou que le target est trop générique), il retourne toutes les bboxes de la page. Quand il trouve un élément spécifique, il retourne uniquement sa bbox et s'arrête. Toute instruction ajoutée après le `<|det|>` est ignorée — la deux passes est obligatoire pour obtenir le contenu d'une région.
+
+**Usage retenu :** `Locate <|ref|>A figure or graph<|/ref|> in the image.` comme passe 1 de détection des figures. Si résultat vide → pas de figure sur la page.
+
+**À tester :** comportement sur page sans figure (faux positif ?), page avec plusieurs figures.
 
 ### Vocabulaire de labels grounding (mode `layout` et `rec`)
 
@@ -60,8 +80,11 @@ Observé sur pages 1–6 (BF16, binarize) :
 | Label | Contenu |
 |---|---|
 | `text` | bloc de texte courant |
+| `title` | titre |
 | `sub_title` | sous-titre / intertitre |
 | `table` | tableau (y compris figures mal classées sur image floue) |
+| `table_caption` | légende de tableau |
+| `table_footnote` | note de bas de tableau |
 | `image` | figure / graphique (label correct sur image nette) |
 | `image_caption` | légende de figure |
 
