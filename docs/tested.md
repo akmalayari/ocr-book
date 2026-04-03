@@ -1,11 +1,12 @@
 # Tested — ce qui a été expérimenté dans le projet
 
-Pages de référence utilisées pour les tests : `page_1` à `page_5`.
+Pages de référence utilisées pour les tests : `page_1` à `page_6`.
 - page_1 : texte simple, mauvais éclairage
 - page_2 : texte dense, éclairage normal
 - page_3 : texte + tableau textuel
 - page_4 : texte + tableau numérique
-- page_5 : texte + tableau + graphique
+- page_5 : texte + tableau + graphique, image floue
+- page_6 : même contenu que page_5, image nette (version de référence pour tests graphe)
 
 ---
 
@@ -37,7 +38,7 @@ Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Conto
 
 ## Prompts
 
-Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
+Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 
 | Mode | Prompt | Résultat |
 |---|---|---|
@@ -45,11 +46,28 @@ Testés sur pages 1–5 avec `preprocess=binarize` (`draft/prompt_test.py`).
 | `layout` | `"<\|grounding\|>Convert the document to markdown."` | ajoute grounding boxes, règle la boucle de page_2 mais boucle sur les tableaux (`<tr>`/`<td>`) |
 | `describe` | `"Describe this image in detail."` | description en anglais, indépendamment de la langue du document |
 | `parse` | `"Parse the figure."` | analyse fine des éléments visuels en anglais |
+| `rec` | `"Locate <\|ref\|>{target}<\|/ref\|> in the image."` | testé sur 1 page : détection générique de toutes les régions (même vocab que `layout`), indépendamment du target — ne semble pas localiser l'élément demandé. À confirmer sur plus de pages. |
 | `classic` | (supprimé) | une grounding box par phrase, dépasse systématiquement `n_ctx` |
 
 **Statut :** `plain` retenu pour usage principal. `layout` utile sur certaines pages (page_2), contre-productif sur les tableaux. Aucun prompt universel ne couvre tous les types de page.
 
 **`repetition_penalty`** testé rapidement — apparemment sans effet sur les boucles de génération.
+
+### Vocabulaire de labels grounding (mode `layout` et `rec`)
+
+Observé sur pages 1–6 (BF16, binarize) :
+
+| Label | Contenu |
+|---|---|
+| `text` | bloc de texte courant |
+| `sub_title` | sous-titre / intertitre |
+| `table` | tableau (y compris figures mal classées sur image floue) |
+| `image` | figure / graphique (label correct sur image nette) |
+| `image_caption` | légende de figure |
+
+**Effet de la qualité d'image sur la classification :** page_5 (floue) → graphique classé `table`, hallucination `<td>30</td>` en boucle. Page_6 (nette, même contenu) → graphique correctement classé `image`, contenu vide.
+
+**Contenu des régions `image` :** toujours vide — le modèle détecte et délimite la région mais ne génère aucune description. Le prompt `"Parse the figure."` est la piste pour obtenir un contenu (à tester en deux passes).
 
 ### Prompts custom testés (2026-04-03, BF16, binarize)
 

@@ -5,25 +5,23 @@
 ### 1. Détection automatique des pages avec images non textuelles
 Appliquer un mode OCR différent selon le contenu de la page.
 
-**Comportement confirmé des prompts (tests sur pages 1–5) :**
-- `"plain"` — retourne le texte selon la trame du document. Usage principal. Boucle sur les pages denses (tableaux, texte serré).
-- `"layout"` — idem `"plain"` mais ajoute les grounding boxes des blocs de texte (`<|ref|>...<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`). Boucle sur les balises `<tr>`/`<td>` dans les pages avec tableaux.
+**Comportement confirmé des prompts (tests sur pages 1–6) :**
+- `"plain"` — retourne le texte selon la trame du document. Usage principal. Boucle sur les pages denses. Sur page_6 (texte + tableau + graphique, image nette) : texte et tableau transcrits correctement, graphique silencieusement ignoré.
+- `"layout"` — idem `"plain"` mais ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide — le modèle ne génère rien pour les régions `image`.
 - `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
 - `"parse"` — analyse fine des éléments de l'image en anglais.
 
 **Approches à tester (par ordre de priorité) :**
 
-1. **Heuristique OpenCV (option retenue pour démarrer)** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Problème ouvert : pages mixtes (voir point 2).
+1. **Pipeline deux passes sur les pages mixtes (option prioritaire)** — le mode `layout` produit des bboxes avec label `image`. Approche : passe 1 `layout` pour détecter les régions `image` + extraire leur bbox ; passe 2 `parse` sur le crop correspondant. Nécessite un parser de grounding boxes (déjà dans `viz_boxes.py`) + crop PIL + second appel VLM. Permettrait de gérer texte et figure sur la même page.
 
-2. **Pages mixtes** — deux sous-pistes :
-   - Le mode `"layout"` produit des balises `<|ref|>texte<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>`. Exploitable pour localiser une illustration : extraire sa bbox, recadrer l'image, appliquer `"describe"` sur la zone. Nécessite un parser de ces balises + nettoyage en post-traitement pour le texte normal.
-   - Utiliser le mode `"parse"` (`Parse the figure.`) — à tester : couvre-t-il les illustrations non-techniques (photos, dessins) ou seulement les graphiques/diagrammes ?
+2. **Heuristique OpenCV** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Plus simple mais ne gère pas les pages mixtes.
 
-3. **`"OCR only the text, ignore any figures."`** (testé, résultat partiel) — ignore figures et tableaux, mais skip aussi certaines colonnes de texte. Piste : utiliser la longueur du résultat comme signal de détection (résultat court/vide → page dominée par une figure → repasser en `"describe"`). À combiner avec l'heuristique OpenCV plutôt qu'en remplacement.
+3. **`"OCR only the text, ignore any figures."`** (testé, résultat partiel) — ignore figures et tableaux mais skip aussi certaines colonnes de texte. À combiner avec les approches ci-dessus plutôt qu'en remplacement.
 
-4. **Prompts avec prefix grounding** — non testés : `"<|grounding|>Transcribe only text blocks."`, `<|grounding|>"OCR only the text, ignore any figures."`. Le prefix grounding permet au modèle de localiser les blocs — potentiellement plus précis sur les colonnes.
+4. **Prompts avec prefix grounding** — non testés : `"<|grounding|>Transcribe only text blocks."`. Le prefix grounding pourrait être plus précis sur les colonnes.
 
-**Langue des descriptions :** le modèle ignore systématiquement les instructions de langue (testé avec 5 formulations différentes). `"describe"` et `"parse"` répondent toujours en anglais. 
+**Langue des descriptions :** le modèle ignore systématiquement les instructions de langue (testé avec 5 formulations différentes). `"describe"` et `"parse"` répondent toujours en anglais.
 
 ### 2. Support PDF multi-pages
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
@@ -57,13 +55,15 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - page_3 : succès, y compris le tableau textuel
 - page_4 : mitigé — pas de boucle, retranscription du tableau numérique incorrecte
 - page_5 : échec — génération d'un tableau infini de chiffres (probablement axe Y du graphique)
+- page_6 (nette, même contenu que page_5) : succès partiel — texte et tableau transcrits correctement, graphique ignoré silencieusement
 
 **`layout` :**
 - page_1 : pareil que `plain`
 - page_2 : succès — plus de boucle
 - page_3 : pareil que `plain`
 - page_4 : mitigé — tableau détecté, noms des colonnes approximatifs, cases vides, texte sous le tableau oublié
-- page_5 : échec — boucle sur balises `<tr>`/`<td>`
+- page_5 : échec — boucle sur balises `<tr>`/`<td>` (graphique mal classé `table` à cause de l'image floue)
+- page_6 : succès partiel — graphique correctement classé `image` avec bbox, mais contenu vide
 
 `repetition_penalty` testé, sans effet sur les boucles.
 
