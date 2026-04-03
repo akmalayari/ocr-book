@@ -23,7 +23,7 @@ class Config:
     # ── Inférence ────────────────────────────────────────────────────────────
     max_tokens: int        = 4096
     temperature: float     = 0.0
-    repetition_penalty: float = 1.5
+    repetition_penalty: float = 1.1
 
     # ── Détection de boucle ──────────────────────────────────────────────────
     loop_check_every: int       = 200   # vérifier toutes les N tokens

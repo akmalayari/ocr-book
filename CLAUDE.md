@@ -21,7 +21,7 @@ Dépendances : `requirements.txt`. Venv dans `venv/`. Lancer depuis `src/` : `py
 
 Travaux en cours : `docs/issues.md`.
 
-Explorations et tests informels : `draft/`. Toutes les explorations et tests intiaux se font dans `draft/`. 
+Explorations et tests informels : `draft/`. 
 
 Vérifie ta mémoire des sessions précédentes en début de session : `memory/`
 
@@ -40,12 +40,16 @@ Vérifie ta mémoire des sessions précédentes en début de session : `memory/`
 - Pas de récapitulatif en fin de message sauf si le changement est complexe
 
 ### Git
-- add et commit a chaque modification de fichier: si la modification concerne un seul fichier, add et commit ce fichier, si si elle concerne plusieurs fichiers, grouper le add et commit.
-- draft/ est gitignored. 
+- add et commit a chaque implémentation: grouper les fichiers modifiés de préférence à part si la modification est isolée.
 
 ### Issues
-- après avoir résolu une tache de issues.md, toujours mettre a jour issues.md.
-- eviter de laisser une section de issues.md vide: écrire "OK".
+- après implémentation, mettre a jour issues.md.
+- après implémentation, effacer les sous-sections (`###`) de issues.md résolues.
+- eviter de laisser une section (`##`) de issues.md vide: écrire "OK".
+
+### Draft
+- Toutes les explorations et tests intiaux se font dans `draft/`. 
+- Toutes les sorties issues de `drat/` doivent atterir dans `output/`.
 
 ## Limiter la consommation de tokens
 
@@ -71,10 +75,6 @@ Documentation sur le stack spécifique utilisé dans le projet.
 - GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
 
 - Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
-
-### page-dewarp
-
-- Reference API : https://page-dewarp.vercel.app/api/
 
 
 ## Troubleshooting
