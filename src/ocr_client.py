@@ -14,6 +14,22 @@ from preprocess import preprocess_image
 logger = logging.getLogger(__name__)
 
 
+def _is_looping(text: str, window_words: int, threshold: float) -> bool:
+    """Détecte une boucle de génération.
+
+    Si le ratio de mots apparaissant 2+ fois dans la fenêtre dépasse `threshold` → boucle.
+    """
+    words = text.split()[-window_words:]
+    if len(words) < window_words:
+        return False
+    counts = {}
+    for w in words:
+        counts[w] = counts.get(w, 0) + 1
+    n_unique = len(counts)
+    repeated = sum(1 for c in counts.values() if c >= 2)
+    return repeated / n_unique >= threshold
+
+
 class OCRError(RuntimeError):
     pass
 
@@ -62,14 +78,26 @@ def ocr_image(image_path: Path | str, vlm, cfg: Config) -> tuple[str, dict]:
         sampler_config=cfg.to_sampler_config(),
     )
 
+    accumulated = []
+    token_count = [0]
+
+    def on_token(token: str) -> bool:
+        accumulated.append(token)
+        token_count[0] += 1
+        if token_count[0] % cfg.loop_check_every == 0:
+            if _is_looping("".join(accumulated), cfg.loop_window_words, cfg.loop_divisor_threshold):
+                logger.warning("%s — boucle détectée à %d tokens, génération interrompue", image_path.name, token_count[0])
+                return False
+        return True
+
     t0 = time.perf_counter()
     try:
-        result = vlm.generate(formatted, config=gen_config)
+        vlm.generate(formatted, config=gen_config, on_token=on_token)
     except Exception as e:
         raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
     total_latency = time.perf_counter() - t0
 
-    text = result.full_text.strip() if result.full_text else ""
+    text = "".join(accumulated).strip()
     if not text:
         raise OCRError(f"Contenu vide pour {image_path.name}.")
 
