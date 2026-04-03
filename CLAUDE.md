@@ -23,7 +23,7 @@ Travaux en cours : `docs/issues.md`.
 
 Explorations et tests informels : `draft/`. Toutes les explorations et tests intiaux se font dans `draft/`. 
 
-Vérifie ta mémoire des sessions précédentes : `memory/`
+Vérifie ta mémoire des sessions précédentes en début de session : `memory/`
 
 ## Conventions
 

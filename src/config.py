@@ -49,7 +49,7 @@ class Config:
         "parse":    "Parse the figure.",
         "rec":      "Locate <|ref|>{target}<|/ref|> in the image.",
     }
-    locate_target: str = ""
+    locate_target: str = "everything"
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
