@@ -5,30 +5,15 @@
 Objectif : précision 100% sur texte et tableaux, photos nettes uniquement.
 
 ### Bug 1 — Boucles de génération sur pages denses ou avec tableaux
-Le modèle entre en boucle (génération infinie répétitive) sur certaines pages.
+Le modèle entre en boucle (génération infinie répétitive) sur certaines pages. Prompt retenu : `layout` (GaussianBlur(5,5) + binarize_adaptive).
 
-**Résultats avec `plain` + binarize seul :** page_2, page_3, page_4 bouclent.
-
-Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
-
-**`plain` :**
 - page_1 : succès
-- page_2 : échec (boucle)
+- page_2 : succès
 - page_3 : succès, y compris le tableau textuel
-- page_4 : mitigé — pas de boucle, retranscription du tableau numérique incorrecte
-- page_5 : échec — génération d'un tableau infini de chiffres (probablement axe Y du graphique)
-- page_6 (nette, même contenu que page_5) : succès partiel — texte et tableau transcrits correctement, graphique ignoré silencieusement
-- page_7, page_8 : texte bien retranscrit (imprécisions mineures), page_8 tronquée (max_tokens)
-- page_9 : précision dégradée sur passage sombre/flou, finit par boucler
-
-**`layout` :**
-- page_1 : pareil que `plain`
-- page_2 : succès — plus de boucle
-- page_3 : pareil que `plain`
 - page_4 : mitigé — tableau détecté, noms des colonnes approximatifs, cases vides, texte sous le tableau oublié
-- page_5 : échec — boucle sur balises `<tr>`/`<td>` (graphique mal classé `table` à cause de l'image floue)
-- page_6 : succès partiel — graphique correctement classé `image` avec bbox, mais contenu vide
-- page_7, page_8 : texte bien retranscrit (imprécisions mineures), page_8 tronquée (max_tokens)
+- page_5 : échec — boucle sur balises `<tr>`/`<td>` (graphique mal classé `table`, image floue)
+- page_6 : succès partiel — texte et tableau OK, graphique ignoré (contenu vide)
+- page_7, page_8 : succès (imprécisions mineures), page_8 tronquée (max_tokens trop faible)
 - page_9 : précision dégradée sur passage sombre/flou, boucle de "1" sur les sous-sections de fin de chapitre
 
 `repetition_penalty` testé, sans effet sur les boucles.
@@ -58,15 +43,12 @@ OK
 Appliquer un mode OCR différent selon le contenu de la page.
 
 **Comportement confirmé des prompts (tests sur pages 1–6) :**
-- `"plain"` — retourne le texte selon la trame du document. Usage principal. Sur page_6 : texte et tableau transcrits correctement, graphique silencieusement ignoré.
-- `"layout"` — idem `"plain"` mais ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide.
+- `"layout"` — prompt retenu. Ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide.
 - `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
 - `"parse"` — analyse fine des éléments de l'image en anglais.
 - `<|grounding|>Describe this image in detail.` — équivalent exact de `layout`. Testé sur page_6 (43.5s).
 - `<|grounding|>Parse the figure.` — **freeze terminal**, à éviter.
-- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement la bbox de la figure, s'arrête proprement (5.8s). Toute instruction ajoutée après (`Describe it.`, `Parse it.`) est ignorée — le modèle retourne identiquement la bbox seule. **La deux passes est donc obligatoire.**
-- `<|grounding|>Describe this image in detail.` — équivalent exact de `layout` : bboxes + contenu textuel des régions, figure vide. Testé sur page_6 (43.5s).
-- `<|grounding|>Parse the figure.` — **freeze terminal**, à éviter.
+- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement la bbox de la figure, s'arrête proprement (5.8s). Toute instruction ajoutée après est ignorée. **La deux passes est donc obligatoire.**
 
 **Langue des descriptions :** le modèle ignore systématiquement les instructions de langue. `"describe"` et `"parse"` répondent toujours en anglais.
 
