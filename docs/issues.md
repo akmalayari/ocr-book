@@ -51,9 +51,14 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Comportement confirmé des prompts (tests sur pages 1–6) :**
 - `"plain"` — retourne le texte selon la trame du document. Usage principal. Sur page_6 : texte et tableau transcrits correctement, graphique silencieusement ignoré.
-- `"layout"` — idem `"plain"` mais ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide — le modèle ne génère rien pour les régions `image`.
+- `"layout"` — idem `"plain"` mais ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide.
 - `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
 - `"parse"` — analyse fine des éléments de l'image en anglais.
+- `<|grounding|>Describe this image in detail.` — équivalent exact de `layout`. Testé sur page_6 (43.5s).
+- `<|grounding|>Parse the figure.` — **freeze terminal**, à éviter.
+- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement la bbox de la figure, s'arrête proprement (5.8s). Toute instruction ajoutée après (`Describe it.`, `Parse it.`) est ignorée — le modèle retourne identiquement la bbox seule. **La deux passes est donc obligatoire.**
+- `<|grounding|>Describe this image in detail.` — équivalent exact de `layout` : bboxes + contenu textuel des régions, figure vide. Testé sur page_6 (43.5s).
+- `<|grounding|>Parse the figure.` — **freeze terminal**, à éviter.
 
 **Langue des descriptions :** le modèle ignore systématiquement les instructions de langue. `"describe"` et `"parse"` répondent toujours en anglais.
 
