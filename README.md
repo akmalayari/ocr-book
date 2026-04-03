@@ -1,16 +1,12 @@
-# book_ocr — Pipeline OCR livre → Markdown
+# ocr-livre — Pipeline OCR livre → Markdown
 
 Digitalise un livre entier en Markdown à partir de photos de pages,
-en utilisant **DeepSeek-OCR** via le serveur local **Nexa SDK**.
+en utilisant **DeepSeek-OCR** via **Nexa SDK** (inférence locale).
 
 ---
 
 ## Prérequis
 
-- Nexa CLI installé et modèle téléchargé :
-  ```bash
-  nexa pull NexaAI/DeepSeek-OCR-GGUF
-  ```
 - Python 3.11+
 - Dépendances :
   ```bash
@@ -23,32 +19,42 @@ en utilisant **DeepSeek-OCR** via le serveur local **Nexa SDK**.
 
 ```
 ocr-livre/
-├── main.py          # Point d'entrée CLI
-├── config.py        # Configuration centrale (dataclass)
-├── server.py        # Démarrage/arrêt du serveur Nexa (context manager)
-├── ocr_client.py    # Envoi des images au serveur, récupération OCR
-├── postprocess.py   # Nettoyage du texte (césures, numéros de page…)
-├── images.py        # Découverte et tri des images, renommage
-├── pipeline.py      # Orchestration complète du pipeline
+├── src/
+│   ├── main.py          # Point d'entrée CLI
+│   ├── config.py        # Configuration centrale (dataclass)
+│   ├── patch.py         # Monkey-patch nexaai (Windows)
+│   ├── ocr_client.py    # OCR d'une image via nexaai.VLM
+│   ├── preprocess.py    # Pré-traitement des images
+│   ├── postprocess.py   # Nettoyage du texte OCR
+│   ├── images.py        # Collecte et renommage des images
+│   ├── pipeline.py      # Orchestration complète
+│   └── progress.py      # Logging et statistiques
+├── photos/              # Images source (une par page)
+├── output/              # Markdown généré + logs
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Utilisation rapide
+## Utilisation
+
+Lancer depuis `src/` :
 
 ```bash
-# Pipeline par défaut (photos dans ./photos, sortie livre.md)
+# Pipeline par défaut (photos dans ./photos, sortie output/livre.md)
 python main.py
 
 # Spécifier les dossiers
-python main.py --images ./mes_photos --out mon_livre.md
+python main.py --images ./mes_photos --out output/mon_livre.md
 
-# OCR texte brut (sans mise en forme Markdown)
-python main.py --mode plain
+# Changer la quantization (q8_0 plus rapide, bf16 plus précis)
+python main.py --quant q8_0
 
-# Recommencer depuis le début (ignore le fichier existant)
+# Mode OCR avec mise en forme spatiale (défaut: plain)
+python main.py --mode layout
+
+# Recommencer depuis le début
 python main.py --no-resume
 
 # Logs détaillés
@@ -59,63 +65,51 @@ python main.py --verbose
 
 ## Renommage des images
 
-Si vos photos ont des noms incohérents (IMG_2024.jpg, DSC_042.jpg…),
-renommez-les d'abord avec un padding numérique uniforme :
-
 ```bash
 # Prévisualiser sans modifier
-python main.py --rename-only --dry-run
+python main.py --rename --dry-run
 
-# Renommer effectivement
-python main.py --rename-only --rename-prefix page
-# → page_001.jpg, page_002.jpg, page_003.jpg, …
+# Renommer effectivement (→ page_001.jpg, page_002.jpg, …)
+python main.py --rename --rename-prefix page
 ```
 
 ---
 
 ## Reprise automatique
 
-Si le pipeline est interrompu (Ctrl+C, coupure, crash), relancez simplement :
+Si le pipeline est interrompu, relancez simplement :
 
 ```bash
 python main.py
 ```
 
-Les pages déjà traitées (marquées `<!-- Page page_XXX -->` dans le .md) sont
-automatiquement ignorées.
+Les pages déjà traitées sont automatiquement ignorées.
 
 ---
 
 ## Options complètes
 
 ```
---images PATH       Dossier des photos          (défaut: ./photos)
---out FILE          Fichier Markdown de sortie  (défaut: livre.md)
---model MODEL       Modèle Nexa                 (défaut: NexaAI/DeepSeek-OCR-GGUF)
---mode MODE         markdown | plain | figure   (défaut: markdown)
---max-tokens N      Tokens max par page         (défaut: 4096)
---timeout N         Timeout par image (s)       (défaut: 180)
---no-resume         Recommencer depuis le début
---verbose           Logs DEBUG
---rename-only       Renommer les images sans OCR
---rename-prefix P   Préfixe renommage           (défaut: page)
---dry-run           Simuler --rename-only sans modifier
+--images PATH         Dossier des photos            (défaut: ./photos)
+--out FILE            Fichier Markdown de sortie    (défaut: output/livre.md)
+--model MODEL         Modèle Nexa                   (défaut: NexaAI/DeepSeek-OCR-GGUF)
+--quant {q8_0,bf16}   Quantization                  (défaut: bf16)
+--mode MODE           plain | layout | describe | parse | rec:<cible>
+--max-tokens N        Tokens max par page           (défaut: 4096)
+--preprocess MODE     none | binarize               (défaut: binarize)
+--no-resume           Recommencer depuis le début
+--verbose             Logs DEBUG
+--rename              Renommer les images avant OCR
+--rename-prefix P     Préfixe renommage             (défaut: page)
+--dry-run             Simuler --rename sans modifier
 ```
 
 ---
 
 ## Codes de retour
 
-| Code | Signification                          |
-|------|----------------------------------------|
-| 0    | Succès total                           |
-| 1    | Erreur fatale (serveur, config…)       |
+| Code | Signification                               |
+|------|---------------------------------------------|
+| 0    | Succès total                                |
+| 1    | Erreur fatale                               |
 | 2    | Terminé avec des erreurs sur certaines pages |
-
-## Tests
-
-```bash
-pip install pytest pytest-cov
-python -m pytest tests/ -v
-python -m pytest tests/ --cov=. --cov-report=term-missing
-```
