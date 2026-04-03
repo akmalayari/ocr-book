@@ -2,17 +2,17 @@
 main.py — Point d'entrée CLI du pipeline OCR livre
 
 Usage :
-    python main.py                          # config par défaut
-    python main.py --images ./photos --out output/livre.md
-    python main.py --mode plain             # OCR texte brut
-    python main.py --mode rec:titre         # localiser un élément dans l'image
-    python main.py --quant q8_0             # quantization (q8_0, f16, bf16)
-    python main.py --max-tokens 2048        # tokens max par page
-    python main.py --no-resume              # recommencer depuis le début
-    python main.py --preprocess none        # sans pré-traitement (défaut: binarize)
-    python main.py --rename-only            # renommer les images sans OCR
-    python main.py --rename-only --dry-run  # affiche les renommages sans les faire
-    python main.py --verbose                # logs détaillés
+    python src/main.py                          # config par défaut
+    python src/main.py --images ./photos --out output/livre.md
+    python src/main.py --mode plain             # OCR texte brut
+    python src/main.py --mode rec:titre         # localiser un élément dans l'image
+    python src/main.py --quant q8_0             # quantization (q8_0, f16, bf16)
+    python src/main.py --max-tokens 2048        # tokens max par page
+    python src/main.py --no-resume              # recommencer depuis le début
+    python src/main.py --preprocess none        # sans pré-traitement (défaut: binarize)
+    python src/main.py --rename                 # renommer les images puis OCR
+    python src/main.py --rename --dry-run       # affiche les renommages sans les faire ni OCR
+    python src/main.py --verbose                # logs détaillés
 """
 
 import patch  # noqa: F401 — doit être importé avant nexaai
@@ -64,12 +64,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Logs détaillés (DEBUG)")
 
     # Utilitaires
-    p.add_argument("--rename-only", action="store_true",
-                   help="Renommer les images en page_001.jpg, page_002.jpg… sans OCR")
+    p.add_argument("--rename", action="store_true",
+                   help="Renommer les images en page_001.jpg, page_002.jpg… puis lancer l'OCR")
     p.add_argument("--rename-prefix", default=_cfg.rename_prefix,
-                   help="Préfixe pour --rename-only (défaut: page)")
+                   help="Préfixe pour --rename (défaut: page)")
     p.add_argument("--dry-run", action="store_true",
-                   help="Avec --rename-only : affiche les renommages sans les faire")
+                   help="Avec --rename : affiche les renommages sans les faire ni lancer l'OCR")
 
     return p
 
@@ -106,11 +106,12 @@ def main() -> int:
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
 
-    # ── Mode renommage uniquement ─────────────────────────────────────────────
-    if args.rename_only:
+    # ── Renommage (optionnel, avant OCR) ─────────────────────────────────────
+    if args.rename:
         logger.info("Renommage des images dans : %s", cfg.images_dir)
         rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run)
-        return 0
+        if args.dry_run:
+            return 0
 
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
