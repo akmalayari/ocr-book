@@ -57,9 +57,13 @@ Appliquer un mode OCR différent selon le contenu de la page.
 
 **Langue des descriptions :** le modèle ignore systématiquement les instructions de langue. `"describe"` et `"parse"` répondent toujours en anglais.
 
+**Prompt `rec` — résultats :**
+- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement une bbox par figure, s'arrête proprement (5.8s). Testé sur page_6 (texte + tableau + 1 graphique) : bbox correcte `[[99, 96, 415, 386]]`.
+- **À tester :** page avec plusieurs figures, page tableau+texte sans figure (faux positif ?), page texte seul (doit retourner vide).
+
 **Approches à tester (par ordre de priorité) :**
 
-1. **Pipeline deux passes sur les pages mixtes (option prioritaire)** — passe 1 `layout` pour détecter les régions `image` + extraire leur bbox ; passe 2 `parse` sur le crop correspondant. Nécessite un parser de grounding boxes (déjà dans `viz_boxes.py`) + crop PIL + second appel VLM.
+1. **Pipeline deux passes sur les pages mixtes (option prioritaire)** — passe 1 `rec` (`Locate <|ref|>A figure or graph<|/ref|> in the image.`) pour détecter les bboxes figures ; si résultat non vide → passe 2 `parse` sur chaque crop. Parser déjà dans `viz_boxes.py`. Valider d'abord le comportement de `rec` sur les cas sans figure (voir tests ci-dessus).
 
 2. **Heuristique OpenCV** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Plus simple mais ne gère pas les pages mixtes.
 
