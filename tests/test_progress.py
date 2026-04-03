@@ -68,6 +68,16 @@ class TestStatsRecordMethods:
         s.record_success(8.0, 600)
         assert s.total_chars == 1000
 
+    def test_record_success_stores_latency(self):
+        s = Stats()
+        s.record_success(10.0, 500, latency=8.5)
+        assert 8.5 in s.latencies
+
+    def test_record_success_latency_defaults_to_zero(self):
+        s = Stats()
+        s.record_success(10.0, 500)
+        assert s.latencies == [0.0]
+
     def test_record_skip_increments_skipped(self):
         s = Stats()
         s.record_skip()
@@ -170,6 +180,20 @@ class TestStatsProperties:
         # remaining = 10 - 1 - 1 - 1 = 7
         eta = s.eta_s
         assert eta == pytest.approx(7 * 10.0, rel=0.01)
+
+    def test_avg_latency_single_record(self):
+        s = Stats()
+        s.record_success(10.0, 100, latency=8.0)
+        assert s.avg_latency == pytest.approx(8.0)
+
+    def test_avg_latency_multiple_records(self):
+        s = Stats()
+        s.record_success(10.0, 100, latency=6.0)
+        s.record_success(12.0, 100, latency=10.0)
+        assert s.avg_latency == pytest.approx(8.0)
+
+    def test_avg_latency_zero_when_no_records(self):
+        assert Stats().avg_latency == 0.0
 
 
 # ── Stats : méthodes d'affichage ──────────────────────────────────────────────

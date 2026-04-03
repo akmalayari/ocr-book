@@ -2,9 +2,9 @@
 test_main.py — Tests unitaires pour main.py
 
 Couvre :
-  - parse_args : valeurs par défaut, surcharges, types
-  - main()     : construction du Config depuis les args, codes de retour,
-                 branche rename-only, propagation des erreurs fatales
+  - build_parser : valeurs par défaut, surcharges, types, mode rec
+  - main()       : construction du Config, codes de retour,
+                   branche --rename, propagation des erreurs fatales
 """
 
 import sys
@@ -13,122 +13,110 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from config import Config
-from main import main, parse_args
+from main import main, build_parser
 from progress import Stats
 
 
-# ── parse_args : valeurs par défaut ──────────────────────────────────────────
+# ── build_parser : valeurs par défaut ────────────────────────────────────────
 
-class TestParseArgsDefaults:
+class TestBuildParserDefaults:
 
     def _parse(self, args=None):
-        with patch("sys.argv", ["main.py"] + (args or [])):
-            return parse_args()
+        return build_parser().parse_args(args or [])
 
     def test_images_default(self):
-        args = self._parse()
-        assert args.images == "./photos"
+        assert self._parse().images == "./photos"
 
     def test_out_default(self):
-        args = self._parse()
-        assert args.out == "output/livre.md"
+        assert self._parse().out == "./output/livre.md"
 
     def test_model_default(self):
-        args = self._parse()
-        assert args.model == "NexaAI/DeepSeek-OCR-GGUF"
+        assert self._parse().model == "NexaAI/DeepSeek-OCR-GGUF"
 
     def test_mode_default(self):
-        args = self._parse()
-        assert args.mode == "markdown"
+        assert self._parse().mode == "plain"
 
     def test_max_tokens_default(self):
-        args = self._parse()
-        assert args.max_tokens == 2048
+        assert self._parse().max_tokens == 4096
 
-    def test_timeout_default(self):
-        args = self._parse()
-        assert args.timeout == 180
+    def test_quant_default(self):
+        assert self._parse().quant == "bf16"
 
     def test_no_resume_default_false(self):
-        args = self._parse()
-        assert args.no_resume is False
+        assert self._parse().no_resume is False
 
     def test_verbose_default_false(self):
-        args = self._parse()
-        assert args.verbose is False
+        assert self._parse().verbose is False
 
-    def test_rename_only_default_false(self):
-        args = self._parse()
-        assert args.rename_only is False
+    def test_rename_default_false(self):
+        assert self._parse().rename is False
 
     def test_rename_prefix_default(self):
-        args = self._parse()
-        assert args.rename_prefix == "page"
+        assert self._parse().rename_prefix == "page"
 
     def test_dry_run_default_false(self):
-        args = self._parse()
-        assert args.dry_run is False
+        assert self._parse().dry_run is False
 
 
-# ── parse_args : surcharges ───────────────────────────────────────────────────
+# ── build_parser : surcharges ─────────────────────────────────────────────────
 
-class TestParseArgsOverrides:
+class TestBuildParserOverrides:
 
     def _parse(self, args):
-        with patch("sys.argv", ["main.py"] + args):
-            return parse_args()
+        return build_parser().parse_args(args)
 
     def test_images_override(self):
-        args = self._parse(["--images", "/mes/photos"])
-        assert args.images == "/mes/photos"
+        assert self._parse(["--images", "/mes/photos"]).images == "/mes/photos"
 
     def test_out_override(self):
-        args = self._parse(["--out", "mon_livre.md"])
-        assert args.out == "mon_livre.md"
-
+        assert self._parse(["--out", "mon_livre.md"]).out == "mon_livre.md"
 
     def test_mode_plain(self):
-        args = self._parse(["--mode", "plain"])
-        assert args.mode == "plain"
+        assert self._parse(["--mode", "plain"]).mode == "plain"
 
-    def test_mode_figure(self):
-        args = self._parse(["--mode", "figure"])
-        assert args.mode == "figure"
+    def test_mode_layout(self):
+        assert self._parse(["--mode", "layout"]).mode == "layout"
+
+    def test_mode_describe(self):
+        assert self._parse(["--mode", "describe"]).mode == "describe"
+
+    def test_mode_rec_with_target(self):
+        assert self._parse(["--mode", "rec:titre"]).mode == "rec:titre"
 
     def test_max_tokens_override(self):
-        args = self._parse(["--max-tokens", "1024"])
-        assert args.max_tokens == 1024
+        assert self._parse(["--max-tokens", "1024"]).max_tokens == 1024
 
-    def test_timeout_override(self):
-        args = self._parse(["--timeout", "60"])
-        assert args.timeout == 60
+    def test_quant_q8_0(self):
+        assert self._parse(["--quant", "q8_0"]).quant == "q8_0"
 
     def test_no_resume_flag(self):
-        args = self._parse(["--no-resume"])
-        assert args.no_resume is True
+        assert self._parse(["--no-resume"]).no_resume is True
 
     def test_verbose_flag(self):
-        args = self._parse(["--verbose"])
-        assert args.verbose is True
+        assert self._parse(["--verbose"]).verbose is True
 
-    def test_rename_only_flag(self):
-        args = self._parse(["--rename-only"])
-        assert args.rename_only is True
+    def test_rename_flag(self):
+        assert self._parse(["--rename"]).rename is True
 
     def test_rename_prefix_override(self):
-        args = self._parse(["--rename-only", "--rename-prefix", "scan"])
-        assert args.rename_prefix == "scan"
+        assert self._parse(["--rename", "--rename-prefix", "scan"]).rename_prefix == "scan"
 
     def test_dry_run_flag(self):
-        args = self._parse(["--rename-only", "--dry-run"])
-        assert args.dry_run is True
+        assert self._parse(["--rename", "--dry-run"]).dry_run is True
 
     def test_invalid_mode_raises_system_exit(self):
+        # La validation du mode est dans main(), pas dans build_parser()
+        with patch("sys.argv", ["main.py", "--mode", "mode_invalide"]):
+            with patch("main.setup_logging"):
+                with pytest.raises(SystemExit):
+                    main()
+
+    def test_invalid_quant_raises_system_exit(self):
         with pytest.raises(SystemExit):
-            self._parse(["--mode", "invalid_mode"])
+            self._parse(["--quant", "f16"])
 
 
 # ── main() : codes de retour ──────────────────────────────────────────────────
@@ -136,7 +124,6 @@ class TestParseArgsOverrides:
 class TestMainReturnCodes:
 
     def _run_main(self, cli_args, stats=None, pipeline_raises=None):
-        """Helper : lance main() avec des args et des mocks."""
         if stats is None:
             stats = Stats(total=1)
             stats.record_success(10.0, 100)
@@ -152,24 +139,20 @@ class TestMainReturnCodes:
         stats = Stats(total=2)
         stats.record_success(10.0, 100)
         stats.record_success(8.0, 200)
-        code = self._run_main([], stats=stats)
-        assert code == 0
+        assert self._run_main([], stats=stats) == 0
 
     def test_returns_2_when_some_errors(self):
         stats = Stats(total=3)
         stats.record_success(10.0, 100)
         stats.record_error()
-        code = self._run_main([], stats=stats)
-        assert code == 2
+        assert self._run_main([], stats=stats) == 2
 
     def test_returns_1_on_fatal_exception(self):
-        code = self._run_main([], pipeline_raises=RuntimeError("Erreur fatale"))
-        assert code == 1
+        assert self._run_main([], pipeline_raises=RuntimeError("Erreur fatale")) == 1
 
     def test_returns_1_on_image_collection_error(self):
         from images import ImageCollectionError
-        code = self._run_main([], pipeline_raises=ImageCollectionError("Dossier vide"))
-        assert code == 1
+        assert self._run_main([], pipeline_raises=ImageCollectionError("Dossier vide")) == 1
 
 
 # ── main() : construction du Config ──────────────────────────────────────────
@@ -177,7 +160,6 @@ class TestMainReturnCodes:
 class TestMainConfigConstruction:
 
     def _run_and_capture_cfg(self, cli_args):
-        """Lance main() et capture le Config passé à run_pipeline."""
         captured = {}
         stats = Stats(total=0)
 
@@ -199,9 +181,18 @@ class TestMainConfigConstruction:
         cfg = self._run_and_capture_cfg(["--out", "custom.md"])
         assert cfg.output_file == "custom.md"
 
-    def test_config_prompt_mode_from_args(self):
+    def test_config_prompt_mode_plain(self):
         cfg = self._run_and_capture_cfg(["--mode", "plain"])
         assert cfg.prompt_mode == "plain"
+
+    def test_config_prompt_mode_layout(self):
+        cfg = self._run_and_capture_cfg(["--mode", "layout"])
+        assert cfg.prompt_mode == "layout"
+
+    def test_config_prompt_mode_rec(self):
+        cfg = self._run_and_capture_cfg(["--mode", "rec:un graphique"])
+        assert cfg.prompt_mode == "rec"
+        assert cfg.locate_target == "un graphique"
 
     def test_config_resume_false_when_no_resume_flag(self):
         cfg = self._run_and_capture_cfg(["--no-resume"])
@@ -219,33 +210,33 @@ class TestMainConfigConstruction:
         cfg = self._run_and_capture_cfg(["--max-tokens", "512"])
         assert cfg.max_tokens == 512
 
-    def test_config_timeout_from_args(self):
-        cfg = self._run_and_capture_cfg(["--timeout", "30"])
-        assert cfg.request_timeout_s == 30
+    def test_config_quant_from_args(self):
+        cfg = self._run_and_capture_cfg(["--quant", "q8_0"])
+        assert cfg.quant == "q8_0"
 
 
-# ── main() : branche rename-only ─────────────────────────────────────────────
+# ── main() : branche --rename ─────────────────────────────────────────────────
 
-class TestMainRenameOnly:
+class TestMainRename:
 
-    def test_rename_only_calls_rename_images(self, tmp_path):
-        with patch("sys.argv", ["main.py", "--rename-only",
+    def test_rename_calls_rename_images(self, tmp_path):
+        with patch("sys.argv", ["main.py", "--rename", "--dry-run",
                                 "--images", str(tmp_path)]):
             with patch("main.setup_logging"):
                 with patch("main.rename_images") as mock_rename:
-                    result = main()
+                    main()
         mock_rename.assert_called_once()
 
-    def test_rename_only_returns_0(self, tmp_path):
-        with patch("sys.argv", ["main.py", "--rename-only",
+    def test_rename_dry_run_returns_0(self, tmp_path):
+        with patch("sys.argv", ["main.py", "--rename", "--dry-run",
                                 "--images", str(tmp_path)]):
             with patch("main.setup_logging"):
                 with patch("main.rename_images"):
                     result = main()
         assert result == 0
 
-    def test_rename_only_does_not_call_pipeline(self, tmp_path):
-        with patch("sys.argv", ["main.py", "--rename-only",
+    def test_rename_dry_run_does_not_call_pipeline(self, tmp_path):
+        with patch("sys.argv", ["main.py", "--rename", "--dry-run",
                                 "--images", str(tmp_path)]):
             with patch("main.setup_logging"):
                 with patch("main.rename_images"):
@@ -253,8 +244,8 @@ class TestMainRenameOnly:
                         main()
         mock_pipeline.assert_not_called()
 
-    def test_rename_only_passes_prefix(self, tmp_path):
-        with patch("sys.argv", ["main.py", "--rename-only",
+    def test_rename_passes_prefix(self, tmp_path):
+        with patch("sys.argv", ["main.py", "--rename", "--dry-run",
                                 "--rename-prefix", "scan",
                                 "--images", str(tmp_path)]):
             with patch("main.setup_logging"):
@@ -263,8 +254,8 @@ class TestMainRenameOnly:
         _, kwargs = mock_rename.call_args
         assert kwargs.get("prefix") == "scan"
 
-    def test_rename_only_passes_dry_run(self, tmp_path):
-        with patch("sys.argv", ["main.py", "--rename-only", "--dry-run",
+    def test_rename_passes_dry_run(self, tmp_path):
+        with patch("sys.argv", ["main.py", "--rename", "--dry-run",
                                 "--images", str(tmp_path)]):
             with patch("main.setup_logging"):
                 with patch("main.rename_images") as mock_rename:
