@@ -40,13 +40,16 @@ class Config:
     #   "layout"    → texte brut avec balises spatiales
     #   "describe"  → description générale de l'image
     #   "parse"     → analyse détaillée des éléments de l'image
+    #   "rec"       → localisation d'un élément (requiert locate_target)
     prompt_mode: str = "plain"
     PROMPTS: ClassVar[dict] = {
         "plain":    "Free OCR.",
         "layout":   "<|grounding|>Convert the document to markdown.",
         "describe": "Describe this image in detail.",
-        "parse":    "Parse the figure."
+        "parse":    "Parse the figure.",
+        "rec":      "Locate <|ref|>{target}<|/ref|> in the image.",
     }
+    locate_target: str = ""
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
@@ -68,7 +71,10 @@ class Config:
 
     @property
     def prompt(self) -> str:
-        return self.PROMPTS.get(self.prompt_mode, self.PROMPTS[Config.prompt_mode])
+        template = self.PROMPTS.get(self.prompt_mode, self.PROMPTS[Config.prompt_mode])
+        if self.prompt_mode == "rec":
+            return template.format(target=self.locate_target)
+        return template
 
     @property
     def images_path(self) -> Path:

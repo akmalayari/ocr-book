@@ -5,6 +5,7 @@ Usage :
     python main.py                          # config par défaut
     python main.py --images ./photos --out output/livre.md
     python main.py --mode plain             # OCR texte brut
+    python main.py --mode rec:titre         # localiser un élément dans l'image
     python main.py --quant q8_0             # quantization (q8_0, f16, bf16)
     python main.py --max-tokens 2048        # tokens max par page
     python main.py --no-resume              # recommencer depuis le début
@@ -26,7 +27,7 @@ from pipeline import run_pipeline
 from progress import setup_logging
 
 
-def parse_args() -> argparse.Namespace:
+def build_parser() -> argparse.ArgumentParser:
     _cfg = Config()
     p = argparse.ArgumentParser(
         description="Pipeline OCR livre → Markdown via DeepSeek-OCR (Nexa)",
@@ -47,9 +48,9 @@ def parse_args() -> argparse.Namespace:
                    help="Quantization du modèle")
 
     # OCR
-    p.add_argument("--mode", choices=list(_cfg.PROMPTS.keys()),
-                   default=_cfg.prompt_mode,
-                   help="Mode OCR")
+    _modes = [m if m != "rec" else "rec:<cible>" for m in _cfg.PROMPTS.keys()]
+    p.add_argument("--mode", default=_cfg.prompt_mode, metavar="MODE",
+                   help=f"Mode OCR : {', '.join(_modes)}")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
                    help="Tokens max par page")
     p.add_argument("--preprocess", choices=["none", "binarize"],
@@ -70,18 +71,32 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--dry-run", action="store_true",
                    help="Avec --rename-only : affiche les renommages sans les faire")
 
-    return p.parse_args()
+    return p
 
 
 def main() -> int:
-    args = parse_args()
+    p = build_parser()
+    args = p.parse_args()
+
+    # ── Parsing --mode (supporte rec:<cible>) ────────────────────────────────
+    mode_str = args.mode
+    if mode_str.startswith("rec"):
+        if ":" not in mode_str or not mode_str[4:].strip():
+            p.error("--mode rec requiert une cible : --mode rec:<élément à localiser>")
+        prompt_mode, locate_target = "rec", mode_str[4:]
+    elif mode_str not in Config.PROMPTS:
+        valid = [m if m != "rec" else "rec:<cible>" for m in Config.PROMPTS]
+        p.error(f"--mode invalide : {mode_str!r}. Valeurs possibles : {', '.join(valid)}")
+    else:
+        prompt_mode, locate_target = mode_str, ""
 
     cfg = Config(
         images_dir=args.images,
         output_file=args.out,
         model=args.model,
         quant=args.quant,
-        prompt_mode=args.mode,
+        prompt_mode=prompt_mode,
+        locate_target=locate_target,
         max_tokens=args.max_tokens,
         preprocess_mode=args.preprocess,
         resume=not args.no_resume,
