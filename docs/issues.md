@@ -38,7 +38,7 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - Prompt adaptatif selon le contenu (voir Feature 1 — prochaines versions).
 
 ### Bug 2 — Tirets de fin de ligne mal gérés
-Le modèle transcrit parfois la césure comme `tiret + espace + suite du mot` au lieu de reconstituer le mot. Ex : `distribu- tion` au lieu de `distribution`. À corriger en post-processing (regex sur `\w+- \w+`).
+OK
 
 ### Bug 3 — Précision OCR imparfaite malgré binarize_adaptive
 
