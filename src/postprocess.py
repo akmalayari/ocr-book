@@ -48,6 +48,8 @@ def clean_page(text: str, cfg: Config) -> str:
     if cfg.rejoin_hyphenated_words:
         # "condi-\ntion" → "condition"
         text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+        # "distribu- tion" → "distribution" (tiret + espace en fin/milieu de ligne)
+        text = re.sub(r'(\w)- (\w)', r'\1\2', text)
 
     if cfg.collapse_blank_lines:
         # 3+ sauts de ligne → 2 max
