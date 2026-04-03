@@ -14,16 +14,31 @@ from preprocess import preprocess_image
 logger = logging.getLogger(__name__)
 
 
+_STOPWORDS_FR = frozenset({
+    "le", "la", "les", "l", "de", "du", "des", "un", "une",
+    "et", "en", "à", "au", "aux", "que", "qui", "est", "il",
+    "elle", "ils", "elles", "on", "nous", "vous", "se", "sa",
+    "son", "ses", "ce", "c", "je", "tu", "ne", "pas", "plus",
+    "par", "sur", "dans", "pour", "avec", "ou", "si", "y",
+})
+
+
 def _is_looping(text: str, window_words: int, threshold: float) -> bool:
     """Détecte une boucle de génération.
 
-    Si le ratio de mots apparaissant 2+ fois dans la fenêtre dépasse `threshold` → boucle.
+    Si le ratio de mots de contenu (hors stop words) apparaissant 2+ fois
+    dans la fenêtre dépasse `threshold` → boucle.
     """
-    words = text.split()[-window_words:]
-    if len(words) < window_words:
+    all_words = text.split()
+    content_words = [
+        w.lower().strip(".,;:!?\"'()[]{}") for w in all_words
+        if w.lower().strip(".,;:!?\"'()[]{}") not in _STOPWORDS_FR
+    ]
+    window = content_words[-window_words:]
+    if len(window) < window_words:
         return False
     counts = {}
-    for w in words:
+    for w in window:
         counts[w] = counts.get(w, 0) + 1
     n_unique = len(counts)
     repeated = sum(1 for c in counts.values() if c >= 2)
