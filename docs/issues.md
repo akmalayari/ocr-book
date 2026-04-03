@@ -90,6 +90,17 @@ Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajout
 2. **Sauvola binarization** (`scikit-image`) — conçue pour les documents dégradés, tient compte de la variance locale. Potentiellement meilleure qu'`adaptiveThreshold` sur texte mal contrasté.
 3. **Real-ESRGAN** — super-résolution x2/x4 par modèle neural, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde (`basicsr`).
 
+## Améliorations
+
+### 1. Performance — BF16 à ~50s/image
+
+BF16 est 2.5× plus lent que Q8_0 (~20s). Le GPU est bien utilisé (confirmé via Task Manager). Le coût est purement inference.
+
+**Pistes à tester (par ordre de priorité) :**
+1. **Réduire la résolution des images** — le visual encoder scale avec le nombre de pixels. Redimensionner à ~1200px de large avant d'envoyer au VLM (dans `preprocess.py`). Hypothèse : gain de 30–50% si l'encodage visuel domine le temps total.
+2. **Profiler le vrai bottleneck** — chronométrer séparément l'encodage visuel et le décodage texte pour savoir où vont les 50s. `vlm.generate()` fait les deux d'un coup.
+3. **Changer de wrapper Python (llama-cpp-python)** — secondaire. Même DLL llama.cpp sous le capot, peu probable d'accélérer. À tester si les pistes 1–2 sont insuffisantes.
+
 ## Architecture
 
 OK
