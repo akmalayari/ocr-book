@@ -82,13 +82,17 @@ Provoque également des erreurs sur les mots coupés en fin de ligne (`distri-\n
 2. **DocTr** — transformer léger de déwarpage de documents, tourne sur CPU. Dépendance PyTorch/ONNX (~200 MB). À tester si l'approche OpenCV est insuffisante.
 3. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. Dernier recours.
 
-### 4. Images floues
-Unsharp Mask (standard et ordre inversé) testé — aucune amélioration, ajoute des granulés sombres sur certaines configs. Les approches amplificatrices de hautes fréquences sont inefficaces sur du flou de mise au point.
+### 4. Robustesse du préprocessing (bruit, flou, éclairage inégal)
+Objectif : rendre l'OCR plus tolérant aux images imparfaites (grain, éclairage non uniforme, flou léger). Unsharp Mask (standard et inversé) testé — abandonné (amplifie les granulés, inefficace sur flou de mise au point).
 
 **Pistes à tester (par ordre de priorité) :**
-1. **Bilateral filter** — lisse le bruit en préservant les contours, alternative à GaussianBlur avant binarisation.
-2. **Sauvola binarization** (`scikit-image`) — conçue pour les documents dégradés, tient compte de la variance locale. Potentiellement meilleure qu'`adaptiveThreshold` sur texte mal contrasté.
-3. **Real-ESRGAN** — super-résolution x2/x4 par modèle neural, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde (`basicsr`).
+1. **bg_divide + binarize adaptive** — normalise l'illumination en divisant par un fond estimé (GaussianBlur 101×101) avant binarisation. Résultat visuel prometteur sur pages à éclairage inégal (déjà dans `draft/viz_preprocess2.py`). Non encore testé en OCR — piste prioritaire.
+2. **Opérations morphologiques après binarisation** — `opening` supprime les petits artéfacts de bruit dans l'image binaire, `closing` rebouche les trous dans les lettres. Rapide, non exploré.
+3. **Bilateral filter** — lisse le bruit en préservant les contours, alternative à GaussianBlur avant binarisation.
+4. **fastNlMeansDenoising avant binarisation** — débruitage non-local, plus fort que GaussianBlur, préserve mieux les bords. Lent (~×10 vs Gaussian) mais acceptable si gain de précision.
+5. **Gris sans binarisation + denoising fort** — envoyer l'image en niveaux de gris au lieu du noir/blanc pur. La binarisation peut introduire des artéfacts sur zones floues ; le modèle reçoit peut-être plus d'information depuis une image grise bien débruitée.
+6. **Sauvola binarization** (`scikit-image`) — conçue pour les documents dégradés, tient compte de la variance locale. Potentiellement meilleure qu'`adaptiveThreshold` sur texte mal contrasté.
+7. **Real-ESRGAN** — super-résolution x2/x4 par modèle neural, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde (`basicsr`).
 
 ## Améliorations
 
