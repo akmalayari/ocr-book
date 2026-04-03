@@ -18,12 +18,13 @@ Le modèle entre en boucle (génération infinie répétitive) sur certaines pag
 
 `repetition_penalty` testé, sans effet sur les boucles.
 
-**Pistes restantes :**
-- Augmenter `max_tokens` (page_8 tronquée) + **détection de boucle via `generate_stream`** : accumuler les tokens et couper dès qu'une séquence se répète N fois (fenêtre glissante). Pas de surcoût GPU — la détection est du Python pur entre tokens, et coupe avant `max_tokens` en cas de boucle. Paramètres : `loop_detection_window`, `loop_detection_repeats` dans `config.py`.
-- Prompt adaptatif selon le contenu (voir Feature 1 — prochaines versions).
+**Résolu partiellement :** détection de boucle via `on_token` callback (`vlm.generate`). Fenêtre glissante de 50 mots, détection si ratio de mots répétés ≥ seuil (défaut 0.7). Vérification toutes les 200 tokens. `max_tokens` passé à 4096. Validé sur pages 7–9 (boucle détectée sur page_9, pas de faux positif sur 7–8).
 
-### Bug 2 — Tirets de fin de ligne mal gérés
-OK
+**Cas restants :**
+- page_4 : tableau numérique mal transcrit (pas de boucle, mais précision insuffisante)
+- page_5 : image floue — hors scope version actuelle
+- page_9 : boucle stoppée mais passage sombre/flou dégradé (voir Bug 3)
+
 
 ### Bug 3 — Précision OCR imparfaite malgré binarize_adaptive
 
@@ -31,9 +32,6 @@ OK
 - Q8_0 → BF16 : amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 commet plus d'erreurs que BF16.
 - BF16 : ~50s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable mais vaut le coup pour le gain de précision.
 
-**Pistes restantes :**
-- Prompt plus directif (ex: `"Transcribe the text exactly as it appears."` ou prompt en français).
-- Modèle alternatif (Qwen2-VL, etc.) potentiellement plus précis sur du français dense.
 
 ---
 
