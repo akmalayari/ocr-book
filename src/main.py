@@ -6,7 +6,7 @@ Usage :
     python src/main.py --images ./photos --out output/livre.md
     python src/main.py --mode plain             # OCR texte brut
     python src/main.py --mode rec:titre         # localiser un élément dans l'image
-    python src/main.py --quant q8_0             # quantization (q8_0, f16, bf16)
+    python src/main.py --quant q8_0             # quantization (q8_0, bf16; défaut: bf16)
     python src/main.py --max-tokens 2048        # tokens max par page
     python src/main.py --no-resume              # recommencer depuis le début
     python src/main.py --preprocess none        # sans pré-traitement (défaut: binarize)

@@ -21,7 +21,7 @@ class Config:
     n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int        = 2048
+    max_tokens: int        = 4096
     temperature: float     = 0.0
     repetition_penalty: float = 1.5
 
