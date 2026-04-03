@@ -18,6 +18,8 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - page_4 : mitigé — pas de boucle, retranscription du tableau numérique incorrecte
 - page_5 : échec — génération d'un tableau infini de chiffres (probablement axe Y du graphique)
 - page_6 (nette, même contenu que page_5) : succès partiel — texte et tableau transcrits correctement, graphique ignoré silencieusement
+- page_7, page_8 : texte bien retranscrit (imprécisions mineures), page_8 tronquée (max_tokens)
+- page_9 : précision dégradée sur passage sombre/flou, finit par boucler
 
 **`layout` :**
 - page_1 : pareil que `plain`
@@ -26,13 +28,19 @@ Tous les tests ci-dessous utilisent GaussianBlur(5,5) + binarize_adaptive.
 - page_4 : mitigé — tableau détecté, noms des colonnes approximatifs, cases vides, texte sous le tableau oublié
 - page_5 : échec — boucle sur balises `<tr>`/`<td>` (graphique mal classé `table` à cause de l'image floue)
 - page_6 : succès partiel — graphique correctement classé `image` avec bbox, mais contenu vide
+- page_7, page_8 : texte bien retranscrit (imprécisions mineures), page_8 tronquée (max_tokens)
+- page_9 : précision dégradée sur passage sombre/flou, boucle de "1" sur les sous-sections de fin de chapitre
 
 `repetition_penalty` testé, sans effet sur les boucles.
 
 **Pistes restantes :**
+- Augmenter `max_tokens` (page_8 tronquée).
 - Prompt adaptatif selon le contenu (voir Feature 1 — prochaines versions).
 
-### Bug 2 — Précision OCR imparfaite malgré binarize_adaptive
+### Bug 2 — Tirets de fin de ligne mal gérés
+Le modèle transcrit parfois la césure comme `tiret + espace + suite du mot` au lieu de reconstituer le mot. Ex : `distribu- tion` au lieu de `distribution`. À corriger en post-processing (regex sur `\w+- \w+`).
+
+### Bug 3 — Précision OCR imparfaite malgré binarize_adaptive
 
 **Résultats des tests de quantization (2026-04-01) :**
 - Q8_0 → BF16 : amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 commet plus d'erreurs que BF16.
