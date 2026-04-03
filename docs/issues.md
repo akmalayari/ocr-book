@@ -1,41 +1,6 @@
 # Issues — travaux en cours
 
-## Version actuelle — à finaliser
-
-Objectif : précision 100% sur texte et tableaux, photos nettes uniquement.
-
-### Bug 1 — Boucles de génération sur pages denses ou avec tableaux
-Le modèle entre en boucle (génération infinie répétitive) sur certaines pages. Prompt retenu : `layout` (GaussianBlur(5,5) + binarize_adaptive).
-
-- page_1 : succès
-- page_2 : succès
-- page_3 : succès, y compris le tableau textuel
-- page_4 : mitigé — tableau détecté, noms des colonnes approximatifs, cases vides, texte sous le tableau oublié
-- page_5 : échec — boucle sur balises `<tr>`/`<td>` (graphique mal classé `table`, image floue)
-- page_6 : succès partiel — texte et tableau OK, graphique ignoré (contenu vide)
-- page_7, page_8 : succès (imprécisions mineures), page_8 tronquée (max_tokens trop faible)
-- page_9 : précision dégradée sur passage sombre/flou, boucle de "1" sur les sous-sections de fin de chapitre
-
-`repetition_penalty` testé, sans effet sur les boucles.
-
-**Résolu partiellement :** détection de boucle via `on_token` callback (`vlm.generate`). Fenêtre glissante de 50 mots, détection si ratio de mots répétés ≥ seuil (défaut 0.7). Vérification toutes les 200 tokens. `max_tokens` passé à 4096. Validé sur pages 7–9 (boucle détectée sur page_9, pas de faux positif sur 7–8).
-
-**Cas restants :**
-- page_4 : tableau numérique mal transcrit (pas de boucle, mais précision insuffisante)
-- page_5 : image floue — hors scope version actuelle
-- page_9 : boucle stoppée mais passage sombre/flou dégradé (voir Bug 3)
-
-
-### Bug 3 — Précision OCR imparfaite malgré binarize_adaptive
-
-**Résultats des tests de quantization (2026-04-01) :**
-- Q8_0 → BF16 : amélioration (ex: "l'age" correctement transcrit vs "Page"), mais précision toujours imparfaite. F16 commet plus d'erreurs que BF16.
-- BF16 : ~50s/page vs ~20s/page en Q8_0. Rapport qualité/vitesse défavorable mais vaut le coup pour le gain de précision.
-
-
----
-
-## Prochaines versions
+## Version multimodale (actuelle)
 
 ### Feature 1 — Détection et traitement des graphiques
 Appliquer un mode OCR différent selon le contenu de la page.
@@ -61,6 +26,10 @@ Appliquer un mode OCR différent selon le contenu de la page.
 2. **Heuristique OpenCV** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Plus simple mais ne gère pas les pages mixtes.
 
 3. **Prompts avec prefix grounding** — non testés : `"<|grounding|>Transcribe only text blocks."`. Le prefix grounding pourrait être plus précis sur les colonnes.
+
+---
+
+## Prochaines versions
 
 ### Feature 2 — Support PDF multi-pages
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
