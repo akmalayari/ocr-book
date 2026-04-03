@@ -1,12 +1,15 @@
 # Tested — ce qui a été expérimenté dans le projet
 
-Pages de référence utilisées pour les tests : `page_1` à `page_6`.
+Pages de référence utilisées pour les tests : `page_1` à `page_9`.
 - page_1 : texte simple, mauvais éclairage
 - page_2 : texte dense, éclairage normal
 - page_3 : texte + tableau textuel
 - page_4 : texte + tableau numérique
 - page_5 : texte + tableau + graphique, image floue
 - page_6 : même contenu que page_5, image nette (version de référence pour tests graphe)
+- page_7 : début de chapitre, texte seul, image nette
+- page_8 : texte seul, image nette
+- page_9 : fin de chapitre, texte seul, image nette
 
 ---
 
