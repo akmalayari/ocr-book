@@ -19,7 +19,7 @@ Le modèle entre en boucle (génération infinie répétitive) sur certaines pag
 `repetition_penalty` testé, sans effet sur les boucles.
 
 **Pistes restantes :**
-- Augmenter `max_tokens` (page_8 tronquée).
+- Augmenter `max_tokens` (page_8 tronquée) + **détection de boucle via `generate_stream`** : accumuler les tokens et couper dès qu'une séquence se répète N fois (fenêtre glissante). Pas de surcoût GPU — la détection est du Python pur entre tokens, et coupe avant `max_tokens` en cas de boucle. Paramètres : `loop_detection_window`, `loop_detection_repeats` dans `config.py`.
 - Prompt adaptatif selon le contenu (voir Feature 1 — prochaines versions).
 
 ### Bug 2 — Tirets de fin de ligne mal gérés
