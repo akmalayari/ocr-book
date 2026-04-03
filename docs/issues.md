@@ -25,6 +25,9 @@ Le modèle entre en boucle (génération infinie répétitive) sur certaines pag
 - page_5 : image floue — hors scope version actuelle
 - page_9 : boucle stoppée mais passage sombre/flou dégradé (voir Bug 3)
 
+**Améliorations à tester :**
+- Exclure les stop words français (`le`, `la`, `les`, `de`, `et`…) du calcul de fréquence — rend la détection plus sensible aux répétitions de contenu.
+
 
 ### Bug 3 — Précision OCR imparfaite malgré binarize_adaptive
 
