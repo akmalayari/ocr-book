@@ -16,9 +16,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-MD_FILE   = "draft/prompt_results/page_6__rec.md"
-PHOTOS    = "photos/page_6.jpg"
-OUT_DIR   = "draft/viz"
+MD_FILE   = "output/prompt_results/page_10__rec.md"
+PHOTOS    = "photos/page_10.jpg"
+OUT_DIR   = "output/draft/viz"
 
 COLORS = {
     "text":            "#2196F3",  # bleu

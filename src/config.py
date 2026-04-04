@@ -21,14 +21,14 @@ class Config:
     n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int        = 4096
+    max_tokens: int        = 2048
     temperature: float     = 0.0
     repetition_penalty: float = 1.1
 
     # ── Détection de boucle ──────────────────────────────────────────────────
     loop_check_every: int       = 200   # vérifier toutes les N tokens
     loop_window_words: int      = 50    # taille de la fenêtre en mots
-    loop_divisor_threshold: float = 0.7 # % de mots dont le count doit être divisible
+    loop_divisor_threshold: float = 0.8 # % de mots dont le count doit être divisible
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
     #   "none"     → image originale

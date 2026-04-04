@@ -8,7 +8,6 @@ Configurer les prompts à tester directement dans PROMPTS ci-dessous.
 """
 
 import sys
-import time
 from pathlib import Path
 
 # patch doit être importé en premier
@@ -16,11 +15,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import patch  # noqa: F401
 
 from nexaai import VLM
-from nexaai.nexa_sdk.types import GenerationConfig, VlmChatMessage, VlmContent
 
 from config import Config
-from preprocess import preprocess_image
-from postprocess import clean_page
+from ocr_client import ocr_image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from compare import compare as compare_files
@@ -28,14 +25,14 @@ from compare import compare as compare_files
 # ── Prompts à tester ─────────────────────────────────────────────────────────
 PROMPTS = {
     #"plain":  "Convert the document to markdown.",
-    #"layout": "<|grounding|>Convert the document to markdown.",
-    #"recpars" :  "Locate <|ref|>A figure or graph<|/ref|> in the image. Parse it.",
-    "rec2":      "Locate <|ref|>everything<|/ref|> in the image."
+    "layout": "<|grounding|>Convert the document to markdown.",
+    #"rec" :  "Locate <|ref|>A figure or graph<|/ref|> in the image.",
+    #"rec2":      "Locate <|ref|>everything<|/ref|> in the image."
 }
 
 # ── Paramètres ────────────────────────────────────────────────────────────────
-INPUT       = "photos/page_6.jpg"           # image ou dossier
-OUT_DIR     = "draft/prompt_results"
+INPUT       = "photos/page_10.jpg"           # image ou dossier
+OUT_DIR     = "output/prompt_results"
 PREPROCESS  = "binarize"              # "none" ou "binarize"
 QUANT       = "bf16"              # "bf16" ou "q8_0"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -48,37 +45,6 @@ def collect_images(path: Path) -> list[Path]:
         return [path]
     return sorted(p for p in path.iterdir() if p.suffix.lower() in IMAGE_EXTS)
 
-
-def run_prompt(image_path: Path, prompt_text: str, vlm, cfg: Config) -> tuple[str, float]:
-    if cfg.preprocess_mode == "binarize":
-        input_path = preprocess_image(
-            image_path,
-            cfg.binarize_block_size,
-            cfg.binarize_c,
-            cfg.blur_ksize,
-            cfg.blur_sigma,
-        )
-    else:
-        input_path = image_path
-
-    msg = VlmChatMessage(
-        role="user",
-        contents=[
-            VlmContent(type="image", text=str(input_path.resolve())),
-            VlmContent(type="text", text=prompt_text),
-        ],
-    )
-    formatted = vlm.apply_chat_template([msg])
-    gen_config = GenerationConfig(
-        image_paths=[str(input_path.resolve())],
-        max_tokens=cfg.max_tokens,
-        sampler_config=cfg.to_sampler_config(),
-    )
-    t0 = time.perf_counter()
-    result = vlm.generate(formatted, config=gen_config)
-    latency = time.perf_counter() - t0
-    text = result.full_text.strip() if result.full_text else ""
-    return text, latency
 
 
 def write_result(out_dir: Path, image_path: Path, prompt_name: str, prompt_text: str, text: str, latency: float):
@@ -115,9 +81,10 @@ def main():
         print(f"[{image_path.name}]")
         for prompt_label, prompt_text in PROMPTS.items():
             try:
-                text, latency = run_prompt(image_path, prompt_text, vlm, cfg)
-                text = clean_page(text, Config(preprocess_mode=PREPROCESS, quant=QUANT, prompt_mode=prompt_label))
-                write_result(out_dir, image_path, prompt_label, prompt_text, text, latency)
+                cfg_prompt = Config(preprocess_mode=PREPROCESS, quant=QUANT, prompt_mode=prompt_label)
+                pp_save = out_dir / f"{image_path.stem}__preprocess.jpg" if PREPROCESS == "binarize" else None
+                text, metrics = ocr_image(image_path, vlm, cfg_prompt, preprocess_save_path=pp_save)
+                write_result(out_dir, image_path, prompt_label, prompt_text, text, metrics["total_latency"])
             except Exception as e:
                 print(f"  ✗ {prompt_label}: {e}")
 

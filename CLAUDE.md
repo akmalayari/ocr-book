@@ -23,13 +23,14 @@ Travaux en cours : `docs/issues.md`.
 
 Explorations et tests informels : `draft/`. 
 
-Vérifie ta mémoire des sessions précédentes en début de session : `memory/`
+Vérifie ta mémoire en début de session : `memory/`
 
 ## Conventions
 
 - **Commits** : message bref en anglais (`fix(module): description`)
 - **Langue** : code et commits en anglais
 - **Pas de README** sauf demande explicite
+- **Pas de tests** sauf demande explicite
 
 ## Préférences de travail
 
@@ -50,14 +51,14 @@ Vérifie ta mémoire des sessions précédentes en début de session : `memory/`
 ### Draft
 - Toutes les explorations et tests intiaux se font dans `draft/`. 
 - Toutes les sorties issues de `drat/` doivent atterir dans `output/`.
+- Avant de coder un script de test, toujours vérifier si des modules ou fonctions de `src/` peuvent etre utilisé.
 
 ## Limiter la consommation de tokens
 
-- Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé
+- Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé à part sur demande explicite
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
 - Ne pas explorer `venv/` ni `output/` ni `photos/` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
-- Ne consulter et ne modifier les tests que si explicitement demandé.
 
 ## Ressources
 Documentation sur le stack spécifique utilisé dans le projet.
@@ -79,7 +80,7 @@ Documentation sur le stack spécifique utilisé dans le projet.
 
 ## Troubleshooting
 - Run `python src/main.py --no-resume`.
-- Check `ocr_run.log`.
+- Check `output/ocr_run.log`.
 - Find what's wrong.
 
 As a last resort only: run tests `python -m pytest tests/ -v`.
