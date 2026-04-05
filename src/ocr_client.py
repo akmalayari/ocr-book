@@ -9,7 +9,6 @@ from pathlib import Path
 from nexaai.nexa_sdk.types import GenerationConfig, VlmChatMessage, VlmContent
 
 from config import Config
-from preprocess import preprocess_image
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +34,12 @@ class OCRError(RuntimeError):
     pass
 
 
-def ocr_image(image_path: Path | str, vlm, cfg: Config, preprocess_save_path: Path | None = None) -> tuple[str, dict]:
+def ocr_image(image_path: Path | str, vlm, cfg: Config) -> tuple[str, dict]:
     """
     OCRise une image avec le VLM chargé.
 
     Args:
-        image_path : chemin vers l'image source
+        image_path : chemin vers l'image (déjà préprocessée si nécessaire)
         vlm        : instance nexaai.VLM (chargée une fois dans pipeline.py)
         cfg        : configuration
 
@@ -54,17 +53,7 @@ def ocr_image(image_path: Path | str, vlm, cfg: Config, preprocess_save_path: Pa
     if not image_path.exists():
         raise OCRError(f"Image introuvable : {image_path}")
 
-    if cfg.preprocess_mode == "binarize":
-        input_path = preprocess_image(
-            image_path,
-            cfg.binarize_block_size,
-            cfg.binarize_c,
-            cfg.blur_ksize,
-            cfg.blur_sigma,
-            save_path=preprocess_save_path,
-        )
-    else:
-        input_path = image_path
+    input_path = image_path
 
     msg = VlmChatMessage(
         role="user",

@@ -60,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
     # Comportement
     p.add_argument("--no-resume", action="store_true",
                    help="Recommencer depuis le début (ignore le fichier existant)")
+    p.add_argument("--one-pass", action="store_true",
+                   help="Désactiver la passe 2 figures (défaut: two-pass activé en mode layout)")
     p.add_argument("--verbose", action="store_true",
                    help="Logs détaillés (DEBUG)")
 
@@ -100,6 +102,7 @@ def main() -> int:
         max_tokens=args.max_tokens,
         preprocess_mode=args.preprocess,
         resume=not args.no_resume,
+        two_pass=not args.one_pass,
         verbose=args.verbose,
     )
 

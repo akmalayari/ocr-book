@@ -2,22 +2,6 @@
 
 ## Version multimodale (actuelle)
 
-### Feature 1 — Détection et traitement des graphiques
-Appliquer un mode OCR différent selon le contenu de la page.
-
-**Approche retenue (validée sur page_6, `draft/test_two_pass.py`) :**
-1. Passe 1 : `layout` → détecter les régions `image` et récupérer leurs bbox
-2. Si bbox non vide → cropper l'image → sauvegarder le crop (pour système figures/chapitre)
-3. Passe 2 : `parse` sur le crop → réinjecter le résultat sous la balise `image` dans le résultat `layout`
-4. Postprocess : nettoyer les balises `<|ref|>…<|det|>…<|/det|>`
-
-**Résultat sur page_6 :** graphique (tableau de données) correctement converti en `<table>` HTML via `parse`. La deuxième passe `describe` a été écartée — ajoutait du bruit (affirmation fausse que certaines données étaient anonymisées).
-
-**Problème en suspens — formatage des notes de figure :**
-`parse` inclut "Champ :", "Lecture :" et "Source :" comme lignes `<tr>` du tableau alors qu'ils devraient être des notes hors tableau. À corriger dans le postprocess ou via un script de mise en forme dédié.
-
-**Langue des descriptions :** le modèle ignore systématiquement les instructions de langue. `"describe"` et `"parse"` répondent toujours en anglais.
-
 ### Bug 4 — Robustesse du préprocessing (bruit, flou, éclairage inégal)
 Objectif : rendre l'OCR plus tolérant aux images imparfaites. Urgent: le modele boucle dès que la qualité n'est pas parfaite, meme en bf16. Cela rend le modèle concrètement inutilisable.
 

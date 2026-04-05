@@ -1,9 +1,12 @@
 """
-test_two_pass.py — Test pipeline deux passes layout+parse sur page_6.
+test_two_pass.py — Comparaison parse vs describe × raw vs binarize sur crop.
 
 Passe 1 : layout → bboxes image
-Passe 2 : parse sur chaque crop
-Résultat : layout avec résultats parse réinjectés sous chaque bbox image
+Passe 2 : 4 combinaisons sur chaque crop
+  - parse   + raw
+  - parse   + binarize
+  - describe + raw
+  - describe + binarize
 
 Usage (depuis la racine du projet) :
     python draft/test_two_pass.py
@@ -21,6 +24,7 @@ from nexaai import VLM
 from nexaai.nexa_sdk.types import GenerationConfig, VlmChatMessage, VlmContent
 
 from config import Config
+from preprocess import preprocess_image
 
 IMAGE_PATH = Path("photos/page_6.jpg")
 OUT_DIR    = Path("output/draft/test_two_pass")
@@ -29,9 +33,15 @@ DET_RE = re.compile(
     r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]\]<\|/det\|>"
 )
 
+PASS2_VARIANTS = [
+    ("parse",    "raw"),
+    ("parse",    "binarize"),
+    ("describe", "raw"),
+    ("describe", "binarize"),
+]
+
 
 def run_vlm(vlm, cfg: Config, image_path: Path) -> tuple[str, float]:
-    from preprocess import preprocess_image
     if cfg.preprocess_mode == "binarize":
         input_path = preprocess_image(
             image_path,
@@ -90,24 +100,8 @@ def crop_image(image_path: Path, bbox: tuple, out_path: Path) -> Path:
     return out_path
 
 
-def inject_parse_results(layout_text: str, parse_results: list[str]) -> str:
-    lines = layout_text.splitlines()
-    result = []
-    bbox_idx = 0
-    for line in lines:
-        result.append(line)
-        m = DET_RE.search(line)
-        if m and m.group(1) == "image" and bbox_idx < len(parse_results):
-            result.append(parse_results[bbox_idx])
-            bbox_idx += 1
-    return "\n".join(result)
-
-
 def main():
-    PASS2_MODE = "describe"
-
     cfg_layout = Config(prompt_mode="layout")
-    cfg_pass2  = Config(prompt_mode=PASS2_MODE)
 
     print("Chargement VLM...")
     vlm = VLM.from_(model=cfg_layout.model, quant=cfg_layout.quant, config=cfg_layout.to_model_config())
@@ -119,34 +113,29 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "page_6__layout.md").write_text(layout_text, encoding="utf-8")
 
-    # Bboxes image
     bboxes = parse_image_bboxes(layout_text)
     print(f"  {len(bboxes)} bbox(es) image détectée(s) : {bboxes}")
     if not bboxes:
         print("Aucune figure détectée — fin.")
         return
 
-    # Crop + passe 2
-    pass2_results = []
+    # Passe 2 : 4 variantes par crop
     for i, bbox in enumerate(bboxes):
         crop_path = OUT_DIR / f"page_6__crop_{i}.jpg"
         crop_image(IMAGE_PATH, bbox, crop_path)
 
-        print(f"\nPasse 2 — {PASS2_MODE} sur crop {i}")
-        pass2_text, lat2 = run_vlm(vlm, cfg_pass2, crop_path)
-        print(f"  latency: {lat2:.1f}s")
+        print(f"\n--- Crop {i} ---")
+        for prompt_mode, preprocess_mode in PASS2_VARIANTS:
+            label = f"{prompt_mode}_{preprocess_mode}"
+            cfg = Config(prompt_mode=prompt_mode, preprocess_mode=preprocess_mode)
 
-        pass2_out = OUT_DIR / f"page_6__crop_{i}__{PASS2_MODE}.md"
-        pass2_out.write_text(pass2_text, encoding="utf-8")
-        print(f"  → {pass2_out}")
+            print(f"  [{label}]")
+            text, lat = run_vlm(vlm, cfg, crop_path)
+            print(f"    latency: {lat:.1f}s")
 
-        pass2_results.append(pass2_text)
-
-    # Réinjection
-    final = inject_parse_results(layout_text, pass2_results)
-    out_path = OUT_DIR / f"page_6__two_pass_{PASS2_MODE}.md"
-    out_path.write_text(final, encoding="utf-8")
-    print(f"\nRésultat final → {out_path}")
+            out_path = OUT_DIR / f"page_6__crop_{i}__{label}.md"
+            out_path.write_text(text, encoding="utf-8")
+            print(f"    → {out_path}")
 
 
 if __name__ == "__main__":

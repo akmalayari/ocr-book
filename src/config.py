@@ -46,7 +46,7 @@ class Config:
     #   "describe"  → description générale de l'image
     #   "parse"     → analyse détaillée des éléments de l'image
     #   "rec"       → localisation d'un élément (requiert locate_target)
-    prompt_mode: str = "plain"
+    prompt_mode: str = "layout"
     PROMPTS: ClassVar[dict] = {
         "plain":    "Free OCR.",
         "layout":   "<|grounding|>Convert the document to markdown.",
@@ -59,11 +59,13 @@ class Config:
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
     images_dir: str    = "./photos"
-    extensions: tuple  = (".jpg", ".jpeg", ".png", ".webp", ".pdf")
+    extensions: tuple  = (".jpg", ".jpeg", ".png", ".webp")
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
     resume: bool = True
+    two_pass: bool = True
+    figures_dir: str = "./output/figures"
 
     # ── Post-traitement ──────────────────────────────────────────────────────
     remove_isolated_page_numbers: bool = True
@@ -88,6 +90,10 @@ class Config:
     @property
     def output_path(self) -> Path:
         return Path(self.output_file)
+
+    @property
+    def figures_path(self) -> Path:
+        return Path(self.figures_dir)
 
     def to_model_config(self):
         from nexaai.nexa_sdk.types import ModelConfig

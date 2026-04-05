@@ -10,7 +10,22 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 
-_GROUNDING_RE = re.compile(r'<\|ref\|>.*?<\|/ref\|><\|det\|>.*?<\|/det\|>\n?')
+_GROUNDING_RE  = re.compile(r'<\|ref\|>.*?<\|/ref\|><\|det\|>.*?<\|/det\|>\n?')
+_FOOTNOTE_ROW_RE = re.compile(r'<tr><td>((?:(?!</td>).)+)</td>(?:<td></td>)+</tr>')
+
+
+def extract_table_footnotes(text: str) -> str:
+    """Déplace hors du tableau les <tr> dont seule la première cellule est non vide."""
+    footnotes = []
+
+    def _pull_row(m):
+        footnotes.append(m.group(1))
+        return ''
+
+    cleaned = _FOOTNOTE_ROW_RE.sub(_pull_row, text)
+    if footnotes:
+        cleaned = cleaned.rstrip() + '\n\n' + '\n'.join(footnotes) + '\n'
+    return cleaned
 
 
 def _clean_layout(text: str) -> str:

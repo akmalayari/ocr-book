@@ -10,6 +10,8 @@ from nexaai import VLM
 
 from config import Config
 from ocr_client import ocr_image, OCRError
+from preprocess import preprocess_image
+from figure import process_figures
 from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages
 from images import collect_images
 from progress import Stats
@@ -68,9 +70,26 @@ def run_pipeline(cfg: Config) -> Stats:
                 continue
 
             # ── OCR ──────────────────────────────────────────────────────
+            # Passe 1 : preprocess(page) → ocr → [passe 2] → postprocess(page)
+            # Passe 2 : pour chaque figure détectée dans le résultat layout :
+            #           crop(original) → preprocess(crop) → ocr → postprocess(crop)
+            #           (orchestré dans figure.process_figures)
             t0 = time.time()
             try:
-                raw_text, metrics = ocr_image(img_path, vlm, cfg)
+                preprocessed_path = (
+                    preprocess_image(img_path, cfg.binarize_block_size, cfg.binarize_c,
+                                     cfg.blur_ksize, cfg.blur_sigma)
+                    if cfg.preprocess_mode == "binarize"
+                    else img_path
+                )
+                raw_text, metrics = ocr_image(preprocessed_path, vlm, cfg)
+
+                if cfg.prompt_mode == "layout" and cfg.two_pass:
+                    raw_text, fig_metrics = process_figures(
+                        raw_text, img_path, vlm, cfg, page_id
+                    )
+                    metrics["total_latency"] += fig_metrics["total_latency"]
+
                 clean_text = clean_page(raw_text, cfg)
                 elapsed = time.time() - t0
 
