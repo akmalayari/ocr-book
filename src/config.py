@@ -78,6 +78,7 @@ class Config:
 
     # ── Logging ──────────────────────────────────────────────────────────────
     log_file: str = "output/ocr_run.log"
+    report_file: str = "output/ocr_report.md"
     verbose: bool = False
 
     @property
