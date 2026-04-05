@@ -29,15 +29,62 @@ from ocr_client import ocr_image
 PHOTOS_DIR = Path(__file__).parent.parent / "photos"
 OUT_DIR    = Path(__file__).parent.parent / "output" / "binarize_grid"
 
-BLOCK_SIZES = [11, 21, 31, 41, 51]
-C_VALUES    = [5, 10, 15, 20]
+BLOCK_SIZES = [21, 31]
+C_VALUES    = [10, 15]
 DEFAULT_PAGES = ["page_5", "page_6"]
 
 
 def laplacian_variance(image_path: Path) -> float:
-    img  = cv2.imread(str(image_path))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    img    = cv2.imread(str(image_path))
+    gray   = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    smooth = cv2.GaussianBlur(gray, (5, 5), 0)
+    return float(cv2.Laplacian(smooth, cv2.CV_64F).var())
+
+
+def _write_laplacian_report(lap_data: dict) -> None:
+    """Écrit output/binarize_grid/laplacian_report.md."""
+    if not lap_data:
+        return
+    max_var = max(lap_data.values())
+    # Seuil heuristique : 15 % du max observé
+    threshold = max_var * 0.15
+    lines = [
+        "# Rapport Laplacien\n",
+        "Variance calculée après GaussianBlur 5×5 (atténuation du bruit parasite).\n",
+        f"Seuil flou/net estimé (15 % du max) : **{threshold:.1f}**\n",
+        "| Page | Variance | Qualité |",
+        "|------|----------|---------|",
+    ]
+    for img_path, var in lap_data.items():
+        qualite = "nette" if var >= threshold else "floue"
+        lines.append(f"| {img_path.name} | {var:.1f} | {qualite} |")
+    out = OUT_DIR / "laplacian_report.md"
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"  → {out}")
+
+
+def _write_loop_report(ocr_results: list[dict]) -> None:
+    """Écrit output/binarize_grid/ocr_loop_report.md.
+
+    ocr_results : liste de dicts avec clés page, block_size, c, looped, words, latency, error.
+    """
+    if not ocr_results:
+        return
+    lines = [
+        "# Rapport OCR — Boucles\n",
+        "| Page | block_size | C | Boucle | Mots | Durée (s) | Note |",
+        "|------|-----------|---|--------|------|-----------|------|",
+    ]
+    for r in ocr_results:
+        boucle = "**oui**" if r["looped"] else "non"
+        note   = r.get("error", "")
+        lines.append(
+            f"| {r['page']} | {r['block_size']} | {r['c']} "
+            f"| {boucle} | {r['words']} | {r['latency']:.1f} | {note} |"
+        )
+    out = OUT_DIR / "ocr_loop_report.md"
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"  → {out}")
 
 
 def main():
@@ -65,10 +112,15 @@ def main():
 
     # Afficher la variance Laplacien (calibration seuil de flou)
     print("── Variance Laplacien (netteté) ──────────────────────────")
+    lap_data = {}
     for img_path in images:
         var = laplacian_variance(img_path)
+        lap_data[img_path] = var
         print(f"  {img_path.name:20s}  {var:.1f}")
     print()
+
+    # Rapport Laplacien
+    _write_laplacian_report(lap_data)
 
     # Phase 1 : générer toutes les images binarisées
     print("── Génération des images binarisées ──────────────────────")
@@ -109,11 +161,11 @@ def main():
         return
 
     print(f"\n── OCR sur {len(ocr_configs)} config(s) × {len(images)} image(s) ──────────")
-    import patch as _patch  # already imported, VLM needs the model loaded once
     from nexaai import VLM
     cfg_base = Config(prompt_mode="layout", preprocess_mode="none")  # preprocess déjà fait
     vlm = VLM.from_(model=cfg_base.model, quant=cfg_base.quant, config=cfg_base.to_model_config())
 
+    ocr_results = []
     for img_path in images:
         for bs, c in ocr_configs:
             binarized = OUT_DIR / f"{img_path.stem}_{bs}_{c}.jpg"
@@ -122,14 +174,23 @@ def main():
                 continue
             out_md = OUT_DIR / f"{img_path.stem}_{bs}_{c}.md"
             print(f"  [{img_path.stem} bs={bs} c={c}] ...", end=" ", flush=True)
+            row = {"page": img_path.stem, "block_size": bs, "c": c,
+                   "looped": False, "words": 0, "latency": 0.0, "error": ""}
             try:
                 text, metrics = ocr_image(binarized, vlm, cfg_base)
                 out_md.write_text(text, encoding="utf-8")
-                words = len(text.split())
-                print(f"{words} mots ({metrics['total_latency']:.1f}s)")
+                row["words"]   = len(text.split())
+                row["latency"] = metrics["total_latency"]
+                row["looped"]  = metrics.get("looped", False)
+                flag = " [BOUCLE]" if row["looped"] else ""
+                print(f"{row['words']} mots ({row['latency']:.1f}s){flag}")
             except Exception as e:
+                row["error"] = str(e)
                 print(f"ERREUR: {e}")
+            ocr_results.append(row)
 
+    print("\n── Rapport boucles ───────────────────────────────────────")
+    _write_loop_report(ocr_results)
     print("\nPhase 2 terminée.")
 
 
