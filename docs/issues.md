@@ -5,27 +5,18 @@
 ### Feature 1 — Détection et traitement des graphiques
 Appliquer un mode OCR différent selon le contenu de la page.
 
-**Comportement confirmé des prompts (tests sur pages 1–6) :**
-- `"layout"` — prompt retenu. Ajoute les grounding boxes. Classe les régions en `text`, `sub_title`, `table`, `image`, `image_caption`. Sur page_6 : graphique correctement classé `image`, contenu vide.
-- `"describe"` — décrit l'image en anglais (indépendamment de la langue du document).
-- `"parse"` — analyse fine des éléments de l'image en anglais.
-- `<|grounding|>Describe this image in detail.` — équivalent exact de `layout`. Testé sur page_6 (43.5s).
-- `<|grounding|>Parse the figure.` — **freeze terminal**, à éviter.
-- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement la bbox de la figure, s'arrête proprement (5.8s). Toute instruction ajoutée après est ignorée. **La deux passes est donc obligatoire.**
+**Approche retenue (validée sur page_6, `draft/test_two_pass.py`) :**
+1. Passe 1 : `layout` → détecter les régions `image` et récupérer leurs bbox
+2. Si bbox non vide → cropper l'image → sauvegarder le crop (pour système figures/chapitre)
+3. Passe 2 : `parse` sur le crop → réinjecter le résultat sous la balise `image` dans le résultat `layout`
+4. Postprocess : nettoyer les balises `<|ref|>…<|det|>…<|/det|>`
+
+**Résultat sur page_6 :** graphique (tableau de données) correctement converti en `<table>` HTML via `parse`. La deuxième passe `describe` a été écartée — ajoutait du bruit (affirmation fausse que certaines données étaient anonymisées).
+
+**Problème en suspens — formatage des notes de figure :**
+`parse` inclut "Champ :", "Lecture :" et "Source :" comme lignes `<tr>` du tableau alors qu'ils devraient être des notes hors tableau. À corriger dans le postprocess ou via un script de mise en forme dédié.
 
 **Langue des descriptions :** le modèle ignore systématiquement les instructions de langue. `"describe"` et `"parse"` répondent toujours en anglais.
-
-**Prompt `rec` — résultats :**
-- `Locate <|ref|>A figure or graph<|/ref|> in the image.` — retourne exactement une bbox par figure, s'arrête proprement (5.8s). Testé sur page_6 (texte + tableau + 1 graphique) : bbox correcte `[[99, 96, 415, 386]]`.
-- **À tester :** page avec plusieurs figures, page tableau+texte sans figure (faux positif ?), page texte seul (doit retourner vide).
-
-**Approches à tester (par ordre de priorité) :**
-
-1. **Pipeline deux passes sur les pages mixtes (option prioritaire)** — passe 1 `rec` (`Locate <|ref|>A figure or graph<|/ref|> in the image.`) pour détecter les bboxes figures ; si résultat non vide → passe 2 `parse` sur chaque crop. Parser déjà dans `viz_boxes.py`. Valider d'abord le comportement de `rec` sur les cas sans figure (voir tests ci-dessus).
-
-2. **Heuristique OpenCV** — ratio contours horizontaux / surface. Si densité faible → page image → mode `"describe"`. Configurable via un seuil dans `config.py`. Plus simple mais ne gère pas les pages mixtes.
-
-3. **Prompts avec prefix grounding** — non testés : `"<|grounding|>Transcribe only text blocks."`. Le prefix grounding pourrait être plus précis sur les colonnes.
 
 ### Bug 4 — Robustesse du préprocessing (bruit, flou, éclairage inégal)
 Objectif : rendre l'OCR plus tolérant aux images imparfaites. Urgent: le modele boucle dès que la qualité n'est pas parfaite, meme en bf16. Cela rend le modèle concrètement inutilisable.

@@ -35,7 +35,7 @@ Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Conto
 | BF16 | ~50s/page | plus fidèle que F16 sur les passages difficiles |
 | F16  | ~50s/page | moins fidèle que BF16 — hallucinations et reformulations sur passages difficiles |
 
-**Statut : BF16 retenu.** Comparaison BF16 vs F16 (2026-04-02, `compare.py` mode sentence, page_1) : BF16 retranscrit fidèlement plusieurs passages où F16 hallucine ou reformule. BF16 reste imparfait (voir Bug #1 et #5).
+**Statut : BF16 retenu.** Comparaison BF16 vs F16 (2026-04-02, `compare.py` mode sentence, page_1) : BF16 retranscrit fidèlement plusieurs passages là où F16 hallucine ou reformule. BF16 reste imparfait (voir Bug #1 et #5).
 
 ---
 
@@ -52,9 +52,9 @@ Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 | `rec` | `"Locate <\|ref\|>{target}<\|/ref\|> in the image."` | retourne la/les bbox correspondant au target. Voir section dédiée ci-dessous. |
 | `classic` | (supprimé) | une grounding box par phrase, dépasse systématiquement `n_ctx` |
 
-**Statut :** `plain` retenu pour usage principal. `layout` utile sur certaines pages (page_2), contre-productif sur les tableaux. Aucun prompt universel ne couvre tous les types de page.
+**Statut :** `layout` retenu pour usage principal. Précision légèrement supérieure à `plain`. Permet de récupérer les bbox pour le traitement des images dans la deuxième passe.
 
-**`repetition_penalty`** testé rapidement — apparemment sans effet sur les boucles de génération.
+**`repetition_penalty`** testé — apparemment sans effet sur les boucles de génération.
 
 ### Comportement du mode `rec` (2026-04-03, page_6, BF16, binarize)
 
@@ -72,9 +72,7 @@ Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 
 **Comportement observé :** quand le modèle ne trouve pas l'élément demandé (ou que le target est trop générique), il retourne toutes les bboxes de la page. Quand il trouve un élément spécifique, il retourne uniquement sa bbox et s'arrête. Toute instruction ajoutée après le `<|det|>` est ignorée — la deux passes est obligatoire pour obtenir le contenu d'une région.
 
-**Usage retenu :** `Locate <|ref|>A figure or graph<|/ref|> in the image.` comme passe 1 de détection des figures. Si résultat vide → pas de figure sur la page.
-
-**À tester :** comportement sur page sans figure (faux positif ?), page avec plusieurs figures.
+**Usage retenu :** `Locate <|ref|>A figure or graph<|/ref|> in the image.` pour test rapide, mais non nécessaire dans la pipeline puisque `layout` repère déjà les bbox avec le texte en plus. 
 
 ### Vocabulaire de labels grounding (mode `layout` et `rec`)
 
@@ -111,6 +109,8 @@ Observé sur pages 1–6 (BF16, binarize) :
 | `"Transcribe the text exactly as it appears."` | OCR instable et désordonné, qualité inférieure à `"Free OCR."` |
 | `"Is there a figure in this document?"` | pages 1–3 : description générale ; page_4 : description détaillée du tableau ; page_5 : boucle |
 | `"OCR only the text, ignore any figures."` | ignore figures et tableaux, mais skip aussi certaines colonnes de texte (comportement partiel — voir issues Feature 1) |
+| `"<\|grounding\|>Describe this image in detail."` | équivalent exact de `layout` (grounding boxes + classification régions) — testé page_6 (43.5s) |
+| `"<\|grounding\|>Parse the figure."` | **freeze terminal** — à éviter |
 
 **Conclusion :** le modèle ignore systématiquement les instructions de langue. Les prompts de classification (yes/no, figure?) ne produisent pas de réponse structurée utilisable. `"OCR only the text, ignore any figures."` est le seul prompt qui filtre réellement les figures, mais de façon incomplète.
 
