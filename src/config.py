@@ -34,6 +34,7 @@ class Config:
     #   "none"     → image originale
     #   "binarize" → Gaussian blur et binarisation adaptative GAUSSIAN_C
     #   "sauvola"  → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
+    #   "nlmeans"  → fastNlMeansDenoising + binarisation adaptative
     preprocess_mode: str = "binarize"
     binarize_block_size: int = 31
     binarize_c: int = 15
@@ -43,6 +44,8 @@ class Config:
 
     sauvola_window_size: int = 51
     sauvola_k: float = 0.3
+
+    nlmeans_h: int = 15
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
     #   "plain"     → texte brut sans mise en forme

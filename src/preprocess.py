@@ -46,6 +46,23 @@ def preprocess_image(image_path: Path, cfg, save_path: Path | None = None) -> Pa
     return _save(bw, save_path)
 
 
+def nlmeans_binarize(image_path: Path, cfg, save_path: Path | None = None) -> Path:
+    """
+    fastNlMeansDenoising + binarisation adaptative.
+    Débruitage non-local avant seuillage — préserve mieux les bords fins que le blur gaussien.
+    """
+    img  = cv2.imread(str(image_path))
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_h)
+    bw = cv2.adaptiveThreshold(
+        denoised, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        cfg.binarize_block_size, cfg.binarize_c,
+    )
+    return _save(bw, save_path)
+
+
 def sauvola_binarize(image_path: Path, cfg, save_path: Path | None = None) -> Path:
     """
     AND(Sauvola, blur+adaptive) — conserve les pixels texte détectés par l'un ou l'autre.

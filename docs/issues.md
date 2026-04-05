@@ -6,10 +6,9 @@
 État actuel : mode `sauvola` (AND Sauvola w=51 k=0.3 + binarize adaptive) ~93 % de précision estimée sur page bruitée, vs ~90 % pour baseline. Qualité insuffisante. Boucles persistantes sur pages 4, 9 avec les deux modes.
 
 **Pistes à tester (par ordre de priorité) :**
-1. MedianBlur(3) → gaussianblur → binarise avec un C plus petit pour nettoyer le bruit en amont et garder les formes des lettres intactes.
-2. **fastNlMeansDenoising avant binarisation** — débruitage non-local, préserve mieux les bords. Lent (~×10 vs Gaussian).
-3. **Gris sans binarisation + denoising fort** — le modèle reçoit peut-être plus d'information depuis une image grise bien débruitée.
-4. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde.
+1. **fastNlMeansDenoising avant binarisation** — débruitage non-local, préserve mieux les bords. Lent (~×10 vs Gaussian).
+2. **Gris sans binarisation + denoising fort** — le modèle reçoit peut-être plus d'information depuis une image grise bien débruitée.
+3. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde.
 
 
 ---
