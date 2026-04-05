@@ -81,14 +81,9 @@ def run_pipeline(cfg: Config) -> Stats:
                 # ── Étape 1 : Prétraitement ───────────────────────────────
                 t_pre0 = time.time()
                 if cfg.preprocess_mode == "binarize":
-                    preprocessed_path = preprocess_image(
-                        img_path, cfg.binarize_block_size, cfg.binarize_c,
-                        cfg.blur_ksize, cfg.blur_sigma,
-                    )
+                    preprocessed_path = preprocess_image(img_path, cfg)
                 elif cfg.preprocess_mode == "sauvola":
-                    preprocessed_path = sauvola_binarize(
-                        img_path, cfg.sauvola_window_size, cfg.sauvola_k,
-                    )
+                    preprocessed_path = sauvola_binarize(img_path, cfg)
                 else:
                     preprocessed_path = img_path
                 t_pre = time.time() - t_pre0

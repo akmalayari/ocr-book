@@ -18,7 +18,10 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, "src")
+from config import Config
 from preprocess import preprocess_image
+
+_cfg = Config(binarize_block_size=31, binarize_c=10)
 from page_dewarp.cli import Config as DewarpConfig
 from page_dewarp.image import WarpedImage
 
@@ -56,7 +59,7 @@ for src in images:
     print(f"\n--- {src.name} ---")
 
     # 1. Binarize seul (référence)
-    tmp = preprocess_image(src, block_size=31, c=10, blur_ksize=5)
+    tmp = preprocess_image(src, _cfg)
     shutil.copy(str(tmp), str(OUT / (src.stem + "_binarize.jpg")))
     tmp.unlink()
     print(f"  binarize → {src.stem}_binarize.jpg")

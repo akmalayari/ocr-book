@@ -13,7 +13,10 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, "src")
+from config import Config
 from preprocess import preprocess_image
+
+_cfg = Config(binarize_block_size=31, binarize_c=10)
 
 PHOTOS = Path("photos")
 OUT = Path("draft/split")
@@ -48,7 +51,7 @@ images = sorted(p for p in PHOTOS.iterdir() if p.is_file() and p.suffix.lower() 
 for src in images:
     print(f"\n--- {src.name} ---")
 
-    tmp = preprocess_image(src, block_size=31, c=10, blur_ksize=5)
+    tmp = preprocess_image(src, _cfg)
     bw = cv2.imread(str(tmp), cv2.IMREAD_GRAYSCALE)
     tmp.unlink()
 

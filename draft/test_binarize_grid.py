@@ -130,10 +130,7 @@ def main():
                 save_path = OUT_DIR / f"{img_path.stem}_{bs}_{c}.jpg"
                 preprocess_image(
                     img_path,
-                    block_size=bs,
-                    c=c,
-                    blur_ksize=5,
-                    blur_sigma=0.0,
+                    Config(binarize_block_size=bs, binarize_c=c),
                     save_path=save_path,
                 )
         print(f"  {img_path.name} → {len(BLOCK_SIZES) * len(C_VALUES)} fichiers dans {OUT_DIR}")

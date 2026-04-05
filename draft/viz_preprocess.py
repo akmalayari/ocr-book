@@ -26,7 +26,7 @@ for name in PAGES:
         print(f"[skip] {name} introuvable")
         continue
 
-    binarized_path = preprocess_image(src, cfg.binarize_block_size, cfg.binarize_c)
+    binarized_path = preprocess_image(src, cfg)
     binarized      = cv2.imread(str(binarized_path))
 
     stem = Path(name).stem

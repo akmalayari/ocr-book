@@ -43,13 +43,7 @@ PASS2_VARIANTS = [
 
 def run_vlm(vlm, cfg: Config, image_path: Path) -> tuple[str, float]:
     if cfg.preprocess_mode == "binarize":
-        input_path = preprocess_image(
-            image_path,
-            cfg.binarize_block_size,
-            cfg.binarize_c,
-            cfg.blur_ksize,
-            cfg.blur_sigma,
-        )
+        input_path = preprocess_image(image_path, cfg)
     else:
         input_path = image_path
 

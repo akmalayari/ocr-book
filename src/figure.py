@@ -91,12 +91,7 @@ def process_figures(
             tmp_path = Path(tmp.name)
         try:
             if cfg.preprocess_mode == "binarize":
-                input_path = preprocess_image(
-                    crop_orig,
-                    cfg.binarize_block_size, cfg.binarize_c,
-                    cfg.blur_ksize, cfg.blur_sigma,
-                    save_path=tmp_path,
-                )
+                input_path = preprocess_image(crop_orig, cfg, save_path=tmp_path)
             else:
                 input_path = crop_orig
             parse_text, metrics = ocr_image(input_path, vlm, cfg_parse)

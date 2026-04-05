@@ -39,12 +39,7 @@ def main():
 
     # ── Variante A : binarize(page) → crop → parse ───────────────────────────
     print("\n--- Variante A : binarize(page) → crop → parse ---")
-    binarized_page = preprocess_image(
-        IMAGE_PATH,
-        cfg.binarize_block_size, cfg.binarize_c,
-        cfg.blur_ksize, cfg.blur_sigma,
-        save_path=OUT_DIR / "page_binarized.jpg",
-    )
+    binarized_page = preprocess_image(IMAGE_PATH, cfg, save_path=OUT_DIR / "page_binarized.jpg")
     crop_a = OUT_DIR / "crop_A.jpg"
     crop_image(binarized_page, BBOX, crop_a)
     text_a, metrics_a = ocr_image(crop_a, vlm, cfg)
@@ -56,12 +51,7 @@ def main():
     print("\n--- Variante B : crop → binarize(crop) → parse ---")
     crop_b_raw = OUT_DIR / "crop_B_raw.jpg"
     crop_image(IMAGE_PATH, BBOX, crop_b_raw)
-    binarized_crop = preprocess_image(
-        crop_b_raw,
-        cfg.binarize_block_size, cfg.binarize_c,
-        cfg.blur_ksize, cfg.blur_sigma,
-        save_path=OUT_DIR / "crop_B_binarized.jpg",
-    )
+    binarized_crop = preprocess_image(crop_b_raw, cfg, save_path=OUT_DIR / "crop_B_binarized.jpg")
     text_b, metrics_b = ocr_image(binarized_crop, vlm, cfg)
     print(f"  latency: {metrics_b['total_latency']:.1f}s")
     (OUT_DIR / "result_B__crop_then_binarize.md").write_text(text_b, encoding="utf-8")
