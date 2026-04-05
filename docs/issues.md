@@ -1,6 +1,11 @@
 # Issues — travaux en cours
 
 ## Version multimodale (actuelle)
+OK
+
+---
+
+## Prochaines versions
 
 ### Bug 4 — Robustesse du préprocessing (bruit, flou, éclairage inégal)
 Objectif : rendre l'OCR plus tolérant aux images imparfaites. Urgent: le modele boucle dès que la qualité n'est pas parfaite, meme en bf16. Cela rend le modèle concrètement inutilisable.
@@ -18,10 +23,6 @@ Objectif : rendre l'OCR plus tolérant aux images imparfaites. Urgent: le modele
 8. **Sauvola binarization** (`scikit-image`) — conçue pour les documents dégradés, tient compte de la variance locale.
 9. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde.
 
-
----
-
-## Prochaines versions
 
 ### Feature 2 — Support PDF multi-pages
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.

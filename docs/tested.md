@@ -91,7 +91,18 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 **Effet de la qualité d'image sur la classification :** page_5 (floue) → graphique classé `table`, hallucination `<td>30</td>` en boucle. Page_6 (nette, même contenu) → graphique correctement classé `image`, contenu vide.
 
-**Contenu des régions `image` :** toujours vide — le modèle détecte et délimite la région mais ne génère aucune description. Le prompt `"Parse the figure."` est la piste pour obtenir un contenu (à tester en deux passes).
+**Contenu des régions `image` :** toujours vide — le modèle détecte et délimite la région mais ne génère aucune description. Voir section ci-dessous pour les résultats des deux passes sur le crop.
+
+### Deuxième passe sur crop de graphique (2026-04-05, page_6, BF16, `draft/test_two_pass.py`)
+
+| Combinaison | Résultat |
+|---|---|
+| `parse` + raw | tableau structuré, notes de bas de tableau absentes |
+| `parse` + binarize | tableau structuré, notes de bas de tableau présentes mais traitées comme des lignes du tableau |
+| `describe` + raw | description générale + bruit d'interprétation |
+| `describe` + binarize | description générale + bruit d'interprétation |
+
+**Verdict : `parse` + `binarize` retenu** pour la deuxième passe sur les régions `image`. Meilleure extraction des éléments visuels. Limitation connue : les notes de bas de tableau sont incluses dans le tableau au lieu d'être séparées.
 
 ### Prompts custom testés (2026-04-03, BF16, binarize)
 
