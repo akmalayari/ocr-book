@@ -41,10 +41,11 @@ Vérifie ta mémoire en début de session : `memory/`
 - Pas de récapitulatif en fin de message sauf si le changement est complexe
 
 ### Git
-- add et commit a chaque implémentation: grouper les fichiers modifiés de préférence à part si la modification est isolée.
+- add et commit a chaque issue résolue: grouper les fichiers modifiés de préférence à part si la modification est isolée.
+- ne pas commit des fichiers de `draft/`seuls.
 
 ### Issues
-- après implémentation, mettre a jour issues.md.
+- après implémentation, mettre a jour issues.md si pertinent.
 - après implémentation, effacer les sous-sections (`###`) de issues.md résolues.
 - eviter de laisser une section (`##`) de issues.md vide: écrire "OK".
 
