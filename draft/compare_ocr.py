@@ -35,9 +35,10 @@ ROOT = Path(__file__).parent.parent / "output"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (ROOT / "sauvola_patch" / "page_5_baseline.md", "baseline"),
-    (ROOT / "sauvola_patch" / "page_5_and_51_03.md", "and_51_03"),
-    (ROOT / "binarize_grid" / "page_6_31_15.md", "page_6_baseline"),
+    (ROOT / "sauvola_patch" / "page_5_baseline.md", "baseline_5"),
+    (ROOT / "sauvola_patch" / "page_5_and_51_03.md", "sauvola_5"),
+    (ROOT / "pipeline" / "page_6_baseline.md", "baseline_6"),
+    (ROOT / "pipeline" / "page_6_sauvola.md", "sauvola_6"),
     # Ajouter autant de lignes que nécessaire :
     # (ROOT / "sauvola_patch" / "page_5_bgdiv_51_02.md", "bgdiv_51_02"),
     # (ROOT / "binarize_grid" / "page_5_31_15.md",       "grid_31_15"),

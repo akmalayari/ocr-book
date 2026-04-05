@@ -46,7 +46,7 @@ Vérifie ta mémoire en début de session : `memory/`
 
 ### Issues
 - après implémentation, mettre a jour issues.md si pertinent.
-- après implémentation, effacer les sous-sections (`###`) de issues.md résolues.
+- après implémentation, effacer les sous-sections (`###`) et items de la sous-section qui sont résolus (`issues.md`).
 - eviter de laisser une section (`##`) de issues.md vide: écrire "OK".
 
 ### Draft
