@@ -35,7 +35,7 @@ class Config:
     #   "binarize" → Gaussian blur et binarisation adaptative GAUSSIAN_C
     preprocess_mode: str = "binarize"
     binarize_block_size: int = 31
-    binarize_c: int = 10
+    binarize_c: int = 15
 
     blur_ksize: int = 5
     blur_sigma: float = 0.0

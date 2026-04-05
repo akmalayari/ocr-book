@@ -148,16 +148,19 @@ Observé sur pages 1–6 (BF16, binarize) :
 **Statut : non retenu pour l'instant.** Testé visuellement (`draft/viz_preprocess2.py`). Normalise l'illumination en divisant par un fond estimé (GaussianBlur 101×101). Résultat visuel intéressant sur les pages avec éclairage très inégal, mais non testé en OCR.
 
 ### Binarisation adaptive (GAUSSIAN_C, blockSize=31, C=10)
-**Statut : retenu, combiné avec GaussianBlur.** Meilleur qualité, évite les boucles, améliore la précision du texte.
+**Statut : remplacé par blockSize=31, C=15.** Provoque des boucles de génération sur pages floues ou bruitées.
 
-**Avantages :** rapide, supprime le fond, robuste aux variations d'éclairage locales, réduit les hallucinations.  
-**Limites :** sensible aux images floues.
+**Avantages :** rapide, supprime le fond, robuste aux variations d'éclairage locales.  
+**Limites :** C=10 efface les traits mous sur images floues → boucles `<td>` HTML.
 
-### GaussianBlur(5,5) + binarize adaptive
-**Statut : retenu, intégré dans `preprocess.py`.** Validé sur pages 1–5 (`draft/test_blur_binarize.py`). Supprime les granulés avant binarisation, texte plus net. Améliore les résultats sur `plain` et `layout`. Paramètres exposés dans `config.py` : `blur_ksize` (défaut `5`), `blur_sigma` (défaut `0.0`).
+### GaussianBlur(5,5) + binarize adaptive (blockSize=31, C=15)
+**Statut : retenu, paramètres par défaut mis à jour.** Grid test blockSize ∈ {21,31} × C ∈ {10,15} sur page_5 (bruitée, Laplacien=58) et page_6 (nette, Laplacien=134) via `draft/test_binarize_grid.py` + `draft/compare_grid.py`.
 
-**Avantages :** même rapidité que binarize seule, réduit les artefacts de grain.  
-**Limites :** n'aide pas sur du flou de mise au point prononcé.
+- C=10 (ancien défaut) : boucles HTML `<tr><td>` sur pages floues/bruitées. Détection de boucle par fréquence de mots insuffisante pour ce type de boucle — ajout de `_has_char_repeat` dans `ocr_client.py`.
+- C=15 : aucune boucle sur page_5 ni page_6. blockSize=31 >≈ blockSize=21 sur page bruitée (91 % vs 85 % de similarité word-level vs référence page_6).
+- Paramètre `C` augmenté de 10 à 15 dans `config.py`.
+
+**Limites :** précision dégradée sur pages très bruitées (page_5) — amélioration supplémentaire à explorer.
 
 ### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
 **Statut : abandonné.** Testé dans `draft/test_unsharp.py`. Amplifie les hautes fréquences — ajoute des granulés sombres, dégrade la binarisation sur la plupart des configs. Inefficace sur du flou de mise au point (l'information haute fréquence est physiquement perdue).
