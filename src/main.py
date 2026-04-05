@@ -53,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"Mode OCR : {', '.join(_modes)}")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
                    help="Tokens max par page")
-    p.add_argument("--preprocess", choices=["none", "binarize"],
+    p.add_argument("--preprocess", choices=["none", "binarize", "sauvola"],
                    default=_cfg.preprocess_mode,
                    help="Pré-traitement image")
 

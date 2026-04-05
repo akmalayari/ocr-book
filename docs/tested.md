@@ -162,6 +162,35 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 **Limites :** précision dégradée sur pages très bruitées (page_5) — amélioration supplémentaire à explorer.
 
+### Opérations morphologiques après binarisation (opening/closing)
+**Statut : abandonné.** Testé sur pages 1, 2, 5, 6 via `draft/test_morpho.py` (kernels 2×2 et 3×3, opening, closing, open+close, close+open). Le texte reste haché sur les pages bruitées — les opérations morphologiques ne récupèrent pas les traits effaces par la binarisation adaptative.
+
+### Sauvola binarization seul (scikit-image, `threshold_sauvola`)
+**Statut : abandonné.** Rend bien le texte en général, mais efface le texte dans les zones à faible variance locale (pliure, ombre de reliure) → la variante `AND` ci-dessous est retenue à la place.
+
+### AND(Sauvola w=51 k=0.3, binarize adaptive) — mode `"sauvola"`
+**Statut : retenu.** Testé sur pages 1, 2, 5, 6 via `draft/test_sauvola_patch.py` + pipeline complète (`--preprocess sauvola`).
+
+`bitwise_and(sauvola(gray, w=51, k=0.3), adaptive_binarize(gray))` — conserve les pixels texte détectés par l'un ou l'autre → corrige la perte de texte de Sauvola dans la pliure, améliore la précision sur les pages bruitées.
+
+**Précision estimée (page_5) :** `0.98 × 0.95 = 93 %` (vs `0.98 × 0.92 = 90 %` pour baseline). Calcul : `sim(sauvola_page5, baseline_page6) = 95 %` et `sim(baseline_page5, baseline_page6) = 92 %`, avec `sim(page6_31_15, page6_31_10) ≈ 98 %` comme proxy de précision de la référence.
+
+**Pipeline complète (2026-04-05, `--preprocess sauvola`) :**
+- Boucle sur pages 4, 9, 10.
+- Page 4 : retranscrit approximativement le grand tableau (meilleure tentative à ce jour), boucle sur les notes de bas de tableau.
+- Page 9 : retranscrit les repères sans boucler, boucle sur le début de la bibliographie.
+- Page 10 : boucle au milieu du texte.
+- Page 5 : échec complet sur le graphique (très flou, 2e passe).
+
+**Pipeline complète (2026-04-05, `--preprocess binarize`) :**
+- Boucle sur pages 4, 5 (2e passe), 9.
+- Page 4 : boucle sur le grand tableau sans retranscrire les informations.
+- Page 5 : boucle uniquement sur la 2e passe (figure), texte principal OK.
+- Page 9 : boucle dès le début ("un, " en boucle).
+- Page 10 : première retranscription de la courbe de Lorenz, qualité très médiocre.
+
+**Intégration :** `src/preprocess.py::sauvola_binarize()`, `preprocess_mode="sauvola"` dans `Config`, `--preprocess sauvola` en CLI.
+
 ### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
 **Statut : abandonné.** Testé dans `draft/test_unsharp.py`. Amplifie les hautes fréquences — ajoute des granulés sombres, dégrade la binarisation sur la plupart des configs. Inefficace sur du flou de mise au point (l'information haute fréquence est physiquement perdue).
 
@@ -182,5 +211,5 @@ Tentative de contournement : couper l'image en deux moitiés (mi-largeur), dewar
 | Paramètre | Valeur testée | Effet |
 |---|---|---|
 | `repetition_penalty` | 1.1 | apparemment sans effet sur les boucles de génération |
-| `max_tokens` | 2048 | coupe la génération avant qu'elle parte en boucle infinie (à affiner) |
+| `max_tokens` | 4096 | valeur courante — 2048 coupait certaines pages longues |
 | `temperature` | 0.0 | déterministe, retenu |

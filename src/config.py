@@ -21,7 +21,7 @@ class Config:
     n_batch: int      = 1024
 
     # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int        = 2048
+    max_tokens: int        = 4096
     temperature: float     = 0.0
     repetition_penalty: float = 1.1
 
@@ -33,12 +33,16 @@ class Config:
     # ── Pré-traitement ───────────────────────────────────────────────────────
     #   "none"     → image originale
     #   "binarize" → Gaussian blur et binarisation adaptative GAUSSIAN_C
+    #   "sauvola"  → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
     preprocess_mode: str = "binarize"
     binarize_block_size: int = 31
     binarize_c: int = 15
 
     blur_ksize: int = 5
     blur_sigma: float = 0.0
+
+    sauvola_window_size: int = 51
+    sauvola_k: float = 0.3
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
     #   "plain"     → texte brut sans mise en forme

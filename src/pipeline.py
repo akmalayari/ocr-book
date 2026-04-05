@@ -10,7 +10,7 @@ from nexaai import VLM
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from preprocess import preprocess_image
+from preprocess import preprocess_image, sauvola_binarize
 from figure import process_figures
 from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages
 from images import collect_images
@@ -76,12 +76,17 @@ def run_pipeline(cfg: Config) -> Stats:
             #           (orchestré dans figure.process_figures)
             t0 = time.time()
             try:
-                preprocessed_path = (
-                    preprocess_image(img_path, cfg.binarize_block_size, cfg.binarize_c,
-                                     cfg.blur_ksize, cfg.blur_sigma)
-                    if cfg.preprocess_mode == "binarize"
-                    else img_path
-                )
+                if cfg.preprocess_mode == "binarize":
+                    preprocessed_path = preprocess_image(
+                        img_path, cfg.binarize_block_size, cfg.binarize_c,
+                        cfg.blur_ksize, cfg.blur_sigma,
+                    )
+                elif cfg.preprocess_mode == "sauvola":
+                    preprocessed_path = sauvola_binarize(
+                        img_path, cfg.sauvola_window_size, cfg.sauvola_k,
+                    )
+                else:
+                    preprocessed_path = img_path
                 raw_text, metrics = ocr_image(preprocessed_path, vlm, cfg)
 
                 if cfg.prompt_mode == "layout" and cfg.two_pass:

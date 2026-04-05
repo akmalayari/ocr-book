@@ -19,6 +19,7 @@ nexa_sdk==0.1.1
 nexaai==1.0.44
 numpy==2.4.4
 opencv-python==4.13.0.92
+scikit-image
 page-dewarp[jax]==0.2.7
 packaging==26.0
 Pygments==2.19.2
