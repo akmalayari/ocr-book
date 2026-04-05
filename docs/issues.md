@@ -3,7 +3,7 @@
 ## Version robuste (actuelle)
 
 ### Bug 4 — Robustesse du préprocessing sur images bruitées
-État actuel : mode `sauvola` (AND Sauvola w=51 k=0.3 + binarize adaptive) ~93 % de précision estimée sur page bruitée, vs ~90 % pour baseline. Qualité insuffisante. Boucles persistantes sur pages 4, 9, 10 avec les deux modes.
+État actuel : mode `sauvola` (AND Sauvola w=51 k=0.3 + binarize adaptive) ~93 % de précision estimée sur page bruitée, vs ~90 % pour baseline. Qualité insuffisante. Boucles persistantes sur pages 4, 9 avec les deux modes.
 
 **Pistes à tester (par ordre de priorité) :**
 1. MedianBlur(3) → gaussianblur → binarise avec un C plus petit pour nettoyer le bruit en amont et garder les formes des lettres intactes.
@@ -28,12 +28,11 @@ Courbure due à la reliure — déforme les lignes de texte géométriquement. P
 3. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. Dernier recours.
 
 ### Amélioration 1 — Performance BF16 (~50s/image)
-BF16 est 2.5× plus lent que Q8_0 (~20s). Coût purement inference.
+BF16 est 2.5× plus lent que Q8_0 (~20s). Temps couteux sur des centaines de pages.
 
 **Pistes à tester (par ordre de priorité) :**
 1. **Réduire la résolution des images** — redimensionner à ~1200px de large avant VLM. Hypothèse : gain 30–50%.
-2. **Profiler le vrai bottleneck** — chronométrer séparément l'encodage visuel et le décodage texte.
-3. **Changer de wrapper Python (llama-cpp-python)** — secondaire, peu probable d'accélérer.
+2. **Changer de wrapper Python (llama-cpp-python)** — secondaire, peu probable d'accélérer.
 
 ## Architecture
 
