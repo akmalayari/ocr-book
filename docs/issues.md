@@ -3,12 +3,12 @@
 ## Version robuste (actuelle)
 
 ### Bug 4 — Robustesse du préprocessing sur images bruitées
-État actuel : mode `sauvola` (AND Sauvola w=51 k=0.3 + binarize adaptive) ~93 % de précision estimée sur page bruitée, vs ~90 % pour baseline. Qualité insuffisante. Boucles persistantes sur pages 4, 9 avec les deux modes.
+État actuel : mode `sauvola` ~93 % précision estimée sur page bruitée. Boucles persistantes sur pages 4, 9. Visualisations `draft/test_nlmeans.py` terminées — 5 configs sélectionnées pour OCR.
 
-**Pistes à tester (par ordre de priorité) :**
-1. **fastNlMeansDenoising avant binarisation** — débruitage non-local, préserve mieux les bords. Lent (~×10 vs Gaussian).
-2. **Gris sans binarisation + denoising fort** — le modèle reçoit peut-être plus d'information depuis une image grise bien débruitée.
-3. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde.
+**Prochaines étapes :**
+1. **Phase OCR** sur `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and`, `nlm5_and` (pages 4, 9, 5) via `draft/test_nlmeans.py --ocr`.
+2. **estimate_noise_level pour fine-tuning de h** — utiliser `estimate_sigma` (skimage) ou Laplacien pour adapter dynamiquement `nlmeans_h` selon le niveau de bruit de chaque image. Voir `draft/report_laplacian.py::estimate_noise_level()`.
+3. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde. Dernier recours.
 
 
 ---

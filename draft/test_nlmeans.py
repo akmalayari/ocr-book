@@ -40,19 +40,22 @@ REF_DIR    = Path(__file__).parent.parent / "output" / "sauvola_patch"
 
 DEFAULT_PAGES = ["page_4", "page_9", "page_5"]
 
-# Valeurs de h à tester
-NLMEANS_H_VALUES: list[int] = [10, 15, 20]
+# Configs OCR-éligibles (phase 2)
+OCR_CONFIGS: dict[str, str] = {
+    "median_and":  "medianBlur(3) + AND(Sauvola w=51, adaptive)",
+    "nlm5_median": "nlmeans(h=5) + medianBlur(3) + adaptive",
+    "nlmeans_10":  "nlmeans(h=10) + adaptive",
+    "nlm10_and":   "nlmeans(h=10) + AND(Sauvola w=51, adaptive)",
+    "nlm5_and":    "nlmeans(h=5) + AND(Sauvola w=51, adaptive)",
+}
 
-# Configs nlmeans (seules passées à l'OCR)
-NLMEANS_CONFIGS: dict[str, str] = {}
-for _h in NLMEANS_H_VALUES:
-    NLMEANS_CONFIGS[f"nlmeans_{_h}"] = f"fastNlMeans h={_h} + adaptive C=15"
-
-# Toutes les configs pour la visualisation phase 1
+# Toutes les configs pour la visualisation phase 1 (OCR + viz-only)
 VIZ_CONFIGS: dict[str, str] = {
-    "baseline": "GaussianBlur(5,5) + adaptive C=15",
-    "sauvola":  "AND(Sauvola w=51 k=0.3, baseline)",
-    **NLMEANS_CONFIGS,
+    "baseline":           "GaussianBlur(5,5) + adaptive C=15",
+    "sauvola":            "AND(Sauvola w=51 k=0.3, baseline)",
+    **OCR_CONFIGS,
+    "nlmeans_10_raw":     "nlmeans(h=10) seul (gris, pas binarisé)",
+    "nlmeans_10_sauvola": "nlmeans(h=10) + Sauvola seul (sans AND)",
 }
 
 # Références existantes pour la comparaison (label → chemin du .md)
@@ -94,6 +97,114 @@ def _nlmeans(gray: np.ndarray, h: int) -> np.ndarray:
     )
 
 
+def _nlmeans_sauvola(gray: np.ndarray, h: int) -> np.ndarray:
+    """fastNlMeans + Sauvola seul (sans AND avec adaptive)."""
+    from skimage.filters import threshold_sauvola
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    thresh   = threshold_sauvola(denoised, window_size=51, k=0.3)
+    return ((denoised > thresh).astype(np.uint8)) * 255
+
+
+def _nlmeans_and(gray: np.ndarray, h: int) -> np.ndarray:
+    """fastNlMeans + AND(Sauvola, adaptive) — équivalent sauvola_binarize mais sur image débruitée."""
+    from skimage.filters import threshold_sauvola
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    thresh   = threshold_sauvola(denoised, window_size=51, k=0.3)
+    sauvola  = ((denoised > thresh).astype(np.uint8)) * 255
+    adaptive = cv2.adaptiveThreshold(
+        denoised, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+    return cv2.bitwise_and(sauvola, adaptive)
+
+
+def _nlmeans_median(gray: np.ndarray, h: int) -> np.ndarray:
+    """nlmeans + medianBlur(3) + adaptive — supprime les granules résiduels."""
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    median   = cv2.medianBlur(denoised, 3)
+    return cv2.adaptiveThreshold(
+        median, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+
+
+def _nlmeans_open(gray: np.ndarray, h: int) -> np.ndarray:
+    """nlmeans + adaptive + MORPH_OPEN(2×2) — élimine les pixels isolés post-binarisation."""
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    bw = cv2.adaptiveThreshold(
+        denoised, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    return cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel)
+
+
+def _bg_divide(gray: np.ndarray, blur_ksize: int = 101) -> np.ndarray:
+    bg   = cv2.GaussianBlur(gray, (blur_ksize, blur_ksize), 0).astype(np.float32)
+    bg   = np.where(bg < 1, 1, bg)
+    return (gray.astype(np.float32) / bg * 128).clip(0, 255).astype(np.uint8)
+
+
+def _nlmeans_bgdiv(gray: np.ndarray, h: int) -> np.ndarray:
+    """nlmeans + bg_divide + adaptive."""
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    normed   = _bg_divide(denoised)
+    return cv2.adaptiveThreshold(
+        normed, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+
+
+def _nlmeans_bgdiv_and(gray: np.ndarray, h: int) -> np.ndarray:
+    """nlmeans + bg_divide + AND(Sauvola, adaptive)."""
+    from skimage.filters import threshold_sauvola
+    denoised = cv2.fastNlMeansDenoising(gray, h=h)
+    normed   = _bg_divide(denoised)
+    thresh   = threshold_sauvola(normed, window_size=51, k=0.3)
+    sauvola  = ((normed > thresh).astype(np.uint8)) * 255
+    adaptive = cv2.adaptiveThreshold(
+        normed, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+    return cv2.bitwise_and(sauvola, adaptive)
+
+
+def _median_adaptive(gray: np.ndarray) -> np.ndarray:
+    """medianBlur(3) + adaptive."""
+    median = cv2.medianBlur(gray, 3)
+    return cv2.adaptiveThreshold(
+        median, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+
+
+def _median_and(gray: np.ndarray) -> np.ndarray:
+    """medianBlur(3) + AND(Sauvola, adaptive)."""
+    from skimage.filters import threshold_sauvola
+    median   = cv2.medianBlur(gray, 3)
+    thresh   = threshold_sauvola(median, window_size=51, k=0.3)
+    sauvola  = ((median > thresh).astype(np.uint8)) * 255
+    adaptive = cv2.adaptiveThreshold(
+        median, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31, 15,
+    )
+    return cv2.bitwise_and(sauvola, adaptive)
+
+
 def _get_image(img_path: Path, config_name: str) -> np.ndarray:
     img  = cv2.imread(str(img_path))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -102,9 +213,30 @@ def _get_image(img_path: Path, config_name: str) -> np.ndarray:
         return _baseline(gray)
     if config_name == "sauvola":
         return _sauvola(gray)
-    for h in NLMEANS_H_VALUES:
-        if config_name == f"nlmeans_{h}":
-            return _nlmeans(gray, h)
+    if config_name == "nlmeans_10_raw":
+        return cv2.fastNlMeansDenoising(gray, h=10)
+    if config_name == "nlmeans_10_sauvola":
+        return _nlmeans_sauvola(gray, h=10)
+    if config_name == "nlmeans_5":
+        return _nlmeans(gray, 5)
+    if config_name == "nlmeans_10":
+        return _nlmeans(gray, 10)
+    if config_name == "nlm5_median":
+        return _nlmeans_median(gray, 5)
+    if config_name == "nlm5_open":
+        return _nlmeans_open(gray, 5)
+    if config_name == "nlm5_and":
+        return _nlmeans_and(gray, 5)
+    if config_name == "nlm10_and":
+        return _nlmeans_and(gray, 10)
+    if config_name == "nlm10_bgdiv":
+        return _nlmeans_bgdiv(gray, 10)
+    if config_name == "nlm10_bgdiv_and":
+        return _nlmeans_bgdiv_and(gray, 10)
+    if config_name == "median_adaptive":
+        return _median_adaptive(gray)
+    if config_name == "median_and":
+        return _median_and(gray)
 
     raise ValueError(f"Config inconnue : {config_name}")
 
@@ -121,7 +253,7 @@ def phase1_visualize(images: list[Path]) -> None:
             n += 1
         print(f"  {img_path.name} → {n} fichiers")
     print(f"\nImages dans {OUT_DIR}")
-    print("Pour lancer l'OCR : --ocr  (ou --ocr nlmeans_10 nlmeans_15)")
+    print("Pour lancer l'OCR : --ocr  (ou --ocr nlm5_and nlm10_and ...)")
 
 
 # ── Phase 2 : OCR (nlmeans uniquement) ───────────────────────────────────────
@@ -136,9 +268,9 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str]) -> None:
 
     for img_path in images:
         for config_name in configs_to_run:
-            if config_name not in NLMEANS_CONFIGS:
-                print(f"  [SKIP] '{config_name}' n'est pas une config nlmeans.")
-                print(f"  Configs OCR disponibles : {', '.join(NLMEANS_CONFIGS)}")
+            if config_name not in OCR_CONFIGS:
+                print(f"  [SKIP] '{config_name}' n'est pas une config OCR.")
+                print(f"  Configs OCR disponibles : {', '.join(OCR_CONFIGS)}")
                 continue
 
             preprocessed = _get_image(img_path, config_name)
@@ -197,14 +329,14 @@ def _normalize(text: str) -> str:
 
 
 def _sim(path_a: Path, path_b: Path) -> float:
-    from compare import tokenize_words
+    from draft.obsolete.compare import tokenize_words
     ta = tokenize_words(path_a.read_text(encoding="utf-8"))
     tb = tokenize_words(path_b.read_text(encoding="utf-8"))
     return difflib.SequenceMatcher(None, ta, tb, autojunk=False).ratio()
 
 
 def phase3_compare(images: list[Path]) -> None:
-    from compare import compare
+    from draft.obsolete.compare import compare
 
     cmp_dir = OUT_DIR / "comparisons"
     cmp_dir.mkdir(parents=True, exist_ok=True)
@@ -242,9 +374,9 @@ def phase3_compare(images: list[Path]) -> None:
         # Refs disponibles pour cette page
         page_refs = {k: v for k, v in normed.items()
                      if k.startswith(img_path.stem + "_") and
-                     not any(k == f"{img_path.stem}_{c}" for c in NLMEANS_CONFIGS)}
+                     not any(k == f"{img_path.stem}_{c}" for c in OCR_CONFIGS)}
 
-        for config_name in NLMEANS_CONFIGS:
+        for config_name in OCR_CONFIGS:
             cand_key = f"{img_path.stem}_{config_name}"
             if cand_key not in normed:
                 print(f"  [SKIP] {cand_key}.md manquant — lancer --ocr d'abord")
@@ -298,8 +430,8 @@ def main() -> None:
         print("Configs visualisation :")
         for name, desc in VIZ_CONFIGS.items():
             print(f"  {name:20s}  {desc}")
-        print("\nConfigs OCR (nlmeans uniquement) :")
-        for name, desc in NLMEANS_CONFIGS.items():
+        print("\nConfigs OCR :")
+        for name, desc in OCR_CONFIGS.items():
             print(f"  {name:20s}  {desc}")
         return
 
@@ -325,7 +457,7 @@ def main() -> None:
     if args.ocr is None:
         return
 
-    configs_to_run = list(NLMEANS_CONFIGS.keys()) if len(args.ocr) == 0 else args.ocr
+    configs_to_run = list(OCR_CONFIGS.keys()) if len(args.ocr) == 0 else args.ocr
     phase2_ocr(images, configs_to_run)
 
 

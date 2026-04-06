@@ -168,6 +168,26 @@ Observé sur pages 1–6 (BF16, binarize) :
 ### Sauvola binarization seul (scikit-image, `threshold_sauvola`)
 **Statut : abandonné.** Rend bien le texte en général, mais efface le texte dans les zones à faible variance locale (pliure, ombre de reliure) → la variante `AND` ci-dessous est retenue à la place.
 
+### fastNlMeansDenoising + binarize adaptive — mode `"nlmeans"`
+**Statut : en cours de test OCR.** Testé visuellement sur pages 4, 5, 9 via `draft/test_nlmeans.py`. Configs évaluées : `nlmeans_5`, `nlmeans_10`, `nlmeans_15`, `nlm5_median`, `nlm5_open`, `nlm5_and`, `nlm10_and`, `nlm10_bgdiv`, `nlm10_bgdiv_and`, `median_adaptive`, `median_and`.
+
+**Observations visuelles :**
+- `nlmeans_5` : granulés résiduels sur certaines pages, texte plus net qu'avec baseline.
+- `nlmeans_10` : bon équilibre débruitage/préservation des traits.
+- `nlm5_median` (nlmeans h=5 + medianBlur(3) + adaptive) : granulés supprimés, prometteur.
+- `nlm5_and` : très bon sur page_9, granulés sur les autres pages.
+- `nlm10_and` : bons résultats, régulier entre pages.
+- `median_and` (medianBlur(3) + AND(Sauvola, adaptive)) : prometteur, rapide.
+- `nlm10_bgdiv`, `nlm10_bgdiv_and` : non retenus pour l'OCR après visualisation.
+- `nlm5_open` (MORPH_OPEN post-binarisation) : non retenu.
+
+**Configs retenues pour phase OCR :** `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and`, `nlm5_and`.
+
+**Intégration :** `src/preprocess.py::nlmeans_binarize()`, `nlmeans_h: int = 15` dans `Config`.
+
+### medianBlur(3) seul + adaptive
+Testé visuellement dans `draft/test_nlmeans.py`. La variante `median_and` (avec AND Sauvola) est retenue pour l'OCR.
+
 ### AND(Sauvola w=51 k=0.3, binarize adaptive) — mode `"sauvola"`
 **Statut : retenu.** Testé sur pages 1, 2, 5, 6 via `draft/test_sauvola_patch.py` + pipeline complète (`--preprocess sauvola`).
 
