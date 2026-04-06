@@ -31,12 +31,18 @@ class Config:
     loop_divisor_threshold: float = 0.8 # % de mots dont le count doit être divisible
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
-    PREPROCESS_MODES: ClassVar[tuple] = ("none", "binarize", "sauvola_and", "nlmeans")
     #   "none"        → image originale
     #   "binarize"    → Gaussian blur et binarisation adaptative GAUSSIAN_C
     #   "sauvola_and" → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
     #   "nlmeans"     → fastNlMeansDenoising + binarisation adaptative
-    preprocess_mode: str = "binarize"
+    PREPROCESS_MODES: ClassVar[tuple] = (
+        "none", 
+        "binarize", 
+        "sauvola_and", 
+        "nlmeans"
+    )
+    preprocess_mode: str = "sauvola_and"
+
     binarize_block_size: int = 31
     binarize_c: int = 15
 
@@ -46,7 +52,7 @@ class Config:
     sauvola_window_size: int = 51
     sauvola_k: float = 0.3
 
-    nlmeans_h: int = 15
+    nlmeans_h: int = 10
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
     #   "plain"     → texte brut sans mise en forme
