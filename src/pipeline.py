@@ -82,7 +82,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 t_pre0 = time.time()
                 if cfg.preprocess_mode == "binarize":
                     preprocessed_path = preprocess_image(img_path, cfg)
-                elif cfg.preprocess_mode == "sauvola":
+                elif cfg.preprocess_mode == "sauvola_and":
                     preprocessed_path = sauvola_binarize(img_path, cfg)
                 else:
                     preprocessed_path = img_path

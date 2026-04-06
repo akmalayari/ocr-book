@@ -52,10 +52,8 @@ OCR_CONFIGS: dict[str, str] = {
 # Toutes les configs pour la visualisation phase 1 (OCR + viz-only)
 VIZ_CONFIGS: dict[str, str] = {
     "baseline":           "GaussianBlur(5,5) + adaptive C=15",
-    "sauvola":            "AND(Sauvola w=51 k=0.3, baseline)",
+    "sauvola_and":            "AND(Sauvola w=51 k=0.3, baseline)",
     **OCR_CONFIGS,
-    "nlmeans_10_raw":     "nlmeans(h=10) seul (gris, pas binarisé)",
-    "nlmeans_10_sauvola": "nlmeans(h=10) + Sauvola seul (sans AND)",
 }
 
 # Références existantes pour la comparaison (label → chemin du .md)

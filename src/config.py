@@ -31,10 +31,11 @@ class Config:
     loop_divisor_threshold: float = 0.8 # % de mots dont le count doit être divisible
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
-    #   "none"     → image originale
-    #   "binarize" → Gaussian blur et binarisation adaptative GAUSSIAN_C
-    #   "sauvola"  → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
-    #   "nlmeans"  → fastNlMeansDenoising + binarisation adaptative
+    PREPROCESS_MODES: ClassVar[tuple] = ("none", "binarize", "sauvola_and", "nlmeans")
+    #   "none"        → image originale
+    #   "binarize"    → Gaussian blur et binarisation adaptative GAUSSIAN_C
+    #   "sauvola_and" → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
+    #   "nlmeans"     → fastNlMeansDenoising + binarisation adaptative
     preprocess_mode: str = "binarize"
     binarize_block_size: int = 31
     binarize_c: int = 15
