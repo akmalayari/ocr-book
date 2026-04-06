@@ -35,11 +35,15 @@ class Config:
     #   "binarize"    → Gaussian blur et binarisation adaptative GAUSSIAN_C
     #   "sauvola_and" → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
     #   "nlmeans"     → fastNlMeansDenoising + binarisation adaptative
+    #   "median_and"  → medianBlur(3) + AND(Sauvola, adaptive)
+    #   "nlmeans_and" → fastNlMeansDenoising + AND(Sauvola, adaptive)
     PREPROCESS_MODES: ClassVar[tuple] = (
-        "none", 
-        "binarize", 
-        "sauvola_and", 
-        "nlmeans"
+        "none",
+        "blur_adaptive",
+        "sauvola_and",
+        "nlmeans",
+        "median_and",
+        "nlmeans_and",
     )
     preprocess_mode: str = "sauvola_and"
 

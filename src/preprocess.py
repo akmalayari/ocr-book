@@ -63,20 +63,71 @@ def nlmeans_binarize(image_path: Path, cfg, save_path: Path | None = None) -> Pa
     return _save(bw, save_path)
 
 
+def _sauvola_and_adaptive(
+    gray: np.ndarray,
+    block_size: int,
+    c: int,
+    window_size: int,
+    k: float,
+) -> np.ndarray:
+    """AND(Sauvola, adaptiveThreshold) sur une image déjà en niveaux de gris."""
+    from skimage.filters import threshold_sauvola
+    thresh   = threshold_sauvola(gray, window_size=window_size, k=k)
+    sauvola  = ((gray > thresh).astype(np.uint8)) * 255
+    adaptive = cv2.adaptiveThreshold(
+        gray, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        block_size, c,
+    )
+    return cv2.bitwise_and(sauvola, adaptive)
+
+
 def sauvola_binarize(image_path: Path, cfg, save_path: Path | None = None) -> Path:
     """
-    AND(Sauvola, blur+adaptive) — conserve les pixels texte détectés par l'un ou l'autre.
+    AND(Sauvola(gray), adaptive(blurred)) — conserve les pixels texte détectés par l'un ou l'autre.
     Corrige la perte de texte dans les zones à faible variance (pliure, ombre).
     """
     from skimage.filters import threshold_sauvola
-
-    img      = cv2.imread(str(image_path))
-    gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    baseline = _blur_and_adaptive(
+    img     = cv2.imread(str(image_path))
+    gray    = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    thresh  = threshold_sauvola(gray, window_size=cfg.sauvola_window_size, k=cfg.sauvola_k)
+    sauvola = ((gray > thresh).astype(np.uint8)) * 255
+    adaptive = _blur_and_adaptive(
         gray,
         cfg.binarize_block_size, cfg.binarize_c,
         cfg.blur_ksize, cfg.blur_sigma,
     )
-    thresh  = threshold_sauvola(gray, window_size=cfg.sauvola_window_size, k=cfg.sauvola_k)
-    sauvola = ((gray > thresh).astype(np.uint8)) * 255
-    return _save(cv2.bitwise_and(sauvola, baseline), save_path)
+    return _save(cv2.bitwise_and(sauvola, adaptive), save_path)
+
+
+def median_and(image_path: Path, cfg, save_path: Path | None = None) -> Path:
+    """
+    medianBlur(3) + AND(Sauvola, adaptive) — variante légère de sauvola_and.
+    Le medianBlur supprime les granules isolés sans étaler les bords comme le blur gaussien.
+    """
+    img    = cv2.imread(str(image_path))
+    gray   = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    median = cv2.medianBlur(gray, 3)
+    bw = _sauvola_and_adaptive(
+        median,
+        cfg.binarize_block_size, cfg.binarize_c,
+        cfg.sauvola_window_size, cfg.sauvola_k,
+    )
+    return _save(bw, save_path)
+
+
+def nlmeans_and(image_path: Path, cfg, save_path: Path | None = None) -> Path:
+    """
+    fastNlMeansDenoising + AND(Sauvola, adaptive) — débruitage non-local + double seuillage.
+    Équivalent de sauvola_and sur image débruitée ; préserve mieux les bords fins.
+    """
+    img      = cv2.imread(str(image_path))
+    gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_h)
+    bw = _sauvola_and_adaptive(
+        denoised,
+        cfg.binarize_block_size, cfg.binarize_c,
+        cfg.sauvola_window_size, cfg.sauvola_k,
+    )
+    return _save(bw, save_path)
