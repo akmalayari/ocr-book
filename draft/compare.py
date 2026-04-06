@@ -11,6 +11,45 @@ def tokenize_words(text):
     return re.findall(r'\S+|\s+', text)
 
 
+def _levenshtein_dist(s1: str, s2: str) -> int:
+    m, n = len(s1), len(s2)
+    if m < n:
+        s1, s2, m, n = s2, s1, n, m
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        curr = [i] + [0] * n
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                curr[j] = prev[j - 1]
+            else:
+                curr[j] = 1 + min(prev[j], curr[j - 1], prev[j - 1])
+        prev = curr
+    return prev[n]
+
+
+def lev_sim(s1: str, s2: str) -> float:
+    if s1 == s2:
+        return 1.0
+    max_len = max(len(s1), len(s2))
+    return 0.0 if max_len == 0 else 1.0 - _levenshtein_dist(s1, s2) / max_len
+
+
+def weighted_ratio(tokens_a: list, tokens_b: list) -> float:
+    """Like SequenceMatcher.ratio() but replace blocks get Levenshtein partial credit."""
+    total = len(tokens_a) + len(tokens_b)
+    if total == 0:
+        return 1.0
+    matches = 0.0
+    matcher = difflib.SequenceMatcher(None, tokens_a, tokens_b, autojunk=False)
+    for tag, a0, a1, b0, b1 in matcher.get_opcodes():
+        if tag == "equal":
+            matches += a1 - a0
+        elif tag == "replace":
+            for ta, tb in zip(tokens_a[a0:a1], tokens_b[b0:b1]):
+                matches += lev_sim(ta, tb)
+    return 2 * matches / total
+
+
 def tokenize_sentences(text):
     """Split text into sentences.
 

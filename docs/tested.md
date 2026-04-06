@@ -187,7 +187,7 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 - **page_4** : toutes les configs bouclent. `median_and`, `nlm5_median`, `nlm10_and` reproduisent approximativement le tableau avant de boucler ; `nlmeans_10` et `nlm5_and` bouclent sans résultat utile.
 - **page_9** : `nlm5_median` et `nlm10_and` bouclent dès le début. `nlm10` pseudo-boucle (suite de chiffres — faux négatif de détection de boucle). `median_and` et `nlm5_and` ne bouclent pas, précision apparemment subpar.
-- **page_5** (bruitée) : `nlm5_and` → 4 mots (bbox image seule, échec). `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and` → 820–958 mots, pas de boucle. Précision à évaluer contre `photos/md/page_6.md`.
+- **page_5** (bruitée) : `nlm5_and` → 4 mots (bbox image seule, échec). `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and` → 820–958 mots, pas de boucle. Précision évaluée — voir section ci-dessous.
 - **page_6** (nette, même contenu que page_5) : toutes configs sans boucle, 944–1005 mots. Référence authentique : `photos/md/page_6.md` (précision 100%).
 
 **Détection de boucle :** `page_4_median_and` a bouclé sans être détecté car les coordonnées `<|det|>[[x,y,…]]<|/det|>` changent à chaque bloc, diluant le ratio `repeated/n_unique`. Fix : retirer les blocs `<|det|>` avant l'analyse de fréquence dans `_is_looping` (`src/ocr_client.py`).
@@ -219,6 +219,37 @@ Testé visuellement dans `draft/test_nlmeans.py`. La variante `median_and` (avec
 - Page 10 : première retranscription de la courbe de Lorenz, qualité très médiocre.
 
 **Intégration :** `src/preprocess.py::sauvola_binarize()`, `preprocess_mode="sauvola"` dans `Config`, `--preprocess sauvola` en CLI.
+
+### Évaluation comparative des prétraitements — page_5 / page_6 (2026-04-06)
+
+5 configs × 2 pages via `compare_ocr.py` (diff=sentence, score=word). Référence : `photos/md/page_6.md`.
+Rapport complet : `output/rapports/preprocess_p5_p6.md`.
+
+**page_5 — floue (Laplacian=57.97) :**
+
+| Config | Texte % | Fig % | Global % |
+|--------|---------|-------|----------|
+| none | **94.9%** | 16.9% | **92.3%** |
+| sauvola_and | 93.9% | 16.7% | 92.0% |
+| nlmeans_and | 93.1% | 17.0% | 90.8% |
+| median_and | 92.2% | **38.0%** | 91.2% |
+| blur_adaptive | 92.0% | 16.8% | 90.1% |
+
+**page_6 — nette (Laplacian=134.19) :**
+
+| Config | Texte % | Fig détectée | Fig % | Global % |
+|--------|---------|:------------:|-------|----------|
+| blur_adaptive | **96.3%** | oui | 94.9% | **96.3%** |
+| none | 95.7% | **non** | — | 96.1% |
+| nlmeans_and | 96.1% | oui | 92.8% | 95.8% |
+| median_and | 96.0% | oui | 92.8% | 95.6% |
+| sauvola_and | 94.6% | oui | **96.6%** | 94.4% |
+
+**Conclusions :**
+- Sur image floue, `none` donne le meilleur score texte — le prétraitement dégrade les traits déjà mous.
+- Sur image nette, `blur_adaptive` est la meilleure config équilibrée. `none` rate systématiquement la figure.
+- La figure reste intraitable sur image floue quelle que soit la config (max 38%).
+- **Piste :** prétraitement conditionnel selon Laplacian — `blur_adaptive` si > seuil, `none` sinon.
 
 ### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
 **Statut : abandonné.** Testé dans `draft/test_unsharp.py`. Amplifie les hautes fréquences — ajoute des granulés sombres, dégrade la binarisation sur la plupart des configs. Inefficace sur du flou de mise au point (l'information haute fréquence est physiquement perdue).

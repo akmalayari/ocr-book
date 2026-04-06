@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from compare import compare, tokenize_words, tokenize_sentences
+from compare import compare, tokenize_words, tokenize_sentences, weighted_ratio
 from postprocess import _clean_layout
 
 
@@ -41,22 +41,31 @@ PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (PHOTOS / "md"      / "page_6.md",              "authentic"),
-    # page_6 (nette) — même contenu que la référence
-    (ROOT / "pipeline" / "page_6_baseline.md",    "p6_baseline"),
-    (ROOT / "pipeline" / "page_6_sauvola.md",     "p6_sauvola"),
-    (ROOT / "nlmeans"  / "page_6_median_and.md",  "p6_median_and"),
-    (ROOT / "nlmeans"  / "page_6_nlm5_median.md", "p6_nlm5_median"),
-    (ROOT / "nlmeans"  / "page_6_nlmeans_10.md",  "p6_nlmeans_10"),
-    (ROOT / "nlmeans"  / "page_6_nlm10_and.md",   "p6_nlm10_and"),
-    (ROOT / "nlmeans"  / "page_6_nlm5_and.md",    "p6_nlm5_and"),
-    # page_5 (bruitée) — nlm5_and exclu (4 mots, échec)
-    (ROOT / "pipeline" / "page_5_baseline.md",    "p5_baseline"),
-    (ROOT / "pipeline" / "page_5_sauvola.md",     "p5_sauvola"),
-    (ROOT / "nlmeans"  / "page_5_median_and.md",  "p5_median_and"),
-    (ROOT / "nlmeans"  / "page_5_nlm5_median.md", "p5_nlm5_median"),
-    (ROOT / "nlmeans"  / "page_5_nlmeans_10.md",  "p5_nlmeans_10"),
-    (ROOT / "nlmeans"  / "page_5_nlm10_and.md",   "p5_nlm10_and"),
+    (PHOTOS / "md"     / "page_6.md",                "authentic"),
+    # page_6 (nette)
+    (ROOT / "nlmeans"  / "page_6_none.md",            "p6_none"),
+    (ROOT / "nlmeans"  / "page_6_blur_adaptive.md",   "p6_blur_adaptive"),
+    (ROOT / "nlmeans"  / "page_6_sauvola_and.md",     "p6_sauvola_and"),
+    (ROOT / "nlmeans"  / "page_6_median_and.md",      "p6_median_and"),
+    (ROOT / "nlmeans"  / "page_6_nlmeans_and.md",     "p6_nlmeans_and"),
+    # page_5 (bruitée)
+    (ROOT / "nlmeans"  / "page_5_none.md",            "p5_none"),
+    (ROOT / "nlmeans"  / "page_5_blur_adaptive.md",   "p5_blur_adaptive"),
+    (ROOT / "nlmeans"  / "page_5_sauvola_and.md",     "p5_sauvola_and"),
+    (ROOT / "nlmeans"  / "page_5_median_and.md",      "p5_median_and"),
+    (ROOT / "nlmeans"  / "page_5_nlmeans_and.md",     "p5_nlmeans_and"),
+    # page_4 (bruitée, grand tableau)
+    #(ROOT / "nlmeans"  / "page_4_none.md",            "p4_none"),
+    #(ROOT / "nlmeans"  / "page_4_blur_adaptive.md",   "p4_blur_adaptive"),
+    #(ROOT / "nlmeans"  / "page_4_sauvola_and.md",     "p4_sauvola_and"),
+    #(ROOT / "nlmeans"  / "page_4_median_and.md",      "p4_median_and"),
+    #(ROOT / "nlmeans"  / "page_4_nlmeans_and.md",     "p4_nlmeans_and"),
+    # page_9 (bruitée)
+    #(ROOT / "nlmeans"  / "page_9_none.md",            "p9_none"),
+    #(ROOT / "nlmeans"  / "page_9_blur_adaptive.md",   "p9_blur_adaptive"),
+    #(ROOT / "nlmeans"  / "page_9_sauvola_and.md",     "p9_sauvola_and"),
+    #(ROOT / "nlmeans"  / "page_9_median_and.md",      "p9_median_and"),
+    #(ROOT / "nlmeans"  / "page_9_nlmeans_and.md",     "p9_nlmeans_and"),
 ]
 
 # Référence globale (mode all_vs_ref et composant global)
@@ -76,6 +85,9 @@ MODE_COMPARE: str = "all_vs_ref"
 MODE_DIFF_FILE:   str = "sentence"
 # "sentence" | "word"  — similarité affichée dans global_report.md
 MODE_DIFF_REPORT: str = "word"
+
+# True : pondérer les différences par Levenshtein (partial credit pour near-misses)
+USE_LEVENSHTEIN: bool = True
 
 # True : regrouper les résultats par page (préfixe p5_, p6_, …) dans le rapport
 GROUP_BY_PAGE: bool = True
@@ -136,6 +148,8 @@ def _sim(path_a: Path, path_b: Path) -> float:
     tok = tokenize_sentences if MODE_DIFF_REPORT == "sentence" else tokenize_words
     ta = tok(path_a.read_text(encoding="utf-8"))
     tb = tok(path_b.read_text(encoding="utf-8"))
+    if USE_LEVENSHTEIN:
+        return weighted_ratio(ta, tb)
     return difflib.SequenceMatcher(None, ta, tb, autojunk=False).ratio()
 
 
@@ -288,9 +302,14 @@ def _write_pairwise_report(ref_label: str, results: list[dict], normed: dict[str
         keyed = sorted(results, key=lambda r: (_page_key(r["b"]), -r["similarity"]))
         for page, group in groupby(keyed, key=lambda r: _page_key(r["b"])):
             rows = list(group)
-            lines += [f"## {page}\n", "| Config | Similarité | Diff |", "|--------|-----------|------|"]
-            for r in rows:
-                lines.append(f"| {r['b']} | {r['similarity']:.1%} | [diff]({r['diff'].name}) |")
+            if MODE_COMPARE == "all_pairs":
+                lines += [f"## {page}\n", "| Config | Vs | Similarité | Diff |", "|--------|---|-----------|------|"]
+                for r in rows:
+                    lines.append(f"| {r['b']} | {r['a']} | {r['similarity']:.1%} | [diff]({r['diff'].name}) |")
+            else:
+                lines += [f"## {page}\n", "| Config | Similarité | Diff |", "|--------|-----------|------|"]
+                for r in rows:
+                    lines.append(f"| {r['b']} | {r['similarity']:.1%} | [diff]({r['diff'].name}) |")
             lines.append("")
     else:
         sorted_results = sorted(results, key=lambda r: -r["similarity"])
