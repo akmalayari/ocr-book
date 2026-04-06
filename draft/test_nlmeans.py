@@ -38,7 +38,7 @@ PHOTOS_DIR = Path(__file__).parent.parent / "photos"
 OUT_DIR    = Path(__file__).parent.parent / "output" / "nlmeans"
 REF_DIR    = Path(__file__).parent.parent / "output" / "sauvola_patch"
 
-DEFAULT_PAGES = ["page_4", "page_9", "page_5"]
+DEFAULT_PAGES = ["page_4", "page_9", "page_5", "page_6"]
 
 # Configs OCR-éligibles (phase 2)
 OCR_CONFIGS: dict[str, str] = {
@@ -209,7 +209,7 @@ def _get_image(img_path: Path, config_name: str) -> np.ndarray:
 
     if config_name == "baseline":
         return _baseline(gray)
-    if config_name == "sauvola":
+    if config_name in ("sauvola", "sauvola_and"):
         return _sauvola(gray)
     if config_name == "nlmeans_10_raw":
         return cv2.fastNlMeansDenoising(gray, h=10)

@@ -32,29 +32,42 @@ from postprocess import _clean_layout
 # ══════════════════════════════════════════════════════════════════════════════
 
 ROOT = Path(__file__).parent.parent / "output"
+PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (ROOT / "sauvola_patch" / "page_5_baseline.md", "baseline_5"),
-    (ROOT / "sauvola_patch" / "page_5_and_51_03.md", "sauvola_5"),
-    (ROOT / "pipeline" / "page_6_baseline.md", "baseline_6"),
-    (ROOT / "pipeline" / "page_6_sauvola.md", "sauvola_6"),
-    # Ajouter autant de lignes que nécessaire :
-    # (ROOT / "sauvola_patch" / "page_5_bgdiv_51_02.md", "bgdiv_51_02"),
-    # (ROOT / "binarize_grid" / "page_5_31_15.md",       "grid_31_15"),
+    (PHOTOS / "md"      / "page_6.md",              "authentic"),
+    # page_6 (nette) — même contenu que la référence
+    (ROOT / "pipeline" / "page_6_baseline.md",    "p6_baseline"),
+    (ROOT / "pipeline" / "page_6_sauvola.md",     "p6_sauvola"),
+    (ROOT / "nlmeans"  / "page_6_median_and.md",  "p6_median_and"),
+    (ROOT / "nlmeans"  / "page_6_nlm5_median.md", "p6_nlm5_median"),
+    (ROOT / "nlmeans"  / "page_6_nlmeans_10.md",  "p6_nlmeans_10"),
+    (ROOT / "nlmeans"  / "page_6_nlm10_and.md",   "p6_nlm10_and"),
+    (ROOT / "nlmeans"  / "page_6_nlm5_and.md",    "p6_nlm5_and"),
+    # page_5 (bruitée) — nlm5_and exclu (4 mots, échec)
+    (ROOT / "pipeline" / "page_5_baseline.md",    "p5_baseline"),
+    (ROOT / "pipeline" / "page_5_sauvola.md",     "p5_sauvola"),
+    (ROOT / "nlmeans"  / "page_5_median_and.md",  "p5_median_and"),
+    (ROOT / "nlmeans"  / "page_5_nlm5_median.md", "p5_nlm5_median"),
+    (ROOT / "nlmeans"  / "page_5_nlmeans_10.md",  "p5_nlmeans_10"),
+    (ROOT / "nlmeans"  / "page_5_nlm10_and.md",   "p5_nlm10_and"),
 ]
 
 # Référence pour le mode "all_vs_ref" et pour la similarité relative dans le rapport.
 # Peut être None (premier fichier de FILES utilisé par défaut) ou un chemin explicite.
-REFERENCE: Path | None = None
+REFERENCE: Path | None = PHOTOS / "md" / "page_6.md"
 
 # "all_vs_ref" | "all_pairs" | "sequential"
-MODE_COMPARE: str = "all_pairs"
+MODE_COMPARE: str = "all_vs_ref"
 
 # "sentence" | "word"  — contenu des fichiers diff_{a}_vs_{b}.md
 MODE_DIFF_FILE:   str = "sentence"
 # "sentence" | "word"  — similarité affichée dans global_report.md
 MODE_DIFF_REPORT: str = "word"
+
+# True : regrouper les résultats par page (préfixe p5_, p6_, …) dans le rapport
+GROUP_BY_PAGE: bool = True
 
 OUTPUT_DIR: Path = ROOT / "compare_ocr"
 
@@ -148,18 +161,44 @@ def main() -> None:
     _write_global_report(ref_entry[1], results, normed)
 
 
-def _write_global_report(ref_label: str, results: list[dict], normed: dict[str, Path]) -> None:
-    sorted_results = sorted(results, key=lambda r: -r["similarity"])
+_RE_PAGE = re.compile(r'^(p\d+)_')
 
+
+def _page_key(label: str) -> str:
+    m = _RE_PAGE.match(label)
+    return m.group(1) if m else label
+
+
+def _write_global_report(ref_label: str, results: list[dict], normed: dict[str, Path]) -> None:
     lines = [
         "# Rapport global — compare_ocr\n",
         f"Mode : `{MODE_COMPARE}` | Diff : `{MODE_DIFF_FILE}` | Report : `{MODE_DIFF_REPORT}` | Référence : `{ref_label}`\n",
-        "| A | B | Similarité | Diff |",
-        "|---|---|-----------|------|",
     ]
-    for r in sorted_results:
-        diff_link = f"[diff]({r['diff'].name})"
-        lines.append(f"| {r['a']} | {r['b']} | {r['similarity']:.1%} | {diff_link} |")
+
+    if GROUP_BY_PAGE:
+        # Regrouper par page (clé extraite du label B en mode all_vs_ref, sinon B)
+        from itertools import groupby
+        keyed = sorted(results, key=lambda r: (_page_key(r["b"]), -r["similarity"]))
+        for page, group in groupby(keyed, key=lambda r: _page_key(r["b"])):
+            rows = list(group)
+            lines += [
+                f"## {page}\n",
+                "| Config | Similarité | Diff |",
+                "|--------|-----------|------|",
+            ]
+            for r in rows:
+                diff_link = f"[diff]({r['diff'].name})"
+                lines.append(f"| {r['b']} | {r['similarity']:.1%} | {diff_link} |")
+            lines.append("")
+    else:
+        sorted_results = sorted(results, key=lambda r: -r["similarity"])
+        lines += [
+            "| A | B | Similarité | Diff |",
+            "|---|---|-----------|------|",
+        ]
+        for r in sorted_results:
+            diff_link = f"[diff]({r['diff'].name})"
+            lines.append(f"| {r['a']} | {r['b']} | {r['similarity']:.1%} | {diff_link} |")
 
     # Mots par fichier
     lines += ["", "## Nombre de mots par fichier (après normalisation)\n",

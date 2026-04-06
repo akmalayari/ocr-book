@@ -169,7 +169,7 @@ Observé sur pages 1–6 (BF16, binarize) :
 **Statut : abandonné.** Rend bien le texte en général, mais efface le texte dans les zones à faible variance locale (pliure, ombre de reliure) → la variante `AND` ci-dessous est retenue à la place.
 
 ### fastNlMeansDenoising + binarize adaptive — mode `"nlmeans"`
-**Statut : en cours de test OCR.** Testé visuellement sur pages 4, 5, 9 via `draft/test_nlmeans.py`. Configs évaluées : `nlmeans_5`, `nlmeans_10`, `nlmeans_15`, `nlm5_median`, `nlm5_open`, `nlm5_and`, `nlm10_and`, `nlm10_bgdiv`, `nlm10_bgdiv_and`, `median_adaptive`, `median_and`.
+**Statut : phase OCR terminée sur pages 4, 5, 6, 9.** Testé visuellement sur pages 4, 5, 9 via `draft/test_nlmeans.py`. Configs évaluées : `nlmeans_5`, `nlmeans_10`, `nlmeans_15`, `nlm5_median`, `nlm5_open`, `nlm5_and`, `nlm10_and`, `nlm10_bgdiv`, `nlm10_bgdiv_and`, `median_adaptive`, `median_and`.
 
 **Observations visuelles :**
 - `nlmeans_5` : granulés résiduels sur certaines pages, texte plus net qu'avec baseline.
@@ -182,6 +182,15 @@ Observé sur pages 1–6 (BF16, binarize) :
 - `nlm5_open` (MORPH_OPEN post-binarisation) : non retenu.
 
 **Configs retenues pour phase OCR :** `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and`, `nlm5_and`.
+
+**Résultats OCR (2026-04-06, `draft/test_nlmeans.py --ocr`, pages 4/5/6/9, BF16, layout) :**
+
+- **page_4** : toutes les configs bouclent. `median_and`, `nlm5_median`, `nlm10_and` reproduisent approximativement le tableau avant de boucler ; `nlmeans_10` et `nlm5_and` bouclent sans résultat utile.
+- **page_9** : `nlm5_median` et `nlm10_and` bouclent dès le début. `nlm10` pseudo-boucle (suite de chiffres — faux négatif de détection de boucle). `median_and` et `nlm5_and` ne bouclent pas, précision apparemment subpar.
+- **page_5** (bruitée) : `nlm5_and` → 4 mots (bbox image seule, échec). `median_and`, `nlm5_median`, `nlmeans_10`, `nlm10_and` → 820–958 mots, pas de boucle. Précision à évaluer contre `photos/md/page_6.md`.
+- **page_6** (nette, même contenu que page_5) : toutes configs sans boucle, 944–1005 mots. Référence authentique : `photos/md/page_6.md` (précision 100%).
+
+**Détection de boucle :** `page_4_median_and` a bouclé sans être détecté car les coordonnées `<|det|>[[x,y,…]]<|/det|>` changent à chaque bloc, diluant le ratio `repeated/n_unique`. Fix : retirer les blocs `<|det|>` avant l'analyse de fréquence dans `_is_looping` (`src/ocr_client.py`).
 
 **Intégration :** `src/preprocess.py::nlmeans_binarize()`, `nlmeans_h: int = 15` dans `Config`.
 

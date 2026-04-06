@@ -3,6 +3,7 @@ ocr_client.py — OCR d'une image via nexaai.VLM
 """
 
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -32,6 +33,9 @@ def _has_char_repeat(text: str, min_period: int = 10, max_period: int = 200, min
     return False
 
 
+_RE_DET = re.compile(r"<\|det\|>\[\[[^\]]*\]\]<\|/det\|>")
+
+
 def _is_looping(text: str, window_words: int, threshold: float) -> bool:
     """Détecte une boucle de génération.
 
@@ -39,8 +43,9 @@ def _is_looping(text: str, window_words: int, threshold: float) -> bool:
     1. Fréquence de mots dans une fenêtre glissante (texte normal).
     2. Motif de caractères répété (boucles HTML/structurées sans espaces).
     """
-    # Stratégie 1 : fréquence de mots
-    words = [w.lower().strip(".,;:!?\"'()[]{}") for w in text.split()]
+    # Stratégie 1 : fréquence de mots (coordonnées <|det|> retirées pour ne
+    # pas diluer le ratio avec des valeurs numériques changeantes)
+    words = [w.lower().strip(".,;:!?\"'()[]{}") for w in _RE_DET.sub("", text).split()]
     window = words[-window_words:]
     if len(window) >= window_words:
         counts = {}
