@@ -16,8 +16,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-MD_FILE   = "output/prompt_results/page_10__rec.md"
-PHOTOS    = "photos/page_10.jpg"
+MD_FILE   = "output/page_6__two_pass.md"
+PHOTOS    = "photos/page_6.jpg"
 OUT_DIR   = "output/draft/viz"
 
 COLORS = {

@@ -101,7 +101,7 @@ def run_pipeline(cfg: Config) -> Stats:
 
                 # ── Étape 3 : Post-traitement + écriture ──────────────────
                 t_post0 = time.time()
-                clean_text = clean_page(raw_text, cfg)
+                clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
                 out.write(format_page_block(page_id, clean_text))
                 out.flush()
                 t_post = time.time() - t_post0

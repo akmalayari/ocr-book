@@ -37,6 +37,9 @@ BF16 est 2.5× plus lent que Q8_0 (~20s). Temps couteux sur des centaines de pag
 1. **Réduire la résolution des images** — redimensionner à ~1200px de large avant VLM. Hypothèse : gain 30–50%.
 2. **Changer de wrapper Python (llama-cpp-python)** — secondaire, peu probable d'accélérer.
 
+### Amélioration 2 - Performance et précision
+Tester d'autres modèles OCR via llama-cpp-python: paddleocr, lightonocr, olmocr, glmocr, nanonetsocr. Il faut tester 1. la vitesse d'execution 2. la precision de la retranscription. 
+
 ## Architecture
 
 OK

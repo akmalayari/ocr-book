@@ -4,20 +4,24 @@ compare_ocr.py — Comparaison générale de sorties OCR.
 Modifier la section CONFIG ci-dessous, puis lancer :
     python draft/compare_ocr.py
 
-Modes de comparaison :
+Modes de comparaison (MODE_COMPARE) :
   - "all_vs_ref"  : chaque fichier comparé contre REFERENCE
   - "all_pairs"   : toutes les paires (NxN/2)
   - "sequential"  : chaque fichier comparé au suivant dans FILES
 
+Mode composant (SCORE_BY_COMPONENT = True) :
+  Calcule séparément texte / figure / global pour chaque fichier vs ses
+  références dédiées. Remplace le rapport pairwise par un tableau par page.
+
 Sorties : OUTPUT_DIR/
-  - diff_{a}_vs_{b}.md   pour chaque paire
+  - diff_{a}_vs_{b}.md   pour chaque paire / composant
   - global_report.md     tableau de similarité trié
 """
 
 import re
 import sys
 import difflib
-from itertools import combinations
+from itertools import combinations, groupby
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -27,11 +31,12 @@ from compare import compare, tokenize_words, tokenize_sentences
 from postprocess import _clean_layout
 
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CONFIG — seule section à modifier
 # ══════════════════════════════════════════════════════════════════════════════
 
-ROOT = Path(__file__).parent.parent / "output"
+ROOT   = Path(__file__).parent.parent / "output"
 PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
@@ -54,11 +59,17 @@ FILES: list[tuple[Path, str]] = [
     (ROOT / "nlmeans"  / "page_5_nlm10_and.md",   "p5_nlm10_and"),
 ]
 
-# Référence pour le mode "all_vs_ref" et pour la similarité relative dans le rapport.
-# Peut être None (premier fichier de FILES utilisé par défaut) ou un chemin explicite.
+# Référence globale (mode all_vs_ref et composant global)
 REFERENCE: Path | None = PHOTOS / "md" / "page_6.md"
 
-# "all_vs_ref" | "all_pairs" | "sequential"
+# Références par composant (utilisées si SCORE_BY_COMPONENT = True)
+TEXT_REFERENCE: Path | None = PHOTOS / "md" / "page_6_text.md"
+FIG_REFERENCE:  Path | None = PHOTOS / "md" / "page_6_fig.md"
+
+# True : score séparé texte / figure / global par fichier (remplace MODE_COMPARE)
+SCORE_BY_COMPONENT: bool = True
+
+# "all_vs_ref" | "all_pairs" | "sequential"  (ignoré si SCORE_BY_COMPONENT)
 MODE_COMPARE: str = "all_vs_ref"
 
 # "sentence" | "word"  — contenu des fichiers diff_{a}_vs_{b}.md
@@ -74,17 +85,51 @@ OUTPUT_DIR: Path = ROOT / "compare_ocr"
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-_HTML_TAG_RE = re.compile(r'<[^>]+>')
+_HTML_TAG_RE  = re.compile(r'<[^>]+>')
+_DET_LINE_RE  = re.compile(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>")
+_IMAGE_LABELS = {"image"}
+_RE_PAGE      = re.compile(r'^(p\d+)_')
 
 
 def _normalize(text: str) -> str:
     text = _clean_layout(text)
     text = _HTML_TAG_RE.sub(' ', text)
-    text = re.sub(r'(\w)- (\w)',   r'\1\2',  text)
-    text = re.sub(r'(\w)-\n(\w)',  r'\1\2',  text)
-    text = re.sub(r'(?<!\n)\n(?!\n)', ' ',   text)
+    text = re.sub(r'(\w)- (\w)',      r'\1\2', text)
+    text = re.sub(r'(\w)-\n(\w)',     r'\1\2', text)
+    text = re.sub(r'(?<!\n)\n(?!\n)', ' ',     text)
     text = re.sub(r' {2,}', ' ', text)
     return text.strip()
+
+
+def _split_layout(text: str) -> tuple[str, str, bool]:
+    """Split raw layout OCR en (text_content, fig_content, figure_detected).
+
+    figure_detected = True si au moins un bloc label='image' est présent.
+    """
+    text_parts: list[str] = []
+    fig_parts:  list[str] = []
+    current_label = "text"
+    current_lines: list[str] = []
+    figure_detected = False
+
+    for line in text.splitlines():
+        m = _DET_LINE_RE.search(line)
+        if m:
+            block = "\n".join(current_lines).strip()
+            if block:
+                (fig_parts if current_label in _IMAGE_LABELS else text_parts).append(block)
+            current_label = m.group(1)
+            if current_label == "image":
+                figure_detected = True
+            current_lines = []
+        else:
+            current_lines.append(line)
+
+    block = "\n".join(current_lines).strip()
+    if block:
+        (fig_parts if current_label in _IMAGE_LABELS else text_parts).append(block)
+
+    return "\n\n".join(text_parts), "\n\n".join(fig_parts), figure_detected
 
 
 def _sim(path_a: Path, path_b: Path) -> float:
@@ -94,11 +139,19 @@ def _sim(path_a: Path, path_b: Path) -> float:
     return difflib.SequenceMatcher(None, ta, tb, autojunk=False).ratio()
 
 
-def _norm_file(src: Path, tmp_dir: Path, label: str) -> Path:
-    safe = re.sub(r'[^\w]', '_', label)
-    out = tmp_dir / f"{safe}.md"
-    out.write_text(_normalize(src.read_text(encoding="utf-8")), encoding="utf-8")
+def _write_norm(content: str, tmp_dir: Path, name: str) -> Path:
+    out = tmp_dir / f"{re.sub(r'[^\w]', '_', name)}.md"
+    out.write_text(_normalize(content), encoding="utf-8")
     return out
+
+
+def _norm_file(src: Path, tmp_dir: Path, label: str) -> Path:
+    return _write_norm(src.read_text(encoding="utf-8"), tmp_dir, label)
+
+
+def _page_key(label: str) -> str:
+    m = _RE_PAGE.match(label)
+    return m.group(1) if m else label
 
 
 def _pairs(files: list[tuple[Path, str]], ref: tuple[Path, str]) -> list[tuple[tuple, tuple]]:
@@ -111,39 +164,102 @@ def _pairs(files: list[tuple[Path, str]], ref: tuple[Path, str]) -> list[tuple[t
     raise ValueError(f"MODE_COMPARE inconnu : {MODE_COMPARE}")
 
 
-def main() -> None:
-    # Validation
-    missing = [str(p) for p, _ in FILES if not p.exists()]
-    if missing:
-        print("[ERREUR] Fichiers introuvables :")
-        for m in missing:
-            print(f"  {m}")
-        sys.exit(1)
+# ── Mode composant ─────────────────────────────────────────────────────────────
 
-    if len(FILES) < 2:
-        print("[ERREUR] Au moins 2 fichiers requis dans FILES.")
-        sys.exit(1)
+def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
+                         text_ref: Path | None, fig_ref: Path | None,
+                         tmp_dir: Path) -> None:
+    ref_norm      = _norm_file(ref_path,  tmp_dir, "ref_global")
+    text_ref_norm = _norm_file(text_ref,  tmp_dir, "ref_text")  if text_ref  else None
+    fig_ref_norm  = _norm_file(fig_ref,   tmp_dir, "ref_fig")   if fig_ref   else None
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    tmp_dir = OUTPUT_DIR / "_tmp"
-    tmp_dir.mkdir(exist_ok=True)
+    rows: list[dict] = []
+    non_ref = [(p, l) for p, l in files if p != ref_path]
 
-    # Résoudre la référence
-    if REFERENCE is not None:
-        ref_entry = next(((p, l) for p, l in FILES if p == REFERENCE), None)
-        if ref_entry is None:
-            ref_entry = (REFERENCE, REFERENCE.stem)
-    else:
-        ref_entry = FILES[0]
+    print(f"Mode composant | {len(non_ref)} fichier(s)\n")
 
-    # Normaliser tous les fichiers
-    normed: dict[str, Path] = {}
-    for src_path, label in FILES:
-        normed[label] = _norm_file(src_path, tmp_dir, label)
-    if REFERENCE is not None and ref_entry[1] not in normed:
-        normed[ref_entry[1]] = _norm_file(ref_entry[0], tmp_dir, ref_entry[1])
+    for src_path, label in non_ref:
+        raw = src_path.read_text(encoding="utf-8")
+        text_raw, fig_raw, fig_detected = _split_layout(raw)
 
-    pairs = _pairs(FILES, ref_entry)
+        # Normaliser les trois composants
+        global_norm = _write_norm(raw,      tmp_dir, f"{label}_global")
+        text_norm   = _write_norm(text_raw, tmp_dir, f"{label}_text")
+        fig_norm    = _write_norm(fig_raw,  tmp_dir, f"{label}_fig")
+
+        # Scores
+        global_sim = _sim(ref_norm, global_norm)
+        text_sim   = _sim(text_ref_norm, text_norm) if text_ref_norm else None
+        fig_sim    = _sim(fig_ref_norm,  fig_norm)  if (fig_ref_norm and fig_detected) else None
+
+        # Diffs
+        def _diff(norm_a: Path, norm_b: Path, suffix: str) -> Path:
+            out = OUTPUT_DIR / f"diff_{re.sub(r'[^\w]', '_', label)}_{suffix}.md"
+            compare(norm_a, norm_b, mode=MODE_DIFF_FILE, out_path=out)
+            return out
+
+        diff_global = _diff(ref_norm,      global_norm, "global")
+        diff_text   = _diff(text_ref_norm, text_norm,   "text")  if text_ref_norm else None
+        diff_fig    = _diff(fig_ref_norm,  fig_norm,    "fig")   if fig_ref_norm  else None
+
+        rows.append({
+            "label":       label,
+            "fig_detected": fig_detected,
+            "global_sim":  global_sim,
+            "text_sim":    text_sim,
+            "fig_sim":     fig_sim,
+            "diff_global": diff_global,
+            "diff_text":   diff_text,
+            "diff_fig":    diff_fig,
+        })
+
+        parts = [f"global={global_sim:.1%}"]
+        if text_sim is not None: parts.append(f"texte={text_sim:.1%}")
+        fig_str = f"fig={'oui' if fig_detected else 'non'}"
+        if fig_sim is not None: fig_str += f" {fig_sim:.1%}"
+        parts.append(fig_str)
+        print(f"  {label:25s}  {' | '.join(parts)}")
+
+    _write_component_report(rows)
+
+
+def _write_component_report(rows: list[dict]) -> None:
+    lines = [
+        "# Rapport composant — compare_ocr\n",
+        f"Diff : `{MODE_DIFF_FILE}` | Score : `{MODE_DIFF_REPORT}`\n",
+    ]
+
+    keyed = sorted(rows, key=lambda r: (_page_key(r["label"]), -r["global_sim"]))
+    for page, group in groupby(keyed, key=lambda r: _page_key(r["label"])):
+        page_rows = list(group)
+        lines += [
+            f"## {page}\n",
+            "| Config | Texte % | Fig détectée | Fig % | Global % | Diffs |",
+            "|--------|---------|:------------:|-------|----------|-------|",
+        ]
+        for r in page_rows:
+            text_s   = f"{r['text_sim']:.1%}"  if r["text_sim"]  is not None else "—"
+            fig_s    = f"{r['fig_sim']:.1%}"   if r["fig_sim"]   is not None else "—"
+            fig_icon = "oui" if r["fig_detected"] else "non"
+            diffs = []
+            if r["diff_global"]: diffs.append(f"[G]({r['diff_global'].name})")
+            if r["diff_text"]:   diffs.append(f"[T]({r['diff_text'].name})")
+            if r["diff_fig"]:    diffs.append(f"[F]({r['diff_fig'].name})")
+            lines.append(
+                f"| {r['label']} | {text_s} | {fig_icon} | {fig_s} | {r['global_sim']:.1%} | {' '.join(diffs)} |"
+            )
+        lines.append("")
+
+    out = OUTPUT_DIR / "global_report.md"
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"\n  → {out}")
+
+
+# ── Mode pairwise ──────────────────────────────────────────────────────────────
+
+def _run_pairwise_mode(files: list[tuple[Path, str]], ref_entry: tuple[Path, str],
+                        normed: dict[str, Path]) -> None:
+    pairs = _pairs(files, ref_entry)
     if not pairs:
         print("Aucune paire à comparer.")
         sys.exit(0)
@@ -157,61 +273,69 @@ def main() -> None:
         compare(normed[la], normed[lb], mode=MODE_DIFF_FILE, out_path=out_path)
         sim = _sim(normed[la], normed[lb])
         results.append({"a": la, "b": lb, "similarity": sim, "diff": out_path})
+        print(f"{sim:.1%}")
 
-    _write_global_report(ref_entry[1], results, normed)
-
-
-_RE_PAGE = re.compile(r'^(p\d+)_')
+    _write_pairwise_report(ref_entry[1], results, normed)
 
 
-def _page_key(label: str) -> str:
-    m = _RE_PAGE.match(label)
-    return m.group(1) if m else label
-
-
-def _write_global_report(ref_label: str, results: list[dict], normed: dict[str, Path]) -> None:
+def _write_pairwise_report(ref_label: str, results: list[dict], normed: dict[str, Path]) -> None:
     lines = [
         "# Rapport global — compare_ocr\n",
         f"Mode : `{MODE_COMPARE}` | Diff : `{MODE_DIFF_FILE}` | Report : `{MODE_DIFF_REPORT}` | Référence : `{ref_label}`\n",
     ]
 
     if GROUP_BY_PAGE:
-        # Regrouper par page (clé extraite du label B en mode all_vs_ref, sinon B)
-        from itertools import groupby
         keyed = sorted(results, key=lambda r: (_page_key(r["b"]), -r["similarity"]))
         for page, group in groupby(keyed, key=lambda r: _page_key(r["b"])):
             rows = list(group)
-            lines += [
-                f"## {page}\n",
-                "| Config | Similarité | Diff |",
-                "|--------|-----------|------|",
-            ]
+            lines += [f"## {page}\n", "| Config | Similarité | Diff |", "|--------|-----------|------|"]
             for r in rows:
-                diff_link = f"[diff]({r['diff'].name})"
-                lines.append(f"| {r['b']} | {r['similarity']:.1%} | {diff_link} |")
+                lines.append(f"| {r['b']} | {r['similarity']:.1%} | [diff]({r['diff'].name}) |")
             lines.append("")
     else:
         sorted_results = sorted(results, key=lambda r: -r["similarity"])
-        lines += [
-            "| A | B | Similarité | Diff |",
-            "|---|---|-----------|------|",
-        ]
+        lines += ["| A | B | Similarité | Diff |", "|---|---|-----------|------|"]
         for r in sorted_results:
-            diff_link = f"[diff]({r['diff'].name})"
-            lines.append(f"| {r['a']} | {r['b']} | {r['similarity']:.1%} | {diff_link} |")
+            lines.append(f"| {r['a']} | {r['b']} | {r['similarity']:.1%} | [diff]({r['diff'].name}) |")
 
-    # Mots par fichier
-    lines += ["", "## Nombre de mots par fichier (après normalisation)\n",
-              "| Fichier | Mots |", "|---------|------|"]
+    lines += ["", "## Mots par fichier (après normalisation)\n", "| Fichier | Mots |", "|---------|------|"]
     for label, path in normed.items():
-        if path.name.startswith("_"):
-            continue
         words = len(path.read_text(encoding="utf-8").split())
         lines.append(f"| {label} | {words} |")
 
     out = OUTPUT_DIR / "global_report.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\n  → {out}")
+
+
+# ── Main ───────────────────────────────────────────────────────────────────────
+
+def main() -> None:
+    missing = [str(p) for p, _ in FILES if not p.exists()]
+    if missing:
+        print("[ERREUR] Fichiers introuvables :")
+        for m in missing:
+            print(f"  {m}")
+        sys.exit(1)
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_dir = OUTPUT_DIR / "_tmp"
+    tmp_dir.mkdir(exist_ok=True)
+
+    ref_path = REFERENCE if REFERENCE is not None else FILES[0][0]
+
+    if SCORE_BY_COMPONENT:
+        _run_component_mode(FILES, ref_path, TEXT_REFERENCE, FIG_REFERENCE, tmp_dir)
+        return
+
+    # Mode pairwise
+    ref_entry = next(((p, l) for p, l in FILES if p == ref_path), (ref_path, ref_path.stem))
+    normed: dict[str, Path] = {}
+    for src_path, label in FILES:
+        normed[label] = _norm_file(src_path, tmp_dir, label)
+    if ref_entry[1] not in normed:
+        normed[ref_entry[1]] = _norm_file(ref_entry[0], tmp_dir, ref_entry[1])
+    _run_pairwise_mode(FILES, ref_entry, normed)
 
 
 if __name__ == "__main__":

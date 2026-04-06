@@ -82,6 +82,7 @@ class Config:
     figures_dir: str = "./output/figures"
 
     # ── Post-traitement ──────────────────────────────────────────────────────
+    postprocess: bool = True
     remove_isolated_page_numbers: bool = True
     rejoin_hyphenated_words: bool = True
     collapse_blank_lines: bool = True

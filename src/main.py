@@ -10,6 +10,7 @@ Usage :
     python src/main.py --max-tokens 2048        # tokens max par page
     python src/main.py --no-resume              # recommencer depuis le début
     python src/main.py --preprocess none        # sans pré-traitement (défaut: binarize)
+    python src/main.py --no-postprocess         # sortie brute avec bbox grounding visibles
     python src/main.py --rename                 # renommer les images puis OCR
     python src/main.py --rename --dry-run       # affiche les renommages sans les faire ni OCR
     python src/main.py --verbose                # logs détaillés
@@ -62,6 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Recommencer depuis le début (ignore le fichier existant)")
     p.add_argument("--one-pass", action="store_true",
                    help="Désactiver la passe 2 figures (défaut: two-pass activé en mode layout)")
+    p.add_argument("--no-postprocess", action="store_true",
+                   help="Désactiver le post-traitement (bbox grounding visibles dans la sortie)")
     p.add_argument("--verbose", action="store_true",
                    help="Logs détaillés (DEBUG)")
 
@@ -103,6 +106,7 @@ def main() -> int:
         preprocess_mode=args.preprocess,
         resume=not args.no_resume,
         two_pass=not args.one_pass,
+        postprocess=not args.no_postprocess,
         verbose=args.verbose,
     )
 
