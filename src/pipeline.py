@@ -10,7 +10,7 @@ from nexaai import VLM
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from preprocess import preprocess_image, sauvola_binarize, median_and, nlmeans_and, nlmeans_binarize
+from preprocess import preprocess_image, sauvola_binarize, median_and, nlmeans_and
 from figure import process_figures
 from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages
 from images import collect_images
@@ -84,8 +84,6 @@ def run_pipeline(cfg: Config) -> Stats:
                     preprocessed_path = preprocess_image(img_path, cfg)
                 elif cfg.preprocess_mode == "sauvola_and":
                     preprocessed_path = sauvola_binarize(img_path, cfg)
-                elif cfg.preprocess_mode == "nlmeans":
-                    preprocessed_path = nlmeans_binarize(img_path, cfg)
                 elif cfg.preprocess_mode == "median_and":
                     preprocessed_path = median_and(img_path, cfg)
                 elif cfg.preprocess_mode == "nlmeans_and":

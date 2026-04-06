@@ -45,24 +45,6 @@ def preprocess_image(image_path: Path, cfg, save_path: Path | None = None) -> Pa
     )
     return _save(bw, save_path)
 
-
-def nlmeans_binarize(image_path: Path, cfg, save_path: Path | None = None) -> Path:
-    """
-    fastNlMeansDenoising + binarisation adaptative.
-    Débruitage non-local avant seuillage — préserve mieux les bords fins que le blur gaussien.
-    """
-    img  = cv2.imread(str(image_path))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_h)
-    bw = cv2.adaptiveThreshold(
-        denoised, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        cfg.binarize_block_size, cfg.binarize_c,
-    )
-    return _save(bw, save_path)
-
-
 def _sauvola_and_adaptive(
     gray: np.ndarray,
     block_size: int,
@@ -124,10 +106,17 @@ def nlmeans_and(image_path: Path, cfg, save_path: Path | None = None) -> Path:
     """
     img      = cv2.imread(str(image_path))
     gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_h)
+    noise    = estimate_noise_level(image_path)
+    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_k*noise)
     bw = _sauvola_and_adaptive(
         denoised,
         cfg.binarize_block_size, cfg.binarize_c,
         cfg.sauvola_window_size, cfg.sauvola_k,
     )
     return _save(bw, save_path)
+
+def estimate_noise_level(image_path: Path) -> float:
+    from skimage.restoration import estimate_sigma
+
+    img = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+    return float(estimate_sigma(img, average_sigmas=True))
