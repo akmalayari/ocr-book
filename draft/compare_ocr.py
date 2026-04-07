@@ -92,9 +92,10 @@ _NON_TEXT_LABELS = {"image", "table"}
 _RE_PAGE        = re.compile(r'^(p\d+)_')
 
 
-def _normalize(text: str) -> str:
+def _normalize(text: str, strip_tables: bool = False) -> str:
     text = _clean_layout(text)
-    text = _TABLE_BLOCK_RE.sub(' ', text)   # supprimer contenu des tables, pas seulement les balises
+    if strip_tables:
+        text = _TABLE_BLOCK_RE.sub(' ', text)
     text = _HTML_TAG_RE.sub(' ', text)
     text = re.sub(r'(\w)- (\w)',      r'\1\2', text)
     text = re.sub(r'(\w)-\n(\w)',     r'\1\2', text)
@@ -143,14 +144,14 @@ def _sim(path_a: Path, path_b: Path) -> float:
     return difflib.SequenceMatcher(None, ta, tb, autojunk=False).ratio()
 
 
-def _write_norm(content: str, tmp_dir: Path, name: str) -> Path:
+def _write_norm(content: str, tmp_dir: Path, name: str, strip_tables: bool = False) -> Path:
     out = tmp_dir / f"{re.sub(r'[^\w]', '_', name)}.md"
-    out.write_text(_normalize(content), encoding="utf-8")
+    out.write_text(_normalize(content, strip_tables=strip_tables), encoding="utf-8")
     return out
 
 
-def _norm_file(src: Path, tmp_dir: Path, label: str) -> Path:
-    return _write_norm(src.read_text(encoding="utf-8"), tmp_dir, label)
+def _norm_file(src: Path, tmp_dir: Path, label: str, strip_tables: bool = False) -> Path:
+    return _write_norm(src.read_text(encoding="utf-8"), tmp_dir, label, strip_tables=strip_tables)
 
 
 def _page_key(label: str) -> str:
@@ -174,7 +175,7 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
                          text_ref: Path | None, fig_ref: Path | None,
                          tmp_dir: Path) -> None:
     ref_norm      = _norm_file(ref_path,  tmp_dir, "ref_global")
-    text_ref_norm = _norm_file(text_ref,  tmp_dir, "ref_text")  if text_ref  else None
+    text_ref_norm = _norm_file(text_ref,  tmp_dir, "ref_text",  strip_tables=True) if text_ref else None
     fig_ref_norm  = _norm_file(fig_ref,   tmp_dir, "ref_fig")   if fig_ref   else None
 
     rows: list[dict] = []
