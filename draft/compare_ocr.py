@@ -238,18 +238,19 @@ def _write_component_report(rows: list[dict]) -> None:
         page_rows = list(group)
         lines += [
             f"## {page}\n",
-            "| Config | Texte % | Non-texte détecté | Global % | Diffs |",
-            "|--------|---------|:-----------------:|----------|-------|",
+            "| Config | Texte % | Non-texte détecté | Non-texte % | Global % | Diffs |",
+            "|--------|---------|:-----------------:|-------------|----------|-------|",
         ]
         for r in page_rows:
             text_s        = f"{r['text_sim']:.1%}" if r["text_sim"] is not None else "—"
             non_text_icon = "oui" if r["non_text_detected"] else "non"
+            non_text_s    = f"{r['fig_sim']:.1%}"  if r["fig_sim"]  is not None else "—"
             diffs = []
             if r["diff_global"]: diffs.append(f"[G]({r['diff_global'].name})")
             if r["diff_text"]:   diffs.append(f"[T]({r['diff_text'].name})")
             if r["diff_fig"]:    diffs.append(f"[F]({r['diff_fig'].name})")
             lines.append(
-                f"| {r['label']} | {text_s} | {non_text_icon} | {r['global_sim']:.1%} | {' '.join(diffs)} |"
+                f"| {r['label']} | {text_s} | {non_text_icon} | {non_text_s} | {r['global_sim']:.1%} | {' '.join(diffs)} |"
             )
         lines.append("")
 
