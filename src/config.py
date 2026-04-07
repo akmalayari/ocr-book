@@ -31,30 +31,15 @@ class Config:
     loop_divisor_threshold: float = 0.8 # % de mots dont le count doit être divisible
 
     # ── Pré-traitement ───────────────────────────────────────────────────────
-    #   "none"        → image originale
-    #   "binarize"    → Gaussian blur et binarisation adaptative GAUSSIAN_C
-    #   "sauvola_and" → AND(Sauvola, binarize) — meilleur sur pages bruitées/floues
-    #   "median_and"  → medianBlur(3) + AND(Sauvola, adaptive)
-    #   "nlmeans_and" → fastNlMeansDenoising + AND(Sauvola, adaptive)
-    PREPROCESS_MODES: ClassVar[tuple] = (
-        "none",
-        "blur_adaptive",
-        "sauvola_and",
-        "median_and",
-        "nlmeans_and",
-    )
-    preprocess_mode: str = "sauvola_and"
-
-    binarize_block_size: int = 31
-    binarize_c: int = 15
-
-    blur_ksize: int = 5
-    blur_sigma: float = 0.0
-
-    sauvola_window_size: int = 51
-    sauvola_k: float = 0.3
+    #   "none"    → image originale
+    #   "nlmeans" → fastNlMeansDenoising (débruitage sans binarisation)
+    #   "sesr"    → SESR-M7 x2 → resize (super-résolution AMD NPU)
+    PREPROCESS_MODES: ClassVar[tuple] = ("none", "nlmeans", "sesr")
+    preprocess_mode: str = "nlmeans"
 
     nlmeans_k: float = 1.0
+
+    sesr_device: str = "npu"
 
     # ── Prompts disponibles ──────────────────────────────────────────────────
     #   "plain"     → texte brut sans mise en forme
