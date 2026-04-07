@@ -262,18 +262,21 @@ Hypothèse testée : DeepSeek-OCR étant entraîné sur photos naturelles, les f
 Rapport complet : `output/rapports/preprocess_legers_analyse.md`.
 
 #### fastNlMeansDenoising seul — mode `"nlmeans"`
-**Statut : non retenu.** `h = nlmeans_k × noise_level`. Dégrade légèrement le texte sur images floues (traits déjà mous effacés par le débruitage). Boucle sur page_4. Pas d'avantage vs `none`.
+**Statut : retenu, défaut pipeline.** `h = nlmeans_k × noise_level`. Boucle sur page_4 bruitée (noise=5.5) — seule page problématique. Aucune boucle sur pages 5, 6, 9, 10 et variantes clean. Précision texte pur ~99% sur images clean (p56c_nlmeans=99.3%). Coût preprocess ~2-3s.
 
 #### bilateralFilter(d=9, σ=75) — mode `"bilateral"`
 **Statut : abandonné.** Boucle sur page_6 (nette, 31 mots) et page_4. L'effet "cartoon" (zones très lisses + bords très nets) perturbe le modèle sur images nettes. Comportement inverse de l'attendu.
 
 #### SESR-M7 x2 (AMD NPU, 256×256 tiles) → resize original — mode `"sesr"`
-**Statut : à confirmer.** ~7s/image sur NPU (~91 FPS). +0.7% global vs `none` sur page_5 (floue, 93.0% vs 92.3%). Pas de boucle sur pages 5, 6, 9. Boucle sur page_4. Aucune config ne détecte la figure sur page_6 (régression vs `blur_adaptive`). Marginal mais sans risque.
+**Statut : retenu, disponible en option.** ~7s/image sur NPU. Boucle sur page_4 bruitée (noise=5.5) et sur page_4_clean sur symboles de bas de page (texte principal complet). Précision texte pur légèrement supérieure à nlmeans sur images clean (p56c_sesr=98.8%, p6_sesr=99.2%). Intégré dans `src/sesr.py`.
 
-| Page | none global % | sesr global % | Δ |
-|------|:---:|:---:|:---:|
-| p5 (floue) | 92.3% | 93.0% | +0.7% |
-| p6 (nette) | 96.1% | 96.6% | +0.5% |
+| Config | p5 texte % | p6 texte % | p56c texte % |
+|--------|:---:|:---:|:---:|
+| none | 98.8% | 98.7% | 97.9% |
+| nlmeans | 98.9% | 98.8% | 99.3% |
+| sesr | 98.7% | 99.2% | 98.8% |
+
+Résultats 2026-04-07, `compare_ocr.py` mode composant texte pur, référence `photos/md/page_6_text.md`, rapport `output/rapports/global_report_5-6.md`.
 
 #### RealESRGAN x4 (AMD NPU, 128×128 tiles) → resize original — mode `"esrgan"`
 **Statut : abandonné.** ~137s/image. Gain nul ou marginal vs `none`. Ratio coût/bénéfice rédhibitoire.

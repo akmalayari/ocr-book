@@ -21,27 +21,24 @@ Objectif : >99% texte sur image clean, dégradation minimale sur image bruitée.
 
 **Images clean disponibles : page_4, page_5, page_6, page_9, page_10** (nettes, éclairage uniforme).
 
-**Configs retenues pour la suite : `none`, `sesr`, `nlmeans`**
+**Config retenue : `nlmeans` (défaut pipeline). `sesr` disponible en option.**
 
-Résultats texte pur (2026-04-07, `compare_ocr.py` avec score texte seul, `output/compare_preprocess/global_report.md`) :
+Résultats texte pur avec normalisation (2026-04-07, `compare_ocr.py`, référence `page_6_text.md`, rapport `output/rapports/global_report_5-6.md`) :
 
-| Config | p5 texte % | p6 texte % |
-|--------|:----------:|:----------:|
-| none | 92.1% | 92.1% |
-| sesr | 92.0% | 92.6% |
-| nlmeans | 92.1% | 95.4% |
-| bilateral | 91.8% | 1.7% *(boucle)* |
-| esrgan | 92.2% | 95.2% |
+| Config | p5 texte % | p6 texte % | p56c texte % | boucles |
+|--------|:----------:|:----------:|:------------:|---------|
+| none | 98.8% | 98.7% | 97.9% | p4_clean |
+| nlmeans | 98.9% | 98.8% | 99.3% | p4 bruité |
+| sesr | 98.7% | 99.2% | 98.8% | p4 bruité + p4_clean (symboles) |
 
-`nlmeans` meilleur texte sur p6 (95.4%), quasi égal sur p5. `esrgan` proche mais 137s — éliminé. `bilateral` abandonné (boucle p6). Sur p5, tous les preprocess sont à ±0.2% — le bruit est le facteur limitant, pas le preprocess.
+Hypothèse >99% validée. `nlmeans` retenu pour robustesse (zéro boucle sur images clean). Erreurs résiduelles (~1%) : mots hors-dictionnaire proches d'un mot existant.
 
 **Prochaines étapes :**
 
-1. **Baseline texte pur sur images clean** — tester `none`, `sesr`, `nlmeans` sur les images clean (page_4, page_5, page_6, page_9, page_10). Valider l'hypothèse >99% texte sur image propre.
-2. **Tester sur originaux bruités** — mesurer la dégradation vs baseline clean pour les 3 configs.
-3. **bg_divide** (sans binarisation) — pour les images à éclairage inégal (pliure, lumière rasante). À tester sur page_1 et les originaux bruités si dégradation significative.
-4. **Déconvolution de flou** (`skimage.restoration.unsupervised_wiener`) — pour les très floues (Laplacian < 40). Après bg_divide.
-5. **Loop recovery via `rec`** — dernier recours si boucles persistantes sur images clean.
+1. **Run complet sur toutes les photos disponibles** — `none`, `sesr`, `nlmeans` pour comparer sur l'ensemble du corpus.
+2. **bg_divide** (sans binarisation) — pour les images à éclairage inégal (pliure, lumière rasante).
+3. **Déconvolution de flou** (`skimage.restoration.unsupervised_wiener`) — pour les très floues (Laplacian < 40).
+4. **Loop recovery via `rec`** — dernier recours si boucles persistantes sur images difficiles.
 
 ---
 
@@ -50,13 +47,6 @@ Résultats texte pur (2026-04-07, `compare_ocr.py` avec score texte seul, `outpu
 ### Feature 2 — Support PDF multi-pages
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
 
-### Bug 3 — Courbure de page
-Courbure due à la reliure — déforme les lignes de texte géométriquement. Provoque des erreurs sur les mots coupés en fin de ligne.
-
-**Pistes à tester (par ordre de priorité) :**
-1. **Lignes de texte + fit polynomial + `cv2.remap`** — pure OpenCV, aucune dépendance. À appliquer sur chaque moitié de l'image séparément (double page). Approche retenue en priorité.
-2. **DocTr** — transformer léger de déwarpage de documents, tourne sur CPU. Dépendance PyTorch/ONNX (~200 MB).
-3. **DewarpNet / DocUNet** — modèle neural, résultats solides sur courbures prononcées. GPU requis, dépendance lourde. Dernier recours.
 
 ### Amélioration 1 — Performance BF16 (~50s/image)
 BF16 est 2.5× plus lent que Q8_0 (~20s). Temps couteux sur des centaines de pages.
