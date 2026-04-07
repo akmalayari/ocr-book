@@ -131,8 +131,10 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 ## Prétraitement des images
 
-### Image originale (aucun prétraitement)
-**Statut : abandonné.** Provoque des boucles de génération sur plusieurs pages.
+### Image originale (aucun prétraitement) — mode `"none"`
+**Statut : retenu comme référence.** Initialement abandonné (boucles en Q8_0 + prompt `plain` sur page_1). Réévalué en BF16 + prompt `layout` (2026-04-06/07) : aucune boucle sur pages 4, 5, 6, 9. Meilleur score texte sur image floue (94.9% sur page_5). Seule config sans boucle sur toutes les pages testées avec preprocess léger.
+
+**Limite :** ne détecte pas la figure sur page_6 nette (graphique ignoré ou absorbé dans le texte).
 
 ### Exposure boost Pillow (contrast ×1.8 + brightness ×1.2)
 **Statut : abandonné.** Évite les boucles mais produit moins de mots (~830 vs ~1000 pour binarize_adaptive), plus lent (~25s), davantage d'hallucinations.
@@ -252,6 +254,32 @@ Rapport complet : `output/rapports/preprocess_p5_p6.md`.
 - Sur image nette, `blur_adaptive` est la meilleure config équilibrée. `none` rate systématiquement la figure.
 - La figure reste intraitable sur image floue quelle que soit la config (max 38%).
 - **Piste :** prétraitement conditionnel selon Laplacian — `blur_adaptive` si > seuil, `none` sinon.
+
+### Prétraitements légers sans binarisation (2026-04-07, `draft/test_preprocess.py`, pages 4/5/6/9, BF16, layout)
+
+Hypothèse testée : DeepSeek-OCR étant entraîné sur photos naturelles, les filtres légers préservant le look photo sont préférables à la binarisation. Scripts : `draft/test_preprocess.py` (OCR), `draft/realesrgan_sesr.py` (génération SR).
+
+Rapport complet : `output/rapports/preprocess_legers_analyse.md`.
+
+#### fastNlMeansDenoising seul — mode `"nlmeans"`
+**Statut : non retenu.** `h = nlmeans_k × noise_level`. Dégrade légèrement le texte sur images floues (traits déjà mous effacés par le débruitage). Boucle sur page_4. Pas d'avantage vs `none`.
+
+#### bilateralFilter(d=9, σ=75) — mode `"bilateral"`
+**Statut : abandonné.** Boucle sur page_6 (nette, 31 mots) et page_4. L'effet "cartoon" (zones très lisses + bords très nets) perturbe le modèle sur images nettes. Comportement inverse de l'attendu.
+
+#### SESR-M7 x2 (AMD NPU, 256×256 tiles) → resize original — mode `"sesr"`
+**Statut : à confirmer.** ~7s/image sur NPU (~91 FPS). +0.7% global vs `none` sur page_5 (floue, 93.0% vs 92.3%). Pas de boucle sur pages 5, 6, 9. Boucle sur page_4. Aucune config ne détecte la figure sur page_6 (régression vs `blur_adaptive`). Marginal mais sans risque.
+
+| Page | none global % | sesr global % | Δ |
+|------|:---:|:---:|:---:|
+| p5 (floue) | 92.3% | 93.0% | +0.7% |
+| p6 (nette) | 96.1% | 96.6% | +0.5% |
+
+#### RealESRGAN x4 (AMD NPU, 128×128 tiles) → resize original — mode `"esrgan"`
+**Statut : abandonné.** ~137s/image. Gain nul ou marginal vs `none`. Ratio coût/bénéfice rédhibitoire.
+
+#### Pivot architectural (2026-04-07)
+Tables et figures traitées comme des crops (référencées par chemin image, non retranscrites). Score de précision calculé sur **texte pur** uniquement. Objectif : >99% texte sur image clean. Images clean disponibles : page_4, page_5, page_6, page_9, page_10.
 
 ### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
 **Statut : abandonné.** Testé dans `draft/test_unsharp.py`. Amplifie les hautes fréquences — ajoute des granulés sombres, dégrade la binarisation sur la plupart des configs. Inefficace sur du flou de mise au point (l'information haute fréquence est physiquement perdue).

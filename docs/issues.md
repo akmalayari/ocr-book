@@ -2,27 +2,32 @@
 
 ## Version robuste (actuelle)
 
-### Bug 4 — Robustesse du préprocessing sur images bruitées
-État actuel : précision page_5/page_6 évaluée (2026-04-06). Voir `output/rapports/preprocess_p5_p6.md`.
+### Bug 4 — Robustesse du préprocessing et précision texte
 
-- **page_4** : boucle persistante sur toutes les configs. Aucune config ne transcrit le tableau sans boucler.
-- **page_9** : `median_and` et `nlm5_and` ne bouclent pas mais précision subpar. `nlm5_median`/`nlm10_and` bouclent sur suite de chiffres (faux positif détection).
-- **page_5/6** : `none` meilleur texte sur image floue (94.9%) ; `blur_adaptive` meilleur équilibre sur image nette (96.3% texte, 94.9% figure). Figure intraitable sur image floue (< 40% toutes configs). Precision toujours insatisfaisante.
+**Résultats des tests prétraitements légers (2026-04-07, `draft/test_preprocess.py`, pages 4/5/6/9) :**
+- `bilateral` : boucle sur page_6 (nette) et page_4 — à abandonner.
+- `nlmeans` : dégrade légèrement le texte sur images floues, boucle sur page_4 — pas d'avantage vs `none`.
+- `esrgan` : 137s/image, gain marginal — trop lent pour la pipeline.
+- `sesr` : +0.7% global vs `none` sur page_5 (floue), ~7s, pas de boucle sur pages 5/6/9, boucle sur page_4.
+- `none` : seule config sans boucle sur toutes les pages testées.
+- Aucune config ne détecte la figure sur page_6 avec preprocess léger (régression vs `blur_adaptive`).
 
-**Prochaines étapes (prétraitements non destructifs) :**
+Voir `output/rapports/preprocess_legers_analyse.md`.
 
-Hypothèse directrice : DeepSeek-OCR est optimisé pour des photos naturelles. La binarisation transforme trop radicalement la distribution d'entrée → boucles. Les filtres légers qui préservent le look photo sont préférables.
+**Pivot architectural (2026-04-07) :**
+Tables et figures traitées comme des crops — référencées par chemin image, pas retranscrites.
+Le score de précision est désormais calculé sur le **texte pur uniquement** (labels `text`, `title`, `sub_title`, `table_caption`, `table_footnote`, `image_caption`).
+Objectif : >99% texte sur image clean, dégradation minimale sur image bruitée.
 
-Scripts : `draft/test_preprocess.py` (OCR), `draft/realesrgan_sesr.py` (génération SR).
+**Images clean disponibles : page_4, page_5, page_6, page_9, page_10** (nettes, éclairage uniforme).
 
-1. **nlmeans seul** — `fastNlMeansDenoising(h=noise_level)`, dans `preprocess.py` + `test_preprocess.py`. À tester sur pages 4, 5, 6, 9.
-2. **bilateralFilter** — `bilateralFilter(d=9, σ=75)`, dans `preprocess.py` + `test_preprocess.py`.
-3. **SESR-M7 x2** — `sesr-m7-256x256-tiles-amdnpu` (2026-04-07), ~91 FPS NPU. Intégré dans `realesrgan_sesr.py` + `test_preprocess.py`. À tester sur pages 5, 6.
-4. **RealESRGAN x4** — intégré dans `realesrgan_sesr.py` + `test_preprocess.py`. Comparaison avec SESR-M7.
-5. **bg_divide seul** (sans binarisation) — uniquement pour page_1 (mauvais éclairage). À ajouter si nlmeans/SR insuffisants.
-6. **Déconvolution de flou** — si SR insuffisant sur figure floue. Wiener filter ou déconvolution aveugle (`skimage.restoration`).
-7. **Changer de VLM** (si tout insuffisant) — voir Amélioration 2.
+**Prochaines étapes :**
 
+1. **Baseline texte pur sur images clean** — tester `none` + `sesr` sur les images clean. Mettre à jour `compare_ocr.py` pour exclure `table`/`image` du score texte. Valider l'hypothèse >99%.
+2. **Tester sur originaux bruités** — mesurer la dégradation texte pur (`none` vs `sesr`) vs baseline clean.
+3. **bg_divide** (sans binarisation) — pour les images à éclairage inégal (pliure, lumière rasante). À tester sur page_1 et les originaux bruités.
+4. **Déconvolution de flou** (`skimage.restoration.unsupervised_wiener`) — pour les très floues (Laplacian < 40). Nécessite estimation PSF ; amplification de bruit possible. Après `bg_divide`.
+5. **Loop recovery via `rec`** — dernier recours si boucles persistantes après images clean. Stratégie : stopper la génération sur boucle, identifier les bbox non traitées par différence avec le layout, relancer `rec` ciblé. Complexe, latence ajoutée.
 
 ---
 
