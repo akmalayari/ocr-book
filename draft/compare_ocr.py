@@ -41,31 +41,19 @@ PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (PHOTOS / "md"     / "page_6.md",                "authentic"),
+    (PHOTOS / "md"        / "page_6.md",           "authentic"),
     # page_6 (nette)
-    (ROOT / "nlmeans"  / "page_6_none.md",            "p6_none"),
-    (ROOT / "nlmeans"  / "page_6_blur_adaptive.md",   "p6_blur_adaptive"),
-    (ROOT / "nlmeans"  / "page_6_sauvola_and.md",     "p6_sauvola_and"),
-    (ROOT / "nlmeans"  / "page_6_median_and.md",      "p6_median_and"),
-    (ROOT / "nlmeans"  / "page_6_nlmeans_and.md",     "p6_nlmeans_and"),
+    (ROOT / "preprocess"  / "page_6_none.md",      "p6_none"),
+    (ROOT / "preprocess"  / "page_6_nlmeans.md",   "p6_nlmeans"),
+    (ROOT / "preprocess"  / "page_6_bilateral.md", "p6_bilateral"),
+    (ROOT / "preprocess"  / "page_6_sesr.md",      "p6_sesr"),
+    (ROOT / "preprocess"  / "page_6_esrgan.md",    "p6_esrgan"),
     # page_5 (bruitée)
-    (ROOT / "nlmeans"  / "page_5_none.md",            "p5_none"),
-    (ROOT / "nlmeans"  / "page_5_blur_adaptive.md",   "p5_blur_adaptive"),
-    (ROOT / "nlmeans"  / "page_5_sauvola_and.md",     "p5_sauvola_and"),
-    (ROOT / "nlmeans"  / "page_5_median_and.md",      "p5_median_and"),
-    (ROOT / "nlmeans"  / "page_5_nlmeans_and.md",     "p5_nlmeans_and"),
-    # page_4 (bruitée, grand tableau)
-    #(ROOT / "nlmeans"  / "page_4_none.md",            "p4_none"),
-    #(ROOT / "nlmeans"  / "page_4_blur_adaptive.md",   "p4_blur_adaptive"),
-    #(ROOT / "nlmeans"  / "page_4_sauvola_and.md",     "p4_sauvola_and"),
-    #(ROOT / "nlmeans"  / "page_4_median_and.md",      "p4_median_and"),
-    #(ROOT / "nlmeans"  / "page_4_nlmeans_and.md",     "p4_nlmeans_and"),
-    # page_9 (bruitée)
-    #(ROOT / "nlmeans"  / "page_9_none.md",            "p9_none"),
-    #(ROOT / "nlmeans"  / "page_9_blur_adaptive.md",   "p9_blur_adaptive"),
-    #(ROOT / "nlmeans"  / "page_9_sauvola_and.md",     "p9_sauvola_and"),
-    #(ROOT / "nlmeans"  / "page_9_median_and.md",      "p9_median_and"),
-    #(ROOT / "nlmeans"  / "page_9_nlmeans_and.md",     "p9_nlmeans_and"),
+    (ROOT / "preprocess"  / "page_5_none.md",      "p5_none"),
+    (ROOT / "preprocess"  / "page_5_nlmeans.md",   "p5_nlmeans"),
+    (ROOT / "preprocess"  / "page_5_bilateral.md", "p5_bilateral"),
+    (ROOT / "preprocess"  / "page_5_sesr.md",      "p5_sesr"),
+    (ROOT / "preprocess"  / "page_5_esrgan.md",    "p5_esrgan"),
 ]
 
 # Référence globale (mode all_vs_ref et composant global)
@@ -92,19 +80,21 @@ USE_LEVENSHTEIN: bool = True
 # True : regrouper les résultats par page (préfixe p5_, p6_, …) dans le rapport
 GROUP_BY_PAGE: bool = True
 
-OUTPUT_DIR: Path = ROOT / "compare_ocr"
+OUTPUT_DIR: Path = ROOT / "compare_preprocess"
 
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-_HTML_TAG_RE  = re.compile(r'<[^>]+>')
-_DET_LINE_RE  = re.compile(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>")
-_IMAGE_LABELS = {"image"}
-_RE_PAGE      = re.compile(r'^(p\d+)_')
+_HTML_TAG_RE    = re.compile(r'<[^>]+>')
+_TABLE_BLOCK_RE = re.compile(r'<table[\s\S]*?</table>', re.IGNORECASE)
+_DET_LINE_RE    = re.compile(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>")
+_NON_TEXT_LABELS = {"image", "table"}
+_RE_PAGE        = re.compile(r'^(p\d+)_')
 
 
 def _normalize(text: str) -> str:
     text = _clean_layout(text)
+    text = _TABLE_BLOCK_RE.sub(' ', text)   # supprimer contenu des tables, pas seulement les balises
     text = _HTML_TAG_RE.sub(' ', text)
     text = re.sub(r'(\w)- (\w)',      r'\1\2', text)
     text = re.sub(r'(\w)-\n(\w)',     r'\1\2', text)
@@ -114,34 +104,34 @@ def _normalize(text: str) -> str:
 
 
 def _split_layout(text: str) -> tuple[str, str, bool]:
-    """Split raw layout OCR en (text_content, fig_content, figure_detected).
+    """Split raw layout OCR en (text_content, non_text_content, non_text_detected).
 
-    figure_detected = True si au moins un bloc label='image' est présent.
+    non_text_detected = True si au moins un bloc label='image' ou 'table' est présent.
     """
-    text_parts: list[str] = []
-    fig_parts:  list[str] = []
+    text_parts:     list[str] = []
+    non_text_parts: list[str] = []
     current_label = "text"
     current_lines: list[str] = []
-    figure_detected = False
+    non_text_detected = False
 
     for line in text.splitlines():
         m = _DET_LINE_RE.search(line)
         if m:
             block = "\n".join(current_lines).strip()
             if block:
-                (fig_parts if current_label in _IMAGE_LABELS else text_parts).append(block)
+                (non_text_parts if current_label in _NON_TEXT_LABELS else text_parts).append(block)
             current_label = m.group(1)
-            if current_label == "image":
-                figure_detected = True
+            if current_label in _NON_TEXT_LABELS:
+                non_text_detected = True
             current_lines = []
         else:
             current_lines.append(line)
 
     block = "\n".join(current_lines).strip()
     if block:
-        (fig_parts if current_label in _IMAGE_LABELS else text_parts).append(block)
+        (non_text_parts if current_label in _NON_TEXT_LABELS else text_parts).append(block)
 
-    return "\n\n".join(text_parts), "\n\n".join(fig_parts), figure_detected
+    return "\n\n".join(text_parts), "\n\n".join(non_text_parts), non_text_detected
 
 
 def _sim(path_a: Path, path_b: Path) -> float:
@@ -194,17 +184,17 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
 
     for src_path, label in non_ref:
         raw = src_path.read_text(encoding="utf-8")
-        text_raw, fig_raw, fig_detected = _split_layout(raw)
+        text_raw, non_text_raw, non_text_detected = _split_layout(raw)
 
-        # Normaliser les trois composants
-        global_norm = _write_norm(raw,      tmp_dir, f"{label}_global")
-        text_norm   = _write_norm(text_raw, tmp_dir, f"{label}_text")
-        fig_norm    = _write_norm(fig_raw,  tmp_dir, f"{label}_fig")
+        # Normaliser les composants
+        global_norm   = _write_norm(raw,          tmp_dir, f"{label}_global")
+        text_norm     = _write_norm(text_raw,     tmp_dir, f"{label}_text")
+        non_text_norm = _write_norm(non_text_raw, tmp_dir, f"{label}_fig")
 
         # Scores
         global_sim = _sim(ref_norm, global_norm)
-        text_sim   = _sim(text_ref_norm, text_norm) if text_ref_norm else None
-        fig_sim    = _sim(fig_ref_norm,  fig_norm)  if (fig_ref_norm and fig_detected) else None
+        text_sim   = _sim(text_ref_norm, text_norm)       if text_ref_norm else None
+        fig_sim    = _sim(fig_ref_norm,  non_text_norm)   if (fig_ref_norm and non_text_detected) else None
 
         # Diffs
         def _diff(norm_a: Path, norm_b: Path, suffix: str) -> Path:
@@ -212,26 +202,26 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
             compare(norm_a, norm_b, mode=MODE_DIFF_FILE, out_path=out)
             return out
 
-        diff_global = _diff(ref_norm,      global_norm, "global")
-        diff_text   = _diff(text_ref_norm, text_norm,   "text")  if text_ref_norm else None
-        diff_fig    = _diff(fig_ref_norm,  fig_norm,    "fig")   if fig_ref_norm  else None
+        diff_global = _diff(ref_norm,      global_norm,   "global")
+        diff_text   = _diff(text_ref_norm, text_norm,     "text")  if text_ref_norm else None
+        diff_fig    = _diff(fig_ref_norm,  non_text_norm, "fig")   if fig_ref_norm  else None
 
         rows.append({
-            "label":       label,
-            "fig_detected": fig_detected,
-            "global_sim":  global_sim,
-            "text_sim":    text_sim,
-            "fig_sim":     fig_sim,
-            "diff_global": diff_global,
-            "diff_text":   diff_text,
-            "diff_fig":    diff_fig,
+            "label":            label,
+            "non_text_detected": non_text_detected,
+            "global_sim":       global_sim,
+            "text_sim":         text_sim,
+            "fig_sim":          fig_sim,
+            "diff_global":      diff_global,
+            "diff_text":        diff_text,
+            "diff_fig":         diff_fig,
         })
 
         parts = [f"global={global_sim:.1%}"]
         if text_sim is not None: parts.append(f"texte={text_sim:.1%}")
-        fig_str = f"fig={'oui' if fig_detected else 'non'}"
-        if fig_sim is not None: fig_str += f" {fig_sim:.1%}"
-        parts.append(fig_str)
+        non_text_str = f"non-texte={'oui' if non_text_detected else 'non'}"
+        if fig_sim is not None: non_text_str += f" {fig_sim:.1%}"
+        parts.append(non_text_str)
         print(f"  {label:25s}  {' | '.join(parts)}")
 
     _write_component_report(rows)
@@ -248,19 +238,18 @@ def _write_component_report(rows: list[dict]) -> None:
         page_rows = list(group)
         lines += [
             f"## {page}\n",
-            "| Config | Texte % | Fig détectée | Fig % | Global % | Diffs |",
-            "|--------|---------|:------------:|-------|----------|-------|",
+            "| Config | Texte % | Non-texte détecté | Global % | Diffs |",
+            "|--------|---------|:-----------------:|----------|-------|",
         ]
         for r in page_rows:
-            text_s   = f"{r['text_sim']:.1%}"  if r["text_sim"]  is not None else "—"
-            fig_s    = f"{r['fig_sim']:.1%}"   if r["fig_sim"]   is not None else "—"
-            fig_icon = "oui" if r["fig_detected"] else "non"
+            text_s        = f"{r['text_sim']:.1%}" if r["text_sim"] is not None else "—"
+            non_text_icon = "oui" if r["non_text_detected"] else "non"
             diffs = []
             if r["diff_global"]: diffs.append(f"[G]({r['diff_global'].name})")
             if r["diff_text"]:   diffs.append(f"[T]({r['diff_text'].name})")
             if r["diff_fig"]:    diffs.append(f"[F]({r['diff_fig'].name})")
             lines.append(
-                f"| {r['label']} | {text_s} | {fig_icon} | {fig_s} | {r['global_sim']:.1%} | {' '.join(diffs)} |"
+                f"| {r['label']} | {text_s} | {non_text_icon} | {r['global_sim']:.1%} | {' '.join(diffs)} |"
             )
         lines.append("")
 
