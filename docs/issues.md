@@ -1,12 +1,6 @@
 # Issues — travaux en cours
 
-## Version robuste (actuelle)
-
-OK
-
----
-
-## Prochaines versions
+## Version paddle (actuelle)
 
 ### Intégration PaddleOCR dans la pipeline principale
 
@@ -25,6 +19,10 @@ Pistes pour réduire le temps de traitement (actuellement 35–40s/image) :
 - `--n-gpu-layers` : décharger des couches sur GPU via Vulkan
 - `--ctx-size` : réduire si 4096 tokens non nécessaires pour les pages courtes
 - `--batch-size` : ajuster pour le throughput
+
+---
+
+## Prochaines versions
 
 ### Feature 2 — Support PDF multi-pages
 
