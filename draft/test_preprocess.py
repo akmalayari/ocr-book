@@ -49,9 +49,12 @@ _PREPROCESS_FNS = {
 }
 
 
-def _preprocess(img_path: Path, config_name: str, cfg: Config, save_path: Path, device: str) -> Path:
+def _preprocess(img_path: Path, config_name: str, cfg: Config, save_path: Path, device: str,
+                reuse: bool = False) -> Path:
     if config_name == "none":
         return img_path
+    if reuse and save_path.exists():
+        return save_path
     if config_name in SR_CONFIGS:
         return generate_sr(img_path, config_name, device, save_path)
     return _PREPROCESS_FNS[config_name](img_path, cfg, save_path)
@@ -102,7 +105,7 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
             row = {"page": img_path.stem, "config": config_name,
                    "looped": False, "words": 0, "latency": 0.0, "error": ""}
             try:
-                preprocessed_path = _preprocess(img_path, config_name, cfg, img_file, device)
+                preprocessed_path = _preprocess(img_path, config_name, cfg, img_file, device, reuse=True)
                 text, metrics = ocr_image(preprocessed_path, vlm, cfg)
 
                 if cfg.prompt_mode == "layout" and cfg.two_pass:
@@ -172,9 +175,8 @@ def main() -> None:
         print("Aucune image.")
         sys.exit(1)
 
-    phase1_visualize(images, args.device)
-
     if args.ocr is None:
+        phase1_visualize(images, args.device)
         return
 
     configs_to_run = list(OCR_CONFIGS.keys()) if len(args.ocr) == 0 else args.ocr
