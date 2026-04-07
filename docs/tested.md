@@ -299,6 +299,61 @@ Tentative de contournement : couper l'image en deux moitiés (mi-largeur), dewar
 
 ---
 
+## PaddleOCR VL 1.5 (2026-04-07)
+
+Modèle : PaddleOCR-VL-1.5, 0.9B paramètres, format GGUF (F16).
+Scripts : `draft/test_paddle.py`, `draft/compare_ocr.py`.
+
+### Stack retenu
+
+- **llama-server** (llama-b8683-bin-win-vulkan-x64, Vulkan) — inférence VLM
+- **paddleocr** depuis le dépôt main (pas PyPI 3.4.0 — `llama-cpp-server` backend absent de la release) — orchestration layout + routing des prompts
+- **paddlepaddle CPU** — layout detection (ppdoclayout)
+- **Python 3.10** (conda env `py-3.10`) — incompatibilité paddlepaddle avec Python 3.11+
+- Patch paddlex requis : `docs/dev/apply_paddlex_patch.py` (voir `docs/dev/paddlex_patch.md`)
+
+### Résultats de précision (texte pur, référence `page_6_text.md`)
+
+| Page | Condition | Texte % | Notes |
+|------|-----------|---------|-------|
+| page_6 | clean | 100% | seule diff : niveau de header (`##` vs `###`) |
+| page_5-6 | clean | 100% | idem |
+| page_5 | bruitée | 99.9% | seule erreur réelle : "croisance" au lieu de "croissance" |
+| page_4 | bruitée | 97% vs version clean | tableau complexe : chiffres avec quelques erreurs, notes de bas de page ignorées |
+| page_9 | bruité vs clean | 99.5% | erreurs mineures sur version bruitée |
+
+Global (~98%) : différences sur accents, formatage ou erreurs facilement interprétables.
+
+### Vitesse
+
+35–40s/image vs 45–55s pour DeepSeek-OCR BF16. Gain ~25%.
+
+### Comportement sur les tableaux complexes
+
+PaddleOCR utilise un pipeline spécialisé pour les tableaux :
+1. ppdoclayout extrait les cellules via OCR
+2. Le contenu est encodé en OTSL (`<fcel>col<fcel>col<nl>...`)
+3. Le VLM reçoit l'OTSL pour reconstruction en HTML
+
+Avec le backend `llama-cpp-server`, llama-server ne sait pas parser l'OTSL comme image → erreur 500. Le patch `paddlex_patch.md` intercepte cette erreur par région, extrait l'OTSL depuis le message d'erreur, et le convertit directement via `convert_otsl_to_html()`.
+
+### Format de sortie
+
+HTML embarqué dans Markdown (compatible Obsidian) :
+- Tableaux : `<table border=1>...</table>`
+- Titres/légendes : `<div style="text-align: center;">...</div>`
+- Figures : `<div><img src="imgs/..." /></div>` (crop sauvegardé localement)
+- Exposants : `<sup>er</sup>`
+
+Pas de tokens DeepSeek (`<|ref|>`, `<|det|>`).
+
+### Verdict
+
+**PaddleOCR VL 1.5 retenu** — supérieur à DeepSeek-OCR BF16 sur tous les critères :
+précision, vitesse, absence de boucles. Résout Bug 4 (boucles), Amélioration 1 (vitesse) et Amélioration 2 (modèle alternatif).
+
+---
+
 ## Paramètres de génération
 
 | Paramètre | Valeur testée | Effet |

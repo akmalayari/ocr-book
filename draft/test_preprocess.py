@@ -28,7 +28,7 @@ from config import Config
 from ocr_client import ocr_image
 from preprocess import nlmeans
 from figure import process_figures
-from realesrgan_sesr import generate_sr
+from draft.obsolete.realesrgan_sesr import generate_sr
 
 PHOTOS_DIR     = Path(__file__).parent.parent / "photos"
 OUT_DIR        = Path(__file__).parent.parent / "output" / "preprocess_clean"

@@ -39,6 +39,7 @@ Vérifie ta mémoire en début de session : `memory/`
 - Ne pas proposer de corrections au-delà du scope demandé
 - Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
 - Pas de récapitulatif en fin de message sauf si le changement est complexe
+- Repondre de façon honnete sans brosser dans le sens du poil ni contredire sans raison.
 
 ### Git
 - add et commit a chaque issue résolue: grouper les fichiers modifiés de préférence à part si la modification est isolée.

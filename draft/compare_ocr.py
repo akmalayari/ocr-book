@@ -18,6 +18,7 @@ Sorties : OUTPUT_DIR/
   - global_report.md     tableau de similarité trié
 """
 
+import html
 import re
 import sys
 import difflib
@@ -41,15 +42,8 @@ PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    #(PHOTOS / "md"              / "page_6.md",                  "authentic"),
-     # page_9 (propre)
-    (ROOT / "preprocess_clean"        / "page_9_clean_none.md",             "p9_clean_none"),
-    (ROOT / "preprocess_clean"        / "page_9_clean_nlmeans.md",          "p9_clean_nlmeans"),
-    (ROOT / "preprocess_clean"        / "page_9_clean_sesr.md",             "p9_clean_sesr"),
-    # page_9 (bruitée)
-    (ROOT / "preprocess"        / "page_9_none.md",             "p9_none"),
-    (ROOT / "preprocess"        / "page_9_nlmeans.md",          "p9_nlmeans"),
-    (ROOT / "preprocess"        / "page_9_sesr.md",             "p9_sesr"),
+    (ROOT / "paddle_ocr" / "page_4.md",        "p4_paddle"),
+    (ROOT / "paddle_ocr" / "page_4_clean.md","p4c_paddle"),
 ]
 
 # Référence globale (mode all_vs_ref et composant global)
@@ -57,7 +51,7 @@ REFERENCE: Path | None = PHOTOS / "md" / "page_6.md"
 
 # Références par composant (utilisées si SCORE_BY_COMPONENT = True)
 TEXT_REFERENCE: Path | None = PHOTOS / "md" / "page_6_text.md"
-FIG_REFERENCE:  Path | None = PHOTOS / "md" / "page_6_fig.md"
+FIG_REFERENCE:  Path | None = None
 
 # True : score séparé texte / figure / global par fichier (remplace MODE_COMPARE)
 SCORE_BY_COMPONENT: bool = True
@@ -76,13 +70,14 @@ USE_LEVENSHTEIN: bool = True
 # True : regrouper les résultats par page (préfixe p5_, p6_, …) dans le rapport
 GROUP_BY_PAGE: bool = True
 
-OUTPUT_DIR: Path = ROOT / "compare_preprocess_clean"
+OUTPUT_DIR: Path = ROOT / "compare_paddle"
 
 # ══════════════════════════════════════════════════════════════════════════════
 
 
 _HTML_TAG_RE    = re.compile(r'<[^>]+>')
 _TABLE_BLOCK_RE = re.compile(r'<table[\s\S]*?</table>', re.IGNORECASE)
+_DIV_BLOCK_RE   = re.compile(r'<div[^>]*>[\s\S]*?</div>', re.IGNORECASE)
 _DET_LINE_RE    = re.compile(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>")
 _NON_TEXT_LABELS = {"image", "table"}
 _RE_PAGE        = re.compile(r'^(p[^_]+)_')
@@ -92,13 +87,17 @@ _TABLE_NOTE_RE = re.compile(
 
 
 def _normalize(text: str, strip_tables: bool = False, strip_notes: bool = False) -> str:
+    text = html.unescape(text)
     text = _clean_layout(text)
     if strip_tables:
         text = _TABLE_BLOCK_RE.sub(' ', text)
+        text = _DIV_BLOCK_RE.sub(' ', text)
     text = _HTML_TAG_RE.sub(' ', text)
     text = re.sub(r'[–—]',             '-',     text)
     text = re.sub(r'(\w)-\s*(\w)',     r'\1\2', text)
     text = re.sub(r'(?<!\n)\n(?!\n)', ' ',     text)
+    text = re.sub(r' ([;:!?»])',       r'\1',   text)  # espace avant ponctuation FR
+    text = re.sub(r"[\u2018\u2019\u201b\u02bc\u02bb\u00b4`]", "'", text)  # apostrophes → droite
     text = re.sub(r' {2,}', ' ', text)
     if strip_notes:
         text = _TABLE_NOTE_RE.sub('', text)
@@ -194,7 +193,7 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
 
         # Normaliser les composants
         global_norm   = _write_norm(raw,          tmp_dir, f"{label}_global")
-        text_norm     = _write_norm(text_raw,     tmp_dir, f"{label}_text")
+        text_norm     = _write_norm(text_raw,     tmp_dir, f"{label}_text", strip_tables=True)
         non_text_norm = _write_norm(non_text_raw, tmp_dir, f"{label}_fig")
 
         # Scores
