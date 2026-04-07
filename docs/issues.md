@@ -9,10 +9,19 @@
 - **page_9** : `median_and` et `nlm5_and` ne bouclent pas mais précision subpar. `nlm5_median`/`nlm10_and` bouclent sur suite de chiffres (faux positif détection).
 - **page_5/6** : `none` meilleur texte sur image floue (94.9%) ; `blur_adaptive` meilleur équilibre sur image nette (96.3% texte, 94.9% figure). Figure intraitable sur image floue (< 40% toutes configs). Precision toujours insatisfaisante.
 
-**Prochaines étapes :**
-1. **Real-ESRGAN AMD NPU** — `draft/test_realesrgan.py` opérationnel (2026-04-07). Modèle : `realesrgan-128x128-tiles-amdnpu` INT8 via `onnxruntime` + VitisAI EP (conda env `ryzen-ai-1.7.1`). Stratégie : upscale ×4 NPU → resize à taille originale → binarisation optionnelle. Première run ~120s (compilation NPU + cache) ; runs suivantes attendues ~2s. **Résultats OCR à évaluer** — comparer précision texte et figure vs configs actuelles sur page_5/page_6.
-2. **Déconvolution de flou** — si SR insuffisant sur figure floue. Wiener filter ou déconvolution aveugle (`skimage.restoration`). Inverse le flou de mise au point physique. À tester sur page_5.
-3. **Changer de VLM** (si SR + déconvolution insuffisants) — voir Amélioration 2.
+**Prochaines étapes (prétraitements non destructifs) :**
+
+Hypothèse directrice : DeepSeek-OCR est optimisé pour des photos naturelles. La binarisation transforme trop radicalement la distribution d'entrée → boucles. Les filtres légers qui préservent le look photo sont préférables.
+
+Scripts : `draft/test_preprocess.py` (OCR), `draft/realesrgan_sesr.py` (génération SR).
+
+1. **nlmeans seul** — `fastNlMeansDenoising(h=noise_level)`, dans `preprocess.py` + `test_preprocess.py`. À tester sur pages 4, 5, 6, 9.
+2. **bilateralFilter** — `bilateralFilter(d=9, σ=75)`, dans `preprocess.py` + `test_preprocess.py`.
+3. **SESR-M7 x2** — `sesr-m7-256x256-tiles-amdnpu` (2026-04-07), ~91 FPS NPU. Intégré dans `realesrgan_sesr.py` + `test_preprocess.py`. À tester sur pages 5, 6.
+4. **RealESRGAN x4** — intégré dans `realesrgan_sesr.py` + `test_preprocess.py`. Comparaison avec SESR-M7.
+5. **bg_divide seul** (sans binarisation) — uniquement pour page_1 (mauvais éclairage). À ajouter si nlmeans/SR insuffisants.
+6. **Déconvolution de flou** — si SR insuffisant sur figure floue. Wiener filter ou déconvolution aveugle (`skimage.restoration`).
+7. **Changer de VLM** (si tout insuffisant) — voir Amélioration 2.
 
 
 ---

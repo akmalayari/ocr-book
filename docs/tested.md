@@ -23,6 +23,8 @@ Retournait systématiquement HTTP 500 sur les requêtes multimodales sous Window
 **Statut : retenu.**
 Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Contourne le serveur REST entièrement. Interface : `VlmChatMessage` + `apply_chat_template` + `vlm.generate(GenerationConfig(image_paths=[...]))`.
 
+Nexaai utilise llama-cpp sous le capot — DeepSeek-OCR peut tourner sur GPU via Vulkan.
+
 **Limite :** sur Windows, `nexa_bridge.dll` retourne un `stop_reason` corrompu (byte `0xc0` invalide UTF-8) dans les métadonnées de profiling. Contourné par un monkey-patch dans `src/patch.py` — le texte OCR lui-même est intact.
 
 ---

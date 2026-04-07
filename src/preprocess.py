@@ -115,6 +115,27 @@ def nlmeans_and(image_path: Path, cfg, save_path: Path | None = None) -> Path:
     )
     return _save(bw, save_path)
 
+def nlmeans(image_path: Path, cfg, save_path: Path | None = None) -> Path:
+    """
+    fastNlMeansDenoising — débruitage non-local sans binarisation.
+    """
+    img      = cv2.imread(str(image_path))
+    gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    noise    = estimate_noise_level(image_path)
+    denoised = cv2.fastNlMeansDenoising(gray, h=cfg.nlmeans_k * noise)
+    return _save(denoised, save_path)
+
+
+def bilateral(image_path: Path, cfg, save_path: Path | None = None) -> Path:
+    """
+    bilateralFilter(d=9, σColor=75, σSpace=75) — lissage préservant les contours.
+    """
+    img      = cv2.imread(str(image_path))
+    gray     = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    filtered = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
+    return _save(filtered, save_path)
+
+
 def estimate_noise_level(image_path: Path) -> float:
     from skimage.restoration import estimate_sigma
 
