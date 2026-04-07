@@ -7,10 +7,12 @@
 
 - **page_4** : boucle persistante sur toutes les configs. Aucune config ne transcrit le tableau sans boucler.
 - **page_9** : `median_and` et `nlm5_and` ne bouclent pas mais précision subpar. `nlm5_median`/`nlm10_and` bouclent sur suite de chiffres (faux positif détection).
-- **page_5/6** : `none` meilleur texte sur image floue (94.9%) ; `blur_adaptive` meilleur équilibre sur image nette (96.3% texte, 94.9% figure). Figure intraitable sur image floue (< 40% toutes configs).
+- **page_5/6** : `none` meilleur texte sur image floue (94.9%) ; `blur_adaptive` meilleur équilibre sur image nette (96.3% texte, 94.9% figure). Figure intraitable sur image floue (< 40% toutes configs). Precision toujours insatisfaisante.
 
-**Prochaine étape :**
-1. **Real-ESRGAN** — super-résolution x2/x4, récupère des caractères illisibles. ~2–5s/image sur GPU. Dépendance lourde. Dernier recours pour les figures sur image floue (page_5).
+**Prochaines étapes :**
+1. **Real-ESRGAN AMD NPU** — `draft/test_realesrgan.py` opérationnel (2026-04-07). Modèle : `realesrgan-128x128-tiles-amdnpu` INT8 via `onnxruntime` + VitisAI EP (conda env `ryzen-ai-1.7.1`). Stratégie : upscale ×4 NPU → resize à taille originale → binarisation optionnelle. Première run ~120s (compilation NPU + cache) ; runs suivantes attendues ~2s. **Résultats OCR à évaluer** — comparer précision texte et figure vs configs actuelles sur page_5/page_6.
+2. **Déconvolution de flou** — si SR insuffisant sur figure floue. Wiener filter ou déconvolution aveugle (`skimage.restoration`). Inverse le flou de mise au point physique. À tester sur page_5.
+3. **Changer de VLM** (si SR + déconvolution insuffisants) — voir Amélioration 2.
 
 
 ---
@@ -36,7 +38,9 @@ BF16 est 2.5× plus lent que Q8_0 (~20s). Temps couteux sur des centaines de pag
 2. **Changer de wrapper Python (llama-cpp-python)** — secondaire, peu probable d'accélérer.
 
 ### Amélioration 2 - Performance et précision
-Tester d'autres modèles OCR via llama-cpp-python: paddleocr, lightonocr, olmocr, glmocr, nanonetsocr. Il faut tester 1. la vitesse d'execution 2. la precision de la retranscription. 
+Tester d'autres modèles OCR : paddleocr, lightonocr, olmocr, glmocr, nanonetsocr. Critères : 1. vitesse d'exécution 2. précision de retranscription.
+
+**Stratégie envisagée : modèle adaptatif selon la balise grounding.** Utiliser un VLM généraliste (ex. DeepSeek-OCR) pour le texte courant, et basculer sur un modèle spécialisé selon la balise détectée — modèle tableau pour `table`, modèle figure pour `image`. Permettrait de contourner les boucles sur tableaux numériques (page_4) sans dégrader le texte.
 
 ## Architecture
 
