@@ -53,6 +53,7 @@ Thumbs.db
 data/
 output/
 photos/
+draft/
 
 # Claude folders
 memory/

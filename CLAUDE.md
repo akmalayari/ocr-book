@@ -42,7 +42,8 @@ Vérifie ta mémoire en début de session : `memory/`
 
 ### Git
 - add et commit a chaque issue résolue: grouper les fichiers modifiés de préférence à part si la modification est isolée.
-- ne pas commit des fichiers de `draft/`seuls.
+- `draft/` est gitignored.
+- ne pas ajouter le message "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ### Issues
 - après implémentation, mettre a jour issues.md si pertinent.

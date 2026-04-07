@@ -1,10 +1,10 @@
 """
-test_preprocess.py — Comparaison des prétraitements légers (sans binarisation) sur pages cibles.
+test_preprocess.py — Baseline texte pur sur images clean (none / nlmeans / sesr).
 
 Phase 1 (défaut)    : génère les images prétraitées.
 Phase 2 (--ocr)     : lance l'OCR (preprocess → OCR → 2e passe → postprocess).
 
-Sorties : output/preprocess/
+Sorties : output/preprocess_clean/
 
 Usage :
     python draft/test_preprocess.py
@@ -26,28 +26,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import patch  # noqa: F401
 from config import Config
 from ocr_client import ocr_image
-from preprocess import nlmeans, bilateral
+from preprocess import nlmeans
 from figure import process_figures
 from realesrgan_sesr import generate_sr
 
 PHOTOS_DIR     = Path(__file__).parent.parent / "photos"
-OUT_DIR        = Path(__file__).parent.parent / "output" / "preprocess"
-DEFAULT_PAGES  = ["page_4", "page_5", "page_6", "page_9"]
+OUT_DIR        = Path(__file__).parent.parent / "output" / "preprocess_clean"
+DEFAULT_PAGES  = ["page_4_clean", "page_5-6_clean", "page_9_clean", "page_10_clean"]
 DEFAULT_DEVICE = "npu"
 
 OCR_CONFIGS: dict[str, str] = {
-    "none":      "image originale",
-    "nlmeans":   "fastNlMeans(h=noise_level)",
-    "bilateral": "bilateralFilter(d=9, σ=75)",
-    "sesr":      "SESR-M7 x2 → resize",
-    "esrgan":    "RealESRGAN x4 → resize",
+    "none":    "image originale",
+    "nlmeans": "fastNlMeans(h=noise_level)",
+    "sesr":    "SESR-M7 x2 → resize",
 }
 
-SR_CONFIGS = {"sesr", "esrgan"}
+SR_CONFIGS = {"sesr"}
 
 _PREPROCESS_FNS = {
-    "nlmeans":   nlmeans,
-    "bilateral": bilateral,
+    "nlmeans": nlmeans,
 }
 
 
@@ -156,14 +153,15 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
 def _write_ocr_report(results: list[dict]) -> None:
     lines = [
         "# Rapport OCR\n",
-        "| Page | Config | Boucle | Mots | Preprocess (s) | OCR (s) | Note |",
-        "|------|--------|--------|------|----------------|---------|------|",
+        "| Page | Config | Boucle | Mots | Preprocess (s) | OCR (s) | Total (s) | Note |",
+        "|------|--------|--------|------|----------------|---------|-----------|------|",
     ]
     for r in results:
         boucle = "**oui**" if r["looped"] else "non"
+        total = r["preprocess_s"] + r["ocr_s"]
         lines.append(
             f"| {r['page']} | {r['config']} | {boucle} "
-            f"| {r['words']} | {r['preprocess_s']:.1f} | {r['ocr_s']:.1f} | {r.get('error', '')} |"
+            f"| {r['words']} | {r['preprocess_s']:.1f} | {r['ocr_s']:.1f} | {total:.1f} | {r.get('error', '')} |"
         )
     out = OUT_DIR / "ocr_report.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")

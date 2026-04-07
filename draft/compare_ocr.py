@@ -41,19 +41,15 @@ PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (PHOTOS / "md"        / "page_6.md",           "authentic"),
-    # page_6 (nette)
-    (ROOT / "preprocess"  / "page_6_none.md",      "p6_none"),
-    (ROOT / "preprocess"  / "page_6_nlmeans.md",   "p6_nlmeans"),
-    (ROOT / "preprocess"  / "page_6_bilateral.md", "p6_bilateral"),
-    (ROOT / "preprocess"  / "page_6_sesr.md",      "p6_sesr"),
-    (ROOT / "preprocess"  / "page_6_esrgan.md",    "p6_esrgan"),
-    # page_5 (bruitée)
-    (ROOT / "preprocess"  / "page_5_none.md",      "p5_none"),
-    (ROOT / "preprocess"  / "page_5_nlmeans.md",   "p5_nlmeans"),
-    (ROOT / "preprocess"  / "page_5_bilateral.md", "p5_bilateral"),
-    (ROOT / "preprocess"  / "page_5_sesr.md",      "p5_sesr"),
-    (ROOT / "preprocess"  / "page_5_esrgan.md",    "p5_esrgan"),
+    #(PHOTOS / "md"              / "page_6.md",                  "authentic"),
+     # page_9 (propre)
+    (ROOT / "preprocess_clean"        / "page_9_clean_none.md",             "p9_clean_none"),
+    (ROOT / "preprocess_clean"        / "page_9_clean_nlmeans.md",          "p9_clean_nlmeans"),
+    (ROOT / "preprocess_clean"        / "page_9_clean_sesr.md",             "p9_clean_sesr"),
+    # page_9 (bruitée)
+    (ROOT / "preprocess"        / "page_9_none.md",             "p9_none"),
+    (ROOT / "preprocess"        / "page_9_nlmeans.md",          "p9_nlmeans"),
+    (ROOT / "preprocess"        / "page_9_sesr.md",             "p9_sesr"),
 ]
 
 # Référence globale (mode all_vs_ref et composant global)
@@ -67,7 +63,7 @@ FIG_REFERENCE:  Path | None = PHOTOS / "md" / "page_6_fig.md"
 SCORE_BY_COMPONENT: bool = True
 
 # "all_vs_ref" | "all_pairs" | "sequential"  (ignoré si SCORE_BY_COMPONENT)
-MODE_COMPARE: str = "all_vs_ref"
+MODE_COMPARE: str = "all_pairs"
 
 # "sentence" | "word"  — contenu des fichiers diff_{a}_vs_{b}.md
 MODE_DIFF_FILE:   str = "sentence"
@@ -80,7 +76,7 @@ USE_LEVENSHTEIN: bool = True
 # True : regrouper les résultats par page (préfixe p5_, p6_, …) dans le rapport
 GROUP_BY_PAGE: bool = True
 
-OUTPUT_DIR: Path = ROOT / "compare_preprocess"
+OUTPUT_DIR: Path = ROOT / "compare_preprocess_clean"
 
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -89,18 +85,24 @@ _HTML_TAG_RE    = re.compile(r'<[^>]+>')
 _TABLE_BLOCK_RE = re.compile(r'<table[\s\S]*?</table>', re.IGNORECASE)
 _DET_LINE_RE    = re.compile(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>")
 _NON_TEXT_LABELS = {"image", "table"}
-_RE_PAGE        = re.compile(r'^(p\d+)_')
+_RE_PAGE        = re.compile(r'^(p[^_]+)_')
+_TABLE_NOTE_RE = re.compile(
+    r'(?m)^(Champ|Lecture|Sources?|Note|Tableau\b|Document\b)[^\n]*$', re.IGNORECASE
+)
 
 
-def _normalize(text: str, strip_tables: bool = False) -> str:
+def _normalize(text: str, strip_tables: bool = False, strip_notes: bool = False) -> str:
     text = _clean_layout(text)
     if strip_tables:
         text = _TABLE_BLOCK_RE.sub(' ', text)
     text = _HTML_TAG_RE.sub(' ', text)
-    text = re.sub(r'(\w)- (\w)',      r'\1\2', text)
-    text = re.sub(r'(\w)-\n(\w)',     r'\1\2', text)
+    text = re.sub(r'[–—]',             '-',     text)
+    text = re.sub(r'(\w)-\s*(\w)',     r'\1\2', text)
     text = re.sub(r'(?<!\n)\n(?!\n)', ' ',     text)
     text = re.sub(r' {2,}', ' ', text)
+    if strip_notes:
+        text = _TABLE_NOTE_RE.sub('', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
 
@@ -144,14 +146,17 @@ def _sim(path_a: Path, path_b: Path) -> float:
     return difflib.SequenceMatcher(None, ta, tb, autojunk=False).ratio()
 
 
-def _write_norm(content: str, tmp_dir: Path, name: str, strip_tables: bool = False) -> Path:
+def _write_norm(content: str, tmp_dir: Path, name: str,
+                strip_tables: bool = False, strip_notes: bool = False) -> Path:
     out = tmp_dir / f"{re.sub(r'[^\w]', '_', name)}.md"
-    out.write_text(_normalize(content, strip_tables=strip_tables), encoding="utf-8")
+    out.write_text(_normalize(content, strip_tables=strip_tables, strip_notes=strip_notes), encoding="utf-8")
     return out
 
 
-def _norm_file(src: Path, tmp_dir: Path, label: str, strip_tables: bool = False) -> Path:
-    return _write_norm(src.read_text(encoding="utf-8"), tmp_dir, label, strip_tables=strip_tables)
+def _norm_file(src: Path, tmp_dir: Path, label: str,
+               strip_tables: bool = False, strip_notes: bool = False) -> Path:
+    return _write_norm(src.read_text(encoding="utf-8"), tmp_dir, label,
+                       strip_tables=strip_tables, strip_notes=strip_notes)
 
 
 def _page_key(label: str) -> str:
@@ -175,7 +180,7 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
                          text_ref: Path | None, fig_ref: Path | None,
                          tmp_dir: Path) -> None:
     ref_norm      = _norm_file(ref_path,  tmp_dir, "ref_global")
-    text_ref_norm = _norm_file(text_ref,  tmp_dir, "ref_text",  strip_tables=True) if text_ref else None
+    text_ref_norm = _norm_file(text_ref,  tmp_dir, "ref_text",  strip_tables=True, strip_notes=True) if text_ref else None
     fig_ref_norm  = _norm_file(fig_ref,   tmp_dir, "ref_fig")   if fig_ref   else None
 
     rows: list[dict] = []
@@ -334,17 +339,21 @@ def main() -> None:
 
     ref_path = REFERENCE if REFERENCE is not None else FILES[0][0]
 
-    if SCORE_BY_COMPONENT:
+    if SCORE_BY_COMPONENT and MODE_COMPARE != "all_pairs":
         _run_component_mode(FILES, ref_path, TEXT_REFERENCE, FIG_REFERENCE, tmp_dir)
         return
 
-    # Mode pairwise
+    # Mode pairwise — compare le texte pur (strip_notes=True)
     ref_entry = next(((p, l) for p, l in FILES if p == ref_path), (ref_path, ref_path.stem))
     normed: dict[str, Path] = {}
     for src_path, label in FILES:
-        normed[label] = _norm_file(src_path, tmp_dir, label)
+        raw = src_path.read_text(encoding="utf-8")
+        text_raw, _, _ = _split_layout(raw)
+        normed[label] = _write_norm(text_raw, tmp_dir, label, strip_notes=True)
     if ref_entry[1] not in normed:
-        normed[ref_entry[1]] = _norm_file(ref_entry[0], tmp_dir, ref_entry[1])
+        raw = ref_entry[0].read_text(encoding="utf-8")
+        text_raw, _, _ = _split_layout(raw)
+        normed[ref_entry[1]] = _write_norm(text_raw, tmp_dir, ref_entry[1], strip_notes=True)
     _run_pairwise_mode(FILES, ref_entry, normed)
 
 
