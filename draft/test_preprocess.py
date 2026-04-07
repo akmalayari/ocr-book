@@ -15,6 +15,7 @@ Usage :
 """
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -63,24 +64,41 @@ def _preprocess(img_path: Path, config_name: str, cfg: Config, save_path: Path, 
 
 # ── Phase 1 : visualisation ───────────────────────────────────────────────────
 
+PREPROCESS_TIMES_FILE = OUT_DIR / "preprocess_times.json"
+
+
+def _load_preprocess_times() -> dict:
+    if PREPROCESS_TIMES_FILE.exists():
+        return json.loads(PREPROCESS_TIMES_FILE.read_text(encoding="utf-8"))
+    return {}
+
+
+def _save_preprocess_times(times: dict) -> None:
+    PREPROCESS_TIMES_FILE.write_text(json.dumps(times, indent=2), encoding="utf-8")
+
+
 def phase1_visualize(images: list[Path], device: str) -> None:
     print("── Génération des images prétraitées ───────────────────────")
-    cfg = Config()
+    cfg   = Config()
+    times = _load_preprocess_times()
     for img_path in images:
         n = 0
         for config_name in OCR_CONFIGS:
             if config_name == "none":
                 continue
             save_path = OUT_DIR / f"{img_path.stem}_{config_name}.jpg"
+            key = f"{img_path.stem}_{config_name}"
             try:
                 t0 = time.perf_counter()
                 _preprocess(img_path, config_name, cfg, save_path, device)
                 elapsed = time.perf_counter() - t0
+                times[key] = elapsed
                 print(f"  {img_path.stem} [{config_name}] → {elapsed:.1f}s")
                 n += 1
             except RuntimeError as e:
                 print(f"  [ERREUR] {img_path.stem} {config_name}: {e}")
         print(f"  {img_path.name} → {n} fichiers")
+    _save_preprocess_times(times)
     print(f"\nImages dans {OUT_DIR}")
     print("Pour lancer l'OCR : --ocr  (ou --ocr nlmeans sesr ...)")
 
@@ -92,6 +110,7 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
     cfg_base = Config(prompt_mode="layout")
     vlm = VLM.from_(model=cfg_base.model, quant=cfg_base.quant, config=cfg_base.to_model_config())
 
+    preprocess_times = _load_preprocess_times()
     results = []
     print(f"\n── OCR sur {len(configs_to_run)} config(s) × {len(images)} image(s) ──")
 
@@ -106,12 +125,13 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
             out_md   = OUT_DIR / f"{img_path.stem}_{config_name}.md"
             print(f"  [{img_path.stem} {config_name}] ...", end=" ", flush=True)
 
+            key = f"{img_path.stem}_{config_name}"
             row = {"page": img_path.stem, "config": config_name,
                    "looped": False, "words": 0, "preprocess_s": 0.0, "ocr_s": 0.0, "error": ""}
             try:
                 t0 = time.perf_counter()
                 preprocessed_path = _preprocess(img_path, config_name, cfg, img_file, device, reuse=True)
-                row["preprocess_s"] = time.perf_counter() - t0
+                row["preprocess_s"] = preprocess_times.get(key, time.perf_counter() - t0)
 
                 t0 = time.perf_counter()
                 text, metrics = ocr_image(preprocessed_path, vlm, cfg)
