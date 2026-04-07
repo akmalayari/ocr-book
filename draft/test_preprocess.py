@@ -16,6 +16,7 @@ Usage :
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -72,7 +73,10 @@ def phase1_visualize(images: list[Path], device: str) -> None:
                 continue
             save_path = OUT_DIR / f"{img_path.stem}_{config_name}.jpg"
             try:
+                t0 = time.perf_counter()
                 _preprocess(img_path, config_name, cfg, save_path, device)
+                elapsed = time.perf_counter() - t0
+                print(f"  {img_path.stem} [{config_name}] → {elapsed:.1f}s")
                 n += 1
             except RuntimeError as e:
                 print(f"  [ERREUR] {img_path.stem} {config_name}: {e}")
@@ -103,21 +107,24 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
             print(f"  [{img_path.stem} {config_name}] ...", end=" ", flush=True)
 
             row = {"page": img_path.stem, "config": config_name,
-                   "looped": False, "words": 0, "latency": 0.0, "error": ""}
+                   "looped": False, "words": 0, "preprocess_s": 0.0, "ocr_s": 0.0, "error": ""}
             try:
+                t0 = time.perf_counter()
                 preprocessed_path = _preprocess(img_path, config_name, cfg, img_file, device, reuse=True)
-                text, metrics = ocr_image(preprocessed_path, vlm, cfg)
+                row["preprocess_s"] = time.perf_counter() - t0
 
+                t0 = time.perf_counter()
+                text, metrics = ocr_image(preprocessed_path, vlm, cfg)
                 if cfg.prompt_mode == "layout" and cfg.two_pass:
                     text, fig_metrics = process_figures(text, img_path, vlm, cfg, img_path.stem)
                     metrics["total_latency"] += fig_metrics["total_latency"]
+                row["ocr_s"] = time.perf_counter() - t0
 
                 out_md.write_text(text, encoding="utf-8")
-                row["words"]   = len(text.split())
-                row["latency"] = metrics["total_latency"]
-                row["looped"]  = metrics.get("looped", False)
+                row["words"]  = len(text.split())
+                row["looped"] = metrics.get("looped", False)
                 flag = " [BOUCLE]" if row["looped"] else ""
-                print(f"{row['words']} mots ({row['latency']:.1f}s){flag}")
+                print(f"{row['words']} mots  pre={row['preprocess_s']:.1f}s  ocr={row['ocr_s']:.1f}s{flag}")
             except Exception as e:
                 row["error"] = str(e)
                 print(f"ERREUR: {e}")
@@ -129,14 +136,14 @@ def phase2_ocr(images: list[Path], configs_to_run: list[str], device: str) -> No
 def _write_ocr_report(results: list[dict]) -> None:
     lines = [
         "# Rapport OCR\n",
-        "| Page | Config | Boucle | Mots | Durée (s) | Note |",
-        "|------|--------|--------|------|-----------|------|",
+        "| Page | Config | Boucle | Mots | Preprocess (s) | OCR (s) | Note |",
+        "|------|--------|--------|------|----------------|---------|------|",
     ]
     for r in results:
         boucle = "**oui**" if r["looped"] else "non"
         lines.append(
             f"| {r['page']} | {r['config']} | {boucle} "
-            f"| {r['words']} | {r['latency']:.1f} | {r.get('error', '')} |"
+            f"| {r['words']} | {r['preprocess_s']:.1f} | {r['ocr_s']:.1f} | {r.get('error', '')} |"
         )
     out = OUT_DIR / "ocr_report.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
