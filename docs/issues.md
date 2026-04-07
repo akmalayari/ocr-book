@@ -21,13 +21,27 @@ Objectif : >99% texte sur image clean, dégradation minimale sur image bruitée.
 
 **Images clean disponibles : page_4, page_5, page_6, page_9, page_10** (nettes, éclairage uniforme).
 
+**Configs retenues pour la suite : `none`, `sesr`, `nlmeans`**
+
+Résultats texte pur (2026-04-07, `compare_ocr.py` avec score texte seul, `output/compare_preprocess/global_report.md`) :
+
+| Config | p5 texte % | p6 texte % |
+|--------|:----------:|:----------:|
+| none | 92.1% | 92.1% |
+| sesr | 92.0% | 92.6% |
+| nlmeans | 92.1% | 95.4% |
+| bilateral | 91.8% | 1.7% *(boucle)* |
+| esrgan | 92.2% | 95.2% |
+
+`nlmeans` meilleur texte sur p6 (95.4%), quasi égal sur p5. `esrgan` proche mais 137s — éliminé. `bilateral` abandonné (boucle p6). Sur p5, tous les preprocess sont à ±0.2% — le bruit est le facteur limitant, pas le preprocess.
+
 **Prochaines étapes :**
 
-1. **Baseline texte pur sur images clean** — tester `none` + `sesr` sur les images clean. Mettre à jour `compare_ocr.py` pour exclure `table`/`image` du score texte. Valider l'hypothèse >99%.
-2. **Tester sur originaux bruités** — mesurer la dégradation texte pur (`none` vs `sesr`) vs baseline clean.
-3. **bg_divide** (sans binarisation) — pour les images à éclairage inégal (pliure, lumière rasante). À tester sur page_1 et les originaux bruités.
-4. **Déconvolution de flou** (`skimage.restoration.unsupervised_wiener`) — pour les très floues (Laplacian < 40). Nécessite estimation PSF ; amplification de bruit possible. Après `bg_divide`.
-5. **Loop recovery via `rec`** — dernier recours si boucles persistantes après images clean. Stratégie : stopper la génération sur boucle, identifier les bbox non traitées par différence avec le layout, relancer `rec` ciblé. Complexe, latence ajoutée.
+1. **Baseline texte pur sur images clean** — tester `none`, `sesr`, `nlmeans` sur les images clean (page_4, page_5, page_6, page_9, page_10). Valider l'hypothèse >99% texte sur image propre.
+2. **Tester sur originaux bruités** — mesurer la dégradation vs baseline clean pour les 3 configs.
+3. **bg_divide** (sans binarisation) — pour les images à éclairage inégal (pliure, lumière rasante). À tester sur page_1 et les originaux bruités si dégradation significative.
+4. **Déconvolution de flou** (`skimage.restoration.unsupervised_wiener`) — pour les très floues (Laplacian < 40). Après bg_divide.
+5. **Loop recovery via `rec`** — dernier recours si boucles persistantes sur images clean.
 
 ---
 
