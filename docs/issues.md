@@ -4,13 +4,8 @@
 
 ### Intégration PaddleOCR dans la pipeline principale
 
-PaddleOCR VL 1.5 retenu (voir `docs/tested.md`). À intégrer en remplacement de DeepSeek-OCR/nexaai.
-
 **Points à traiter :**
-1. **Nouveau `ocr_client.py`** (ou réécriture) — remplacer nexaai.VLM par llama-server subprocess + PaddleOCRVL.
-2. **Postprocess** — `postprocess.py` câblé sur les tokens DeepSeek (`<|ref|>`, `<|det|>`). À réécrire pour le format HTML PaddleOCR (pas de tokens grounding, tables en `<table>`, figures en `<img>`).
-3. **Détection de boucle** — `_is_looping` dans `ocr_client.py` devient sans objet (PaddleOCR ne boucle pas). À évaluer si on garde pour sécurité ou supprime.
-4. **Gestion des crops figures** — PaddleOCR sauvegarde les crops dans `imgs/` relatif au `save_path`. À intégrer dans la pipeline de sortie.
+1. **Gestion des crops figures** — PaddleOCR sauvegarde les crops dans `imgs/` relatif au `save_path`. À intégrer dans la pipeline de sortie.
 
 ### Amélioration 3 — Tuning llama-server
 
@@ -26,11 +21,3 @@ Pistes pour réduire le temps de traitement (actuellement 35–40s/image) :
 ### Feature 2 — Support PDF multi-pages
 
 Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
-
-## Architecture
-
-OK
-
-## Style
-
-OK
