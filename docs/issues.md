@@ -7,13 +7,6 @@
 **Points à traiter :**
 1. **Gestion des crops figures** — PaddleOCR sauvegarde les crops dans `imgs/` relatif au `save_path`. À intégrer dans la pipeline de sortie.
 
-### Amélioration 3 — Tuning llama-server
-
-Pistes pour réduire le temps de traitement (actuellement 35–40s/image) :
-- `--n-gpu-layers` : décharger des couches sur GPU via Vulkan
-- `--ctx-size` : réduire si 4096 tokens non nécessaires pour les pages courtes
-- `--batch-size` : ajuster pour le throughput
-
 ---
 
 ## Prochaines versions

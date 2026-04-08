@@ -32,11 +32,8 @@ def _start_server(cfg: Config) -> subprocess.Popen:
         "-ub",      str(cfg.n_ubatch),
         "-t",       str(cfg.n_threads),
         "--prio",   str(cfg.prio),
-        "--temp",   str(cfg.temperature),
-        "--reasoning", cfg.reasoning,
+        "--temp",   str(cfg.temperature)
     ]
-    if cfg.flash_attention:
-        cmd += ["-fa", "on"]
     if cfg.kv_offload:
         cmd += ["-kvo"]
     logger.info("Démarrage llama-server...")
