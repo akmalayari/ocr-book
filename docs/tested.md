@@ -309,7 +309,7 @@ Scripts : `draft/test_paddle.py`, `draft/compare_ocr.py`.
 - **llama-server** (llama-b8683-bin-win-vulkan-x64, Vulkan) — inférence VLM
 - **paddleocr** depuis le dépôt main (pas PyPI 3.4.0 — `llama-cpp-server` backend absent de la release) — orchestration layout + routing des prompts
 - **paddlepaddle CPU** — layout detection (ppdoclayout)
-- **Python 3.10** (conda env `py-3.10`) — incompatibilité paddlepaddle avec Python 3.11+
+- **Python 3.10** (conda env `ocr-livre`) — incompatibilité paddlepaddle avec Python 3.11+
 - Patch paddlex requis : `docs/dev/apply_paddlex_patch.py` (voir `docs/dev/paddlex_patch.md`)
 
 ### Résultats de précision (texte pur, référence `page_6_text.md`)
@@ -349,8 +349,10 @@ Pas de tokens DeepSeek (`<|ref|>`, `<|det|>`).
 
 ### Verdict
 
-**PaddleOCR VL 1.5 retenu** — supérieur à DeepSeek-OCR BF16 sur tous les critères :
+**PaddleOCR VL 1.5 retenu et intégré** — supérieur à DeepSeek-OCR BF16 sur tous les critères :
 précision, vitesse, absence de boucles. Résout Bug 4 (boucles), Amélioration 1 (vitesse) et Amélioration 2 (modèle alternatif).
+
+Pipeline principale (`src/`) migrée vers PaddleOCR (2026-04-08) : `ocr_client.py` réécrit, `pipeline.py` simplifié (preprocess/figure/nexaai supprimés), `config.py` nettoyé.
 
 ---
 
