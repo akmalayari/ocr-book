@@ -4,58 +4,28 @@ config.py — Configuration centrale du pipeline OCR
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
 
 
 @dataclass
 class Config:
-    # ── Modèle VLM ───────────────────────────────────────────────────────────
-    model: str = "NexaAI/DeepSeek-OCR-GGUF"
-    quant: str = "bf16"
-    QUANTS: ClassVar[tuple] = ("q8_0", "bf16")
+    # ── llama-server ─────────────────────────────────────────────────────────
+    llama_server_path: str = r"C:\path\to\llama.cpp\llama-b8683-bin-win-vulkan-x64\llama-server.exe"
+    model_path: str        = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5.gguf"
+    mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
+    server_url: str        = "http://127.0.0.1:8080"
+    server_port: int       = 8080
+    server_timeout: int    = 120   # secondes à attendre avant de déclarer le serveur mort
 
-    # ── Paramètres ModelConfig ────────────────────────────────────────────────
-    n_ctx: int        = 8192
-    n_threads: int    = 4
-    n_gpu_layers: int = 999
-    n_batch: int      = 1024
+    # ── Paramètres llama-server (tuning) ─────────────────────────────────────
+    n_ctx: int         = 4096
+    n_gpu_layers: int  = 99
+    n_batch: int       = 1024
+    n_threads: int     = 4
+    max_tokens: int    = 4096
+    temperature: float = 0.0
 
-    # ── Inférence ────────────────────────────────────────────────────────────
-    max_tokens: int        = 4096
-    temperature: float     = 0.0
-    repetition_penalty: float = 1.1
-
-    # ── Détection de boucle ──────────────────────────────────────────────────
-    loop_check_every: int       = 200   # vérifier toutes les N tokens
-    loop_window_words: int      = 50    # taille de la fenêtre en mots
-    loop_divisor_threshold: float = 0.8 # % de mots dont le count doit être divisible
-
-    # ── Pré-traitement ───────────────────────────────────────────────────────
-    #   "none"    → image originale
-    #   "nlmeans" → fastNlMeansDenoising (débruitage sans binarisation)
-    #   "sesr"    → SESR-M7 x2 → resize (super-résolution AMD NPU)
-    PREPROCESS_MODES: ClassVar[tuple] = ("none", "nlmeans", "sesr")
-    preprocess_mode: str = "nlmeans"
-
-    nlmeans_k: float = 1.0
-
-    sesr_device: str = "npu"
-
-    # ── Prompts disponibles ──────────────────────────────────────────────────
-    #   "plain"     → texte brut sans mise en forme
-    #   "layout"    → texte brut avec balises spatiales
-    #   "describe"  → description générale de l'image
-    #   "parse"     → analyse détaillée des éléments de l'image
-    #   "rec"       → localisation d'un élément (requiert locate_target)
-    prompt_mode: str = "layout"
-    PROMPTS: ClassVar[dict] = {
-        "plain":    "Free OCR.",
-        "layout":   "<|grounding|>Convert the document to markdown.",
-        "describe": "Describe this image in detail.",
-        "parse":    "Parse the figure.",
-        "rec":      "Locate <|ref|>{target}<|/ref|> in the image.",
-    }
-    locate_target: str = "everything"
+    # ── PaddleOCR ─────────────────────────────────────────────────────────────
+    use_layout_detection: bool = True   # False = fallback sans layout
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str = "page"
@@ -64,27 +34,19 @@ class Config:
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
-    resume: bool = True
-    two_pass: bool = True
     figures_dir: str = "./output/figures"
+    resume: bool     = True
 
     # ── Post-traitement ──────────────────────────────────────────────────────
-    postprocess: bool = True
-    remove_isolated_page_numbers: bool = True
-    rejoin_hyphenated_words: bool = True
-    collapse_blank_lines: bool = True
+    postprocess: bool                   = True
+    remove_isolated_page_numbers: bool  = True
+    rejoin_hyphenated_words: bool       = True
+    collapse_blank_lines: bool          = True
 
     # ── Logging ──────────────────────────────────────────────────────────────
-    log_file: str = "output/ocr_run.log"
+    log_file: str    = "output/ocr_run.log"
     report_file: str = "output/ocr_report.md"
-    verbose: bool = False
-
-    @property
-    def prompt(self) -> str:
-        template = self.PROMPTS.get(self.prompt_mode, self.PROMPTS[Config.prompt_mode])
-        if self.prompt_mode == "rec":
-            return template.format(target=self.locate_target)
-        return template
+    verbose: bool    = False
 
     @property
     def images_path(self) -> Path:
@@ -97,19 +59,3 @@ class Config:
     @property
     def figures_path(self) -> Path:
         return Path(self.figures_dir)
-
-    def to_model_config(self):
-        from nexaai.nexa_sdk.types import ModelConfig
-        return ModelConfig(
-            n_ctx=self.n_ctx,
-            n_threads=self.n_threads,
-            n_gpu_layers=self.n_gpu_layers,
-            n_batch=self.n_batch,
-        )
-
-    def to_sampler_config(self):
-        from nexaai.nexa_sdk.types import SamplerConfig
-        return SamplerConfig(
-            temperature=self.temperature,
-            repetition_penalty=self.repetition_penalty,
-        )

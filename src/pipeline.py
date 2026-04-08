@@ -3,16 +3,15 @@ pipeline.py — Orchestration du pipeline OCR complet
 """
 
 import logging
+import subprocess
 import time
 from pathlib import Path
 
-from nexaai import VLM
+import requests
+from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from preprocess import nlmeans
-from sesr import sesr
-from figure import process_figures
 from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages
 from images import collect_images
 from progress import Stats
@@ -20,17 +19,44 @@ from progress import Stats
 logger = logging.getLogger(__name__)
 
 
+def _start_server(cfg: Config) -> subprocess.Popen:
+    cmd = [
+        cfg.llama_server_path,
+        "-m",       cfg.model_path,
+        "--mmproj", cfg.mmproj_path,
+        "--port",   str(cfg.server_port),
+        "--host",   "127.0.0.1",
+        "--ctx-size",      str(cfg.n_ctx),
+        "--n-gpu-layers",  str(cfg.n_gpu_layers),
+        "--batch-size",    str(cfg.n_batch),
+        "--threads",       str(cfg.n_threads),
+        "--temp",          str(cfg.temperature),
+    ]
+    logger.info("Démarrage llama-server...")
+    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _wait_for_server(cfg: Config) -> bool:
+    deadline = time.time() + cfg.server_timeout
+    while time.time() < deadline:
+        try:
+            if requests.get(f"{cfg.server_url}/health", timeout=2).status_code == 200:
+                return True
+        except requests.ConnectionError:
+            pass
+        time.sleep(1)
+    return False
+
+
 def run_pipeline(cfg: Config) -> Stats:
     """
     Lance le pipeline complet :
       1. Collecte les images
-      2. Charge le VLM (une seule fois)
-      3. Traite chaque image (avec reprise si cfg.resume)
-      4. Écrit le Markdown au fur et à mesure
-      5. Retourne les statistiques
-
-    Le fichier de sortie est écrit incrémentalement :
-    chaque page est flushée immédiatement → aucune perte en cas de crash.
+      2. Démarre llama-server
+      3. Instancie PaddleOCRVL
+      4. Traite chaque image (avec reprise si cfg.resume)
+      5. Écrit le Markdown au fur et à mesure
+      6. Retourne les statistiques
     """
     images = collect_images(cfg)
 
@@ -44,63 +70,66 @@ def run_pipeline(cfg: Config) -> Stats:
 
     stats = Stats(total=len(images))
 
-    # ── Chargement du VLM ────────────────────────────────────────────────────
-    logger.info("Chargement du modèle %s ...", cfg.model)
+    # ── Démarrage llama-server ────────────────────────────────────────────────
+    logger.info("Démarrage llama-server...")
     t_load0 = time.time()
-    vlm = VLM.from_(model=cfg.model, quant=cfg.quant, config=cfg.to_model_config())
+    proc = _start_server(cfg)
+    if not _wait_for_server(cfg):
+        proc.kill()
+        raise RuntimeError(f"llama-server n'a pas démarré dans les délais ({cfg.server_timeout}s).")
     stats.model_load_time = time.time() - t_load0
-    logger.info("Modèle chargé en %.1fs.", stats.model_load_time)
+    logger.info("Serveur prêt en %.1fs.", stats.model_load_time)
+
+    _vlm_kwargs = dict(
+        vl_rec_backend="llama-cpp-server",
+        vl_rec_server_url=f"{cfg.server_url}/v1",
+        vl_rec_api_model_name="paddleocr",
+    )
+    pipeline          = PaddleOCRVL(**_vlm_kwargs)
+    pipeline_fallback = PaddleOCRVL(use_layout_detection=False, **_vlm_kwargs)
 
     # ── Pipeline ─────────────────────────────────────────────────────────────
     output_is_new = not (cfg.resume and cfg.output_path.exists())
     cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
 
     mode = "a" if not output_is_new else "w"
-    with cfg.output_path.open(mode, encoding="utf-8") as out:
+    try:
+        with cfg.output_path.open(mode, encoding="utf-8") as out:
 
-        if mode == "w":
-            out.write("# Livre OCR\n\n")
-            out.write("<!-- Généré avec DeepSeek-OCR via Nexa SDK -->\n")
-            out.flush()
+            if mode == "w":
+                out.write("# Livre OCR\n\n")
+                out.write("<!-- Généré avec PaddleOCR-VL-1.5 via llama-server -->\n")
+                out.flush()
 
-        for idx, img_path in enumerate(images, 1):
-            page_id = img_path.stem
+            for idx, img_path in enumerate(images, 1):
+                page_id = img_path.stem
 
-            # ── Déjà traitée ? ───────────────────────────────────────────
-            if page_id in done_pages:
-                stats.record_skip()
-                logger.debug("[%d/%d] %s — skip", idx, len(images), img_path.name)
-                continue
+                # ── Déjà traitée ? ───────────────────────────────────────
+                if page_id in done_pages:
+                    stats.record_skip()
+                    logger.debug("[%d/%d] %s — skip", idx, len(images), img_path.name)
+                    continue
 
-            # ── OCR ──────────────────────────────────────────────────────
-            # Passe 1 : preprocess(page) → ocr → [passe 2] → postprocess(page)
-            # Passe 2 : pour chaque figure détectée dans le résultat layout :
-            #           crop(original) → preprocess(crop) → ocr → postprocess(crop)
-            #           (orchestré dans figure.process_figures)
-            t0 = time.time()
-            try:
-                # ── Étape 1 : Prétraitement ───────────────────────────────
-                t_pre0 = time.time()
-                if cfg.preprocess_mode == "nlmeans":
-                    preprocessed_path = nlmeans(img_path, cfg)
-                elif cfg.preprocess_mode == "sesr":
-                    preprocessed_path = sesr(img_path, cfg)
-                else:
-                    preprocessed_path = img_path
-                t_pre = time.time() - t_pre0
-
-                # ── Étape 2 : OCR ─────────────────────────────────────────
-                raw_text, metrics = ocr_image(preprocessed_path, vlm, cfg)
-                t_ocr = metrics["total_latency"]
-
-                if cfg.prompt_mode == "layout" and cfg.two_pass:
-                    raw_text, fig_metrics = process_figures(
-                        raw_text, img_path, vlm, cfg, page_id
-                    )
-                    metrics["total_latency"] += fig_metrics["total_latency"]
+                # ── OCR ──────────────────────────────────────────────────
+                t0 = time.time()
+                try:
+                    raw_text, metrics = ocr_image(img_path, pipeline, cfg)
                     t_ocr = metrics["total_latency"]
+                except OCRError:
+                    logger.warning("%s — layout failed, tentative fallback...", img_path.name)
+                    try:
+                        raw_text, metrics = ocr_image(img_path, pipeline_fallback, cfg)
+                        t_ocr = metrics["total_latency"]
+                    except OCRError as e:
+                        elapsed = time.time() - t0
+                        logger.error("[%d/%d] %s — ERREUR (%.1fs) : %s",
+                                     idx, len(images), img_path.name, elapsed, e)
+                        out.write(format_error_block(page_id, str(e)))
+                        out.flush()
+                        stats.record_error(page_name=img_path.name)
+                        continue
 
-                # ── Étape 3 : Post-traitement + écriture ──────────────────
+                # ── Post-traitement + écriture ────────────────────────────
                 t_post0 = time.time()
                 clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
                 out.write(format_page_block(page_id, clean_text))
@@ -108,22 +137,18 @@ def run_pipeline(cfg: Config) -> Stats:
                 t_post = time.time() - t_post0
 
                 elapsed = time.time() - t0
-
                 stats.record_success(
-                    elapsed, len(clean_text), metrics["total_latency"],
-                    t_pre=t_pre, t_ocr=t_ocr, t_post=t_post,
-                    looped=metrics.get("looped", False),
+                    elapsed, len(clean_text), t_ocr,
+                    t_pre=0.0, t_ocr=t_ocr, t_post=t_post,
+                    looped=False,
                     page_name=img_path.name,
                 )
                 stats.log_page(idx, img_path.name, elapsed, len(clean_text))
 
-            except OCRError as e:
-                elapsed = time.time() - t0
-                logger.error("[%d/%d] %s — ERREUR (%.1fs) : %s",
-                             idx, len(images), img_path.name, elapsed, e)
-                out.write(format_error_block(page_id, str(e)))
-                out.flush()
-                stats.record_error(page_name=img_path.name)
+    finally:
+        proc.kill()
+        proc.wait()
+        logger.info("llama-server arrêté.")
 
     stats.log_summary()
     stats.write_report(Path(cfg.report_file), cfg)
