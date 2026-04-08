@@ -358,7 +358,7 @@ GPU en pics (pas en continu) : alternance layout detection locale (PaddlePaddle)
 
 **`max_pixels` (param PaddleOCR)** : non applicable pour `llama-cpp-server` (seulement `vllm-server`). Ignoré silencieusement. Défaut interne : `28 × 28 × 3600 = 2,822,400` pixels.
 
-**`save_to_markdown(pretty=False)`** : **retenu**. Les styles inline (`style='text-align: center; word-wrap: break-word;'` sur chaque `<td>`, `<div style="...">` sur les titres) sont ajoutés par PaddleOCR en post-processing dans `_to_markdown(pretty=True)`, pas générés par le VLM. `pretty=False` les supprime sans impact sur la vitesse de génération ni la qualité OCR.
+**`save_to_markdown(pretty=True)`** : **retenu**. Les styles inline (`style='text-align: center; word-wrap: break-word;'` sur chaque `<td>`, `<div style="...">` sur les titres) sont ajoutés par PaddleOCR en post-processing dans `_to_markdown(pretty=True)`, pas générés par le VLM. 
 
 ### Verdict
 
@@ -373,6 +373,5 @@ Pipeline principale (`src/`) migrée vers PaddleOCR (2026-04-08) : `ocr_client.p
 
 | Paramètre | Valeur testée | Effet |
 |---|---|---|
-| `repetition_penalty` | 1.1 | apparemment sans effet sur les boucles de génération |
 | `max_tokens` | 4096 | valeur courante — 2048 coupait certaines pages longues |
 | `temperature` | 0.0 | déterministe, retenu |

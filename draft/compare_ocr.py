@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from compare import compare, tokenize_words, tokenize_sentences, weighted_ratio
-from postprocess import _clean_layout
 
 
 
@@ -88,7 +87,6 @@ _TABLE_NOTE_RE = re.compile(
 
 def _normalize(text: str, strip_tables: bool = False, strip_notes: bool = False) -> str:
     text = html.unescape(text)
-    text = _clean_layout(text)
     if strip_tables:
         text = _TABLE_BLOCK_RE.sub(' ', text)
         text = _DIV_BLOCK_RE.sub(' ', text)
@@ -147,7 +145,8 @@ def _sim(path_a: Path, path_b: Path) -> float:
 
 def _write_norm(content: str, tmp_dir: Path, name: str,
                 strip_tables: bool = False, strip_notes: bool = False) -> Path:
-    out = tmp_dir / f"{re.sub(r'[^\w]', '_', name)}.md"
+    safe_name = re.sub(r'[^\w]', '_', name)
+    out = tmp_dir / f"{safe_name}.md"
     out.write_text(_normalize(content, strip_tables=strip_tables, strip_notes=strip_notes), encoding="utf-8")
     return out
 
@@ -203,7 +202,8 @@ def _run_component_mode(files: list[tuple[Path, str]], ref_path: Path,
 
         # Diffs
         def _diff(norm_a: Path, norm_b: Path, suffix: str) -> Path:
-            out = OUTPUT_DIR / f"diff_{re.sub(r'[^\w]', '_', label)}_{suffix}.md"
+            safe_label = re.sub(r'[^\w]', '_', label)
+            out = OUTPUT_DIR / f"diff_{safe_label}_{suffix}.md"
             compare(norm_a, norm_b, mode=MODE_DIFF_FILE, out_path=out)
             return out
 
@@ -277,7 +277,9 @@ def _run_pairwise_mode(files: list[tuple[Path, str]], ref_entry: tuple[Path, str
     print(f"Mode : {MODE_COMPARE}  |  diff : {MODE_DIFF_FILE}  |  report : {MODE_DIFF_REPORT}  |  {len(pairs)} paire(s)\n")
 
     for (pa, la), (pb, lb) in pairs:
-        out_path = OUTPUT_DIR / f"diff_{re.sub(r'[^\w]', '_', la)}_vs_{re.sub(r'[^\w]', '_', lb)}.md"
+        safe_la = re.sub(r'[^\w]', '_', la)
+        safe_lb = re.sub(r'[^\w]', '_', lb)
+        out_path = OUTPUT_DIR / f"diff_{safe_la}_vs_{safe_lb}.md"
         print(f"  {la}  vs  {lb} ...", end=" ", flush=True)
         compare(normed[la], normed[lb], mode=MODE_DIFF_FILE, out_path=out_path)
         sim = _sim(normed[la], normed[lb])

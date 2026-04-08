@@ -17,11 +17,13 @@ src/
 
 Dépendances : `environment.yaml`. Venv conda: `ocr-livre`. Lancer depuis `src/` : `python main.py`.
 
+Doc projet: `docs/`.
+
+Explorations et tests informels : `draft/`. Resultats des explorations: `docs/tested.md`.
+
 Travaux en cours : `docs/issues.md`.
 
-Explorations et tests informels : `draft/`. 
-
-Vérifie ta mémoire en début de session : `memory/`
+Vérifie ta mémoire en début de session : `memory/`.
 
 ## Conventions
 
@@ -75,6 +77,8 @@ Documentation sur le stack spécifique utilisé dans le projet.
 - Page HuggingFace: https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5
 
 - Page GitHub: https://github.com/PaddlePaddle/PaddleOCR
+
+- Doc interne: `docs/paddleocr/`
 
 ## Troubleshooting
 - Run `python src/main.py --images photos/page_1.jpg --no-resume`.
