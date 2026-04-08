@@ -42,20 +42,20 @@ def main() -> None:
     if not args.patch_only:
         steps.extend([
             (["conda", "env", "remove", "-n", "ocr-livre", "--yes"],
-             "Remove old ocr-livre env (if exists)"),
+             "Remove old ocr-livre env (if exists)", True),
             (["conda", "env", "create", "-f", str(root / "environment.yml")],
-             "Create conda environment from environment.yml"),
+             "Create conda environment from environment.yml", False),
         ])
 
     if not args.env_only:
         conda_run = ["conda", "run", "-n", "ocr-livre", "--no-capture-output"]
         steps.extend([
             (conda_run + ["pip", "install", "git+https://github.com/PaddlePaddle/PaddleOCR.git"],
-             "Install PaddleOCR from repo (with llama-server compatibility)"),
+             "Install PaddleOCR from repo (with llama-server compatibility)", False),
             (conda_run + ["python", str(root / "docs" / "dev" / "apply_paddlex_patch.py")],
-             "Apply paddlex patch (per-region VLM error recovery)"),
+             "Apply paddlex patch (per-region VLM error recovery)", False),
             (conda_run + ["python", "-c", "from paddleocr import PaddleOCRVL; print('✅ PaddleOCR loaded')"],
-             "Verify PaddleOCR import"),
+             "Verify PaddleOCR import", False),
         ])
 
     print("\n" + "="*60)
@@ -63,8 +63,8 @@ def main() -> None:
     print("="*60)
 
     failed = []
-    for cmd, desc in steps:
-        if not run(cmd, desc):
+    for cmd, desc, optional in steps:
+        if not run(cmd, desc) and not optional:
             failed.append(desc)
 
     print("\n" + "="*60)
