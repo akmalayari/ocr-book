@@ -1,17 +1,26 @@
 # ocr-livre — Pipeline OCR livre → Markdown
 
 Digitalise un livre entier en Markdown à partir de photos de pages,
-en utilisant **DeepSeek-OCR** via **Nexa SDK** (inférence locale).
+en utilisant **PaddleOCR-VL-1.5** via **llama-server** (inférence locale).
 
 ---
 
 ## Prérequis
 
-- Python 3.11+
-- Dépendances :
-  ```bash
-  pip install -r requirements.txt
-  ```
+- [miniforge](https://github.com/conda-forge/miniforge) ou Anaconda
+- [llama-server](https://github.com/ggerganov/llama.cpp) (Vulkan recommandé sur Windows)
+- Modèle GGUF : [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5)
+
+---
+
+## Installation
+
+```bash
+python setup.py
+conda activate ocr-livre
+```
+
+Voir [docs/SETUP.md](docs/SETUP.md) pour le détail.
 
 ---
 
@@ -22,17 +31,21 @@ ocr-livre/
 ├── src/
 │   ├── main.py          # Point d'entrée CLI
 │   ├── config.py        # Configuration centrale (dataclass)
-│   ├── patch.py         # Monkey-patch nexaai (Windows)
-│   ├── ocr_client.py    # OCR d'une image via nexaai.VLM
-│   ├── preprocess.py    # Pré-traitement des images
+│   ├── ocr_client.py    # OCR d'une image via PaddleOCRVL
 │   ├── postprocess.py   # Nettoyage du texte OCR
 │   ├── images.py        # Collecte et renommage des images
 │   ├── pipeline.py      # Orchestration complète
 │   └── progress.py      # Logging et statistiques
+├── docs/
+│   ├── architecture/    # Documentation architecture
+│   ├── dev/             # Patches et notes de développement
+│   ├── SETUP.md         # Instructions d'installation
+│   ├── tested.md        # Résultats des expérimentations
+│   └── issues.md        # Travaux en cours
 ├── photos/              # Images source (une par page)
-├── output/              # Markdown généré + logs
-├── requirements.txt
-└── README.md
+├── output/              # Markdown généré + logs + figures
+├── environment.yml      # Dépendances conda
+└── setup.py             # Script d'installation automatisé
 ```
 
 ---
@@ -48,11 +61,8 @@ python main.py
 # Spécifier les dossiers
 python main.py --images ./mes_photos --out output/mon_livre.md
 
-# Changer la quantization (q8_0 plus rapide, bf16 plus précis)
-python main.py --quant q8_0
-
-# Mode OCR avec mise en forme spatiale (défaut: plain)
-python main.py --mode layout
+# Sans layout detection (fallback simple, plus rapide)
+python main.py --no-layout
 
 # Recommencer depuis le début
 python main.py --no-resume
@@ -92,12 +102,9 @@ Les pages déjà traitées sont automatiquement ignorées.
 ```
 --images PATH         Dossier des photos            (défaut: ./photos)
 --out FILE            Fichier Markdown de sortie    (défaut: output/livre.md)
---model MODEL         Modèle Nexa                   (défaut: NexaAI/DeepSeek-OCR-GGUF)
---quant {q8_0,bf16}   Quantization                  (défaut: bf16)
---mode MODE           plain | layout | describe | parse | rec:<cible>
---max-tokens N        Tokens max par page           (défaut: 4096)
---preprocess MODE     none | binarize               (défaut: binarize)
+--no-layout           Désactiver layout detection   (fallback simple)
 --no-resume           Recommencer depuis le début
+--no-postprocess      Sortie brute sans nettoyage
 --verbose             Logs DEBUG
 --rename              Renommer les images avant OCR
 --rename-prefix P     Préfixe renommage             (défaut: page)
@@ -108,8 +115,8 @@ Les pages déjà traitées sont automatiquement ignorées.
 
 ## Codes de retour
 
-| Code | Signification                               |
-|------|---------------------------------------------|
-| 0    | Succès total                                |
-| 1    | Erreur fatale                               |
+| Code | Signification                                |
+|------|----------------------------------------------|
+| 0    | Succès total                                 |
+| 1    | Erreur fatale                                |
 | 2    | Terminé avec des erreurs sur certaines pages |
