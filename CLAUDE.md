@@ -1,6 +1,6 @@
 # CLAUDE.md — ocr-livre
 
-Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via DeepSeek-OCR servi localement par Nexa SDK.
+Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via PaddleOCR-VL-1.5 servi localement par llama-server.
 
 ## Architecture
 
@@ -8,16 +8,14 @@ Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via DeepSe
 src/
   main.py        — CLI argparse, point d'entrée
   config.py      — Config dataclass (toutes les valeurs par défaut ici)
-  patch.py       — Monkey-patch nexaai sur Windows (UnicodeDecodeError dans ProfileData) ; doit être importé avant tout nexaai
-  ocr_client.py  — OCR d'une image via nexaai.VLM, retourne le texte et les métadonnées
-  preprocess.py  — Pré-traitement des images avant OCR (binarisation adaptative)
+  ocr_client.py  — OCR d'une image via PaddleOCRVL
   postprocess.py — Nettoyage texte + gestion des blocs page dans le .md
   images.py      — Collecte et renommage des images
   pipeline.py    — Orchestration complète
   progress.py    — Logging + statistiques (Stats dataclass)
 ```
 
-Dépendances : `requirements.txt`. Venv dans `venv/`. Lancer depuis `src/` : `python main.py`.
+Dépendances : `environment.yaml`. Venv conda: `ocr-livre`. Lancer depuis `src/` : `python main.py`.
 
 Travaux en cours : `docs/issues.md`.
 
@@ -52,7 +50,7 @@ Vérifie ta mémoire en début de session : `memory/`
 - eviter de laisser une section (`##`) de issues.md vide: écrire "OK".
 
 ### Draft
-- Toutes les explorations et tests intiaux se font dans `draft/`. 
+- Toutes les explorations et tests initiaux se font dans `draft/`. 
 - Toutes les sorties issues de `drat/` doivent atterir dans `output/`.
 - Avant de coder un script de test, toujours vérifier si des modules ou fonctions de `src/` peuvent etre utilisé.
 
@@ -60,29 +58,26 @@ Vérifie ta mémoire en début de session : `memory/`
 
 - Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé à part sur demande explicite
 - Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
-- Ne pas explorer `venv/` ni `output/` ni `photos/` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
+- Ne pas explorer `output/` ni `photos/` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
 - Ne pas générer de docstrings ou commentaires sur du code non modifié
 
 ## Ressources
 Documentation sur le stack spécifique utilisé dans le projet.
 
-### Nexa
+### llama-server
 
-- Reference API Python  : https://docs.nexa.ai/en/nexa-sdk-python/api-reference 
+- Docs GitHub: https://github.com/ggml-org/llama.cpp/tree/master/tools/server
 
-- Signature correcte pour instancier le VLM: VLM.from_(model=..., quant=..., config=...)
+### PaddleOCR
 
-### DeepSeekOCR
+- Documentation générale: https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html
 
-- HuggingFace page : https://huggingface.co/NexaAI/DeepSeek-OCR-GGUF
+- Page HuggingFace: https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5
 
-- GitHub page : https://github.com/deepseek-ai/DeepSeek-OCR/?tab=readme-ov-file
-
-- Prompts valides : certains modes requièrent le préfixe `<|grounding|>` (ex: `"<|grounding|>Convert the document to markdown."`). `"Free OCR."` et `"Parse the figure."` n'en ont pas besoin. Voir section "Prompts examples" sur le GitHub.
-
+- Page GitHub: https://github.com/PaddlePaddle/PaddleOCR
 
 ## Troubleshooting
-- Run `python src/main.py --no-resume`.
+- Run `python src/main.py --images photos/page_1.jpg --no-resume`.
 - Check `output/ocr_run.log`.
 - Find what's wrong.
 
