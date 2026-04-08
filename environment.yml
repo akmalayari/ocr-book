@@ -1,4 +1,4 @@
-name: ocr-livre-paddle
+name: ocr-livre
 channels:
   - conda-forge
   - defaults
@@ -6,7 +6,6 @@ dependencies:
   - python=3.10
   - pip
   - pip:
-    - annotated-doc==0.0.4
     - pymupdf==1.27.2.2
     - anyio==4.13.0
     - certifi==2026.2.25
@@ -23,13 +22,11 @@ dependencies:
     - idna==3.11
     - markdown-it-py==4.0.0
     - mdurl==0.1.2
-    - numpy==2.4.4
-    - opencv-python==4.13.0.92
-    - scikit-image
-    - page-dewarp[jax]==0.2.7
+    - numpy==2.2.6
+    - openai==2.30.0
     - packaging==26.0
     - Pygments==2.19.2
-    - PyYAML==6.0.3
+    - PyYAML==6.0.2
     - requests==2.33.0
     - rich==14.3.3
     - shellingham==1.5.4
@@ -37,6 +34,5 @@ dependencies:
     - typer==0.24.1
     - typing_extensions==4.15.0
     - urllib3==2.6.3
-    - paddlepaddle
-    - paddleocr
-    - paddlex
+    - paddlepaddle==3.3.1
+    - paddlex[ocr]==3.4.3

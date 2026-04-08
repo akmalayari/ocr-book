@@ -2,27 +2,27 @@
 
 ## Installation de l'environnement
 
+### Option 1 : Script automatique (recommandé)
+
+```bash
+python setup.py
+conda activate ocr-livre
+```
+
+### Option 2 : Manuel
+
 ```bash
 # Créer l'env conda depuis environment.yml
 conda env create -f environment.yml
 
 # Activer l'env
-conda activate ocr-livre-paddle
-```
+conda activate ocr-livre
 
-## Appliquer le patch paddlex
+# Installer PaddleOCR depuis le repo git (version dev avec llama-server compatibility)
+pip install git+https://github.com/PaddlePaddle/PaddleOCR.git
 
-Le patch est nécessaire pour gérer les erreurs VLM par région (voir [paddlex_patch.md](dev/paddlex_patch.md)).
-
-```bash
-# Appliquer le patch
+# Appliquer le patch paddlex
 python docs/dev/apply_paddlex_patch.py
-
-# (Optionnel) Vérifier l'état
-python docs/dev/apply_paddlex_patch.py --check
-
-# (Optionnel) Restaurer l'original
-python docs/dev/apply_paddlex_patch.py --revert
 ```
 
 ## Lancer le pipeline
