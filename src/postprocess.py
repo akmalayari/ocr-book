@@ -27,6 +27,11 @@ def clean_page(text: str, cfg: Config) -> str:
     if cfg.collapse_blank_lines:
         text = re.sub(r'\n{3,}', '\n\n', text)
 
+    # Suppression des styles inline des balises table (générés par PaddleOCR pretty=True)
+    # Les <div style="text-align: center;"> (captions, titres) sont conservés.
+    text = re.sub(r"<table\b[^>]*\bstyle='[^']*'", "<table border=1", text)
+    text = re.sub(r"<(t[dh])\b[^>]*\bstyle='[^']*'>", r"<\1>", text)
+
     return text.strip()
 
 

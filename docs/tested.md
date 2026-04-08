@@ -339,13 +339,26 @@ Avec le backend `llama-cpp-server`, llama-server ne sait pas parser l'OTSL comme
 
 ### Format de sortie
 
-HTML embarqué dans Markdown (compatible Obsidian) :
-- Tableaux : `<table border=1>...</table>`
-- Titres/légendes : `<div style="text-align: center;">...</div>`
-- Figures : `<div><img src="imgs/..." /></div>` (crop sauvegardé localement)
+HTML embarqué dans Markdown :
+- Tableaux : `<table><tr><td>...</td></tr></table>` (HTML brut sans styles — `pretty=False` retenu, voir ci-dessous)
+- Figures : `<img src="imgs/..." />` (crop sauvegardé localement)
 - Exposants : `<sup>er</sup>`
 
 Pas de tokens DeepSeek (`<|ref|>`, `<|det|>`).
+
+### Vitesse et optimisations (2026-04-08)
+
+Vitesse mesurée : 47–55s/page selon le contenu. Bottleneck = vitesse de génération brute (~36 tok/s sous Vulkan). Pages avec plus de blocs (tableau + graphique) prennent plus de temps — chaque bloc détecté = un appel VLM séparé.
+
+GPU en pics (pas en continu) : alternance layout detection locale (PaddlePaddle) → appel HTTP llama-server → idle entre blocs.
+
+**`n_parallel=2` (llama-server `-np 2`)** : testé, **abandonné**. Augmente le temps total (128s + 85s vs 55s + 55s). Contention GPU Vulkan — les deux requêtes simultanées se battent pour les ressources, aucun gain de débit.
+
+**Resize PIL avant predict (`--max-image-size 1500`)** : testé, **abandonné**. Accélère légèrement mais dégrade fortement la qualité OCR. Cause : le resize s'appliquait avant la layout detection, qui recevait une image dégradée. Image source : 4080×3072.
+
+**`max_pixels` (param PaddleOCR)** : non applicable pour `llama-cpp-server` (seulement `vllm-server`). Ignoré silencieusement. Défaut interne : `28 × 28 × 3600 = 2,822,400` pixels.
+
+**`save_to_markdown(pretty=False)`** : **retenu**. Les styles inline (`style='text-align: center; word-wrap: break-word;'` sur chaque `<td>`, `<div style="...">` sur les titres) sont ajoutés par PaddleOCR en post-processing dans `_to_markdown(pretty=True)`, pas générés par le VLM. `pretty=False` les supprime sans impact sur la vitesse de génération ni la qualité OCR.
 
 ### Verdict
 

@@ -49,7 +49,7 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
         raise OCRError(f"Contenu vide pour {image_path.name}.")
 
     for res in output:
-        res.save_to_markdown(save_path=save_path)
+        res.save_to_markdown(save_path=save_path, pretty=True)
 
     if not md_path.exists():
         raise OCRError(f"Fichier markdown non généré pour {image_path.name}.")
