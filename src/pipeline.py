@@ -26,12 +26,19 @@ def _start_server(cfg: Config) -> subprocess.Popen:
         "--mmproj", cfg.mmproj_path,
         "--port",   str(cfg.server_port),
         "--host",   "127.0.0.1",
-        "--ctx-size",      str(cfg.n_ctx),
-        "--n-gpu-layers",  str(cfg.n_gpu_layers),
-        "--batch-size",    str(cfg.n_batch),
-        "--threads",       str(cfg.n_threads),
-        "--temp",          str(cfg.temperature),
+        "-c",       str(cfg.n_ctx),
+        "-ngl",     str(cfg.n_gpu_layers),
+        "-b",       str(cfg.n_batch),
+        "-ub",      str(cfg.n_ubatch),
+        "-t",       str(cfg.n_threads),
+        "--prio",   str(cfg.prio),
+        "--temp",   str(cfg.temperature),
+        "--reasoning", cfg.reasoning,
     ]
+    if cfg.flash_attention:
+        cmd += ["-fa", "on"]
+    if cfg.kv_offload:
+        cmd += ["-kvo"]
     logger.info("Démarrage llama-server...")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

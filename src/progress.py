@@ -136,8 +136,8 @@ class Stats:
         minutes = self.elapsed_total / 60
         logger.info("─" * 60)
         logger.info(
-            "Terminé en %.1f min  |  %d pages OK  |  %d skippées  |  %d erreurs  |  %d boucles",
-            minutes, self.done, self.skipped, self.errors, self.loop_stops,
+            "Terminé en %.1f min  |  %d pages OK  |  %d skippées  |  %d erreurs",
+            minutes, self.done, self.skipped, self.errors,
         )
         if self.done:
             logger.info(
@@ -166,9 +166,8 @@ class Stats:
         lines += [
             "# Rapport de run OCR\n",
             f"**Date** : {now}  ",
-            f"**Modèle** : `{cfg.model}` | quant `{cfg.quant}`  ",
-            f"**Prompt** : `{cfg.prompt_mode}` | two_pass={cfg.two_pass}  ",
-            f"**Prétraitement** : `{cfg.preprocess_mode}`  ",
+            f"**Modèle** : PaddleOCR-VL-1.5  ",
+            f"**Layout detection** : {cfg.use_layout_detection}  ",
             f"**Sortie** : `{cfg.output_file}`  ",
             "",
         ]
@@ -184,7 +183,6 @@ class Stats:
             _row("Traitées avec succès", self.done),
             _row("Ignorées (reprise)", self.skipped),
             _row("Erreurs", self.errors),
-            _row("Arrêts pour boucle détectée", self.loop_stops),
             _row("Chargement modèle", f"{self.model_load_time:.1f}s"),
             _row("Durée totale (pipeline)", f"{elapsed_min:.1f} min"),
             _row("Caractères total", f"{self.total_chars:,}"),
@@ -194,22 +192,17 @@ class Stats:
 
         # ── Décomposition du temps ──────────────────────────────────────────
         if self.done:
-            avg_pre, min_pre, max_pre, tot_pre = _lst_stats(self.preprocess_times)
             avg_ocr, min_ocr, max_ocr, tot_ocr = _lst_stats(self.ocr_times)
             avg_post, min_post, max_post, tot_post = _lst_stats(self.postprocess_times)
             avg_tot, min_tot, max_tot, tot_tot = _lst_stats(self.times)
 
-            pct_pre  = 100 * tot_pre  / tot_tot if tot_tot else 0
             pct_ocr  = 100 * tot_ocr  / tot_tot if tot_tot else 0
             pct_post = 100 * tot_post / tot_tot if tot_tot else 0
 
             lines += [
                 "## Décomposition du temps d'exécution\n",
                 "| Étape | Moy. | Min | Max | Total | % |\n|---|---|---|---|---|---|",
-                _row("Prétraitement",
-                     f"{avg_pre:.2f}s", f"{min_pre:.2f}s", f"{max_pre:.2f}s",
-                     f"{tot_pre:.1f}s", f"{pct_pre:.1f}%"),
-                _row("OCR (génération VLM)",
+                _row("OCR (PaddleOCR + save)",
                      f"{avg_ocr:.2f}s", f"{min_ocr:.2f}s", f"{max_ocr:.2f}s",
                      f"{tot_ocr:.1f}s", f"{pct_ocr:.1f}%"),
                 _row("Post-traitement",
@@ -225,22 +218,19 @@ class Stats:
         if self._pages:
             lines += [
                 "## Détail par page\n",
-                "| Page | Prétraitement | OCR | Post-traitement | Total | Caractères | Boucle |",
-                "|---|---|---|---|---|---|---|",
+                "| Page | OCR | Post-traitement | Total | Caractères |",
+                "|---|---|---|---|---|",
             ]
             for p in self._pages:
                 if p.get("error"):
-                    lines.append(_row(p["name"], "—", "—", "—", "—", "—", "ERREUR"))
+                    lines.append(_row(p["name"], "—", "—", "—", "—", "ERREUR"))
                 else:
-                    loop_mark = "oui" if p.get("looped") else ""
                     lines.append(_row(
                         p["name"],
-                        f"{p['t_pre']:.2f}s",
                         f"{p['t_ocr']:.2f}s",
                         f"{p['t_post']:.3f}s",
                         f"{p['total']:.2f}s",
                         f"{p['chars']:,}",
-                        loop_mark,
                     ))
             lines.append("")
 

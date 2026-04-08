@@ -14,15 +14,18 @@ class Config:
     mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
     server_url: str        = "http://127.0.0.1:8080"
     server_port: int       = 8080
-    server_timeout: int    = 120   # secondes à attendre avant de déclarer le serveur mort
+    server_timeout: int    = 60   # secondes à attendre avant de déclarer le serveur mort
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int         = 4096
-    n_gpu_layers: int  = 99
-    n_batch: int       = 1024
-    n_threads: int     = 4
-    max_tokens: int    = 4096
-    temperature: float = 0.0
+    n_ctx: int            = 4096
+    n_gpu_layers: int     = 99
+    n_batch: int          = 512
+    n_ubatch: int         = 512
+    n_threads: int        = 4
+    prio: int             = 2
+    kv_offload: bool      = True
+    max_tokens: int       = 4096
+    temperature: float    = 0.0
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout

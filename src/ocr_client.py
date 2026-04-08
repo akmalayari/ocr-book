@@ -36,18 +36,17 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
 
     save_path = str(cfg.figures_path / image_path.stem)
 
+    md_path = Path(save_path) / f"{image_path.stem}.md"
+    Path(save_path).mkdir(parents=True, exist_ok=True)
+
     t0 = time.perf_counter()
     try:
         output = list(pipeline.predict(str(image_path)))
     except Exception as e:
         raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
-    total_latency = time.perf_counter() - t0
 
     if not output:
         raise OCRError(f"Contenu vide pour {image_path.name}.")
-
-    md_path = Path(save_path) / f"{image_path.stem}.md"
-    Path(save_path).mkdir(parents=True, exist_ok=True)
 
     for res in output:
         res.save_to_markdown(save_path=save_path)
@@ -56,6 +55,8 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
         raise OCRError(f"Fichier markdown non généré pour {image_path.name}.")
 
     text = md_path.read_text(encoding="utf-8").strip()
+    total_latency = time.perf_counter() - t0
+
     if not text:
         raise OCRError(f"Contenu vide pour {image_path.name}.")
 
