@@ -45,3 +45,14 @@ def format_error_block(page_id: str, error: str) -> str:
 
 def extract_done_pages(output_text: str) -> set[str]:
     return set(re.findall(r'<!-- Page (\S+) -->', output_text))
+
+
+def fix_image_paths(text: str, page_id: str, figures_rel: str) -> str:
+    """
+    Corrige les chemins relatifs aux images générées par PaddleOCR.
+    PaddleOCR utilise 'imgs/...' relatif au dossier de la page.
+    Quand on combine tous les markdowns en un seul fichier, on recalcule
+    le chemin relatif depuis le dossier du fichier de sortie.
+    """
+    prefix = figures_rel.replace("\\", "/")
+    return re.sub(r'src="imgs/', f'src="{prefix}/{page_id}/imgs/', text)

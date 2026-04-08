@@ -3,6 +3,7 @@ pipeline.py — Orchestration du pipeline OCR complet
 """
 
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages
+from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages, fix_image_paths
 from images import collect_images
 from progress import Stats
 
@@ -95,6 +96,7 @@ def run_pipeline(cfg: Config) -> Stats:
     # ── Pipeline ─────────────────────────────────────────────────────────────
     output_is_new = not (cfg.resume and cfg.output_path.exists())
     cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
+    figures_rel = os.path.relpath(cfg.figures_path, cfg.output_path.parent)
 
     mode = "a" if not output_is_new else "w"
     try:
@@ -136,6 +138,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 # ── Post-traitement + écriture ────────────────────────────
                 t_post0 = time.time()
                 clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
+                clean_text = fix_image_paths(clean_text, page_id, figures_rel)
                 out.write(format_page_block(page_id, clean_text))
                 out.flush()
                 t_post = time.time() - t_post0
