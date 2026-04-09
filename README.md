@@ -61,7 +61,7 @@ python main.py
 # Spécifier les dossiers
 python main.py --images ./mes_photos --out output/mon_livre.md
 
-# Sans layout detection (fallback simple, plus rapide)
+# Sans layout detection
 python main.py --no-layout
 
 # Recommencer depuis le début
@@ -102,7 +102,7 @@ Les pages déjà traitées sont automatiquement ignorées.
 ```
 --images PATH         Dossier des photos            (défaut: ./photos)
 --out FILE            Fichier Markdown de sortie    (défaut: output/livre.md)
---no-layout           Désactiver layout detection   (fallback simple)
+--no-layout           Désactiver layout detection
 --no-resume           Recommencer depuis le début
 --no-postprocess      Sortie brute sans nettoyage
 --verbose             Logs DEBUG
