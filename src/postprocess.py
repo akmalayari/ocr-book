@@ -23,16 +23,25 @@ def clean_page(text: str, cfg: Config) -> str:
     if cfg.rejoin_hyphenated_words:
         text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
         text = re.sub(r'(\w)- (\w)', r'\1\2', text)
+        # Paragraphe coupé mid-phrase : ligne se terminant par minuscule/virgule
+        # suivie d'un paragraphe vide puis d'une minuscule ou '('
+        text = re.sub(r'([a-zéèêëàâîïôùûüçœ,])\n\n(\(|[a-zéèêëàâîïôùûüçœ])', r'\1 \2', text)
 
     if cfg.collapse_blank_lines:
         text = re.sub(r'\n{3,}', '\n\n', text)
 
-    # Suppression des styles inline des balises table (générés par PaddleOCR pretty=True)
-    # Les <div style="text-align: center;"> (captions, titres) sont conservés.
+    return text.strip()
+
+
+def strip_table_styles(text: str) -> str:
+    """
+    Supprime les styles inline des balises table générés par PaddleOCR (pretty=True).
+    Les <div style="..."> (captions, titres) sont conservés.
+    Toujours appliqué, indépendamment de cfg.postprocess.
+    """
     text = re.sub(r"<table\b[^>]*\bstyle='[^']*'", "<table border=1", text)
     text = re.sub(r"<(t[dh])\b[^>]*\bstyle='[^']*'>", r"<\1>", text)
-
-    return text.strip()
+    return text
 
 
 def format_page_block(page_id: str, text: str) -> str:

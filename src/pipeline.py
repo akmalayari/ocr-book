@@ -13,7 +13,7 @@ from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from postprocess import clean_page, format_page_block, format_error_block, extract_done_pages, fix_image_paths
+from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, extract_done_pages, fix_image_paths
 from images import collect_images
 from progress import Stats
 
@@ -34,7 +34,7 @@ def _start_server(cfg: Config) -> subprocess.Popen:
         "-t",       str(cfg.n_threads),
         "--prio",   str(cfg.prio),
         "--temp",   str(cfg.temperature),
-        "-np",      "3",
+        "-np",      str(cfg.n_parallel),
     ]
     if cfg.kv_offload:
         cmd += ["-kvo"]
@@ -139,6 +139,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 # ── Post-traitement + écriture ────────────────────────────
                 t_post0 = time.time()
                 clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
+                clean_text = strip_table_styles(clean_text)
                 clean_text = fix_image_paths(clean_text, page_id, figures_rel)
                 out.write(format_page_block(page_id, clean_text))
                 out.flush()

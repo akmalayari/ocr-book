@@ -19,6 +19,8 @@ def collect_images(cfg: Config) -> list[Path]:
     Retourne la liste triée des images dans cfg.images_dir,
     filtrées par cfg.extensions.
 
+    Si cfg.image_files est fourni, utilise directement cette liste.
+
     Le tri est alphanumérique sur le nom de fichier, ce qui suppose
     que vos photos sont nommées avec un padding numérique cohérent :
       page_001.jpg, page_002.jpg, …
@@ -27,6 +29,11 @@ def collect_images(cfg: Config) -> list[Path]:
     Raises:
         ImageCollectionError si le dossier est vide ou inexistant.
     """
+    if cfg.image_files is not None:
+        images = [Path(p) for p in cfg.image_files]
+        logger.info("%d image(s) explicite(s).", len(images))
+        return images
+
     path = cfg.images_path
     if not path.exists():
         raise ImageCollectionError(f"Chemin introuvable : {path}")

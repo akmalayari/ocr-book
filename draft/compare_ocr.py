@@ -41,8 +41,9 @@ PHOTOS = Path(__file__).parent.parent / "photos"
 
 # Fichiers à comparer : liste de (chemin, label court)
 FILES: list[tuple[Path, str]] = [
-    (ROOT / "paddle_ocr" / "page_4.md",        "p4_paddle"),
-    (ROOT / "paddle_ocr" / "page_4_clean.md","p4c_paddle"),
+    (ROOT / "paddle_ocr" / "page_5.md",        "p5"),
+    (ROOT / "paddle_ocr" / "page_5-6_clean.md","p5-6c"),
+    (ROOT / "paddle_ocr" / "page_6.md","p6"),
 ]
 
 # Référence globale (mode all_vs_ref et composant global)
@@ -56,7 +57,7 @@ FIG_REFERENCE:  Path | None = None
 SCORE_BY_COMPONENT: bool = True
 
 # "all_vs_ref" | "all_pairs" | "sequential"  (ignoré si SCORE_BY_COMPONENT)
-MODE_COMPARE: str = "all_pairs"
+MODE_COMPARE: str = "all_vs_ref"
 
 # "sentence" | "word"  — contenu des fichiers diff_{a}_vs_{b}.md
 MODE_DIFF_FILE:   str = "sentence"
@@ -98,7 +99,6 @@ def _normalize(text: str, strip_tables: bool = False, strip_notes: bool = False)
     text = re.sub(r"[\u2018\u2019\u201b\u02bc\u02bb\u00b4`]", "'", text)  # apostrophes → droite
     text = re.sub(r' {2,}', ' ', text)
     if strip_notes:
-        text = _TABLE_NOTE_RE.sub('', text)
         text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 

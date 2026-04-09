@@ -17,7 +17,7 @@ class Config:
     server_timeout: int    = 60   # secondes à attendre avant de déclarer le serveur mort
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 12288   # 4096 tokens/slot avec np=2
+    n_ctx: int            = 6144   # 4096 tokens/slot avec np=2
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
@@ -26,14 +26,16 @@ class Config:
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
+    n_parallel: int       = 3
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout
 
     # ── Images ───────────────────────────────────────────────────────────────
-    rename_prefix: str = "page"
-    images_dir: str    = "./photos"
-    extensions: tuple  = (".jpg", ".jpeg", ".png", ".webp")
+    rename_prefix: str          = "page"
+    images_dir: str             = "./photos"
+    extensions: tuple           = (".jpg", ".jpeg", ".png", ".webp")
+    image_files: list | None    = None   # si fourni, court-circuite images_dir
 
     # ── Sortie ───────────────────────────────────────────────────────────────
     output_file: str = "./output/livre.md"
