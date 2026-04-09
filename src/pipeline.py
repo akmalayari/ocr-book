@@ -140,9 +140,9 @@ def run_pipeline(cfg: Config) -> Stats:
             t_post = time.time() - t_post0
 
             elapsed = time.time() - t0
-            (parts_dir / f"{page_id}.part").write_text(
-                format_page_block(page_id, clean_text), encoding="utf-8"
-            )
+            part_path = parts_dir / f"{page_id}.part"
+            with part_path.open("a", encoding="utf-8") as f:
+                f.write(format_page_block(page_id, clean_text))
             return {
                 "idx": idx, "page_name": img_path.name,
                 "elapsed": elapsed, "chars": len(clean_text),
@@ -152,9 +152,9 @@ def run_pipeline(cfg: Config) -> Stats:
             elapsed = time.time() - t0
             logger.error("[%d/%d] %s — ERREUR (%.1fs) : %s",
                          idx, len(images), img_path.name, elapsed, e)
-            (parts_dir / f"{page_id}.part").write_text(
-                format_error_block(page_id, str(e)), encoding="utf-8"
-            )
+            part_path = parts_dir / f"{page_id}.part"
+            with part_path.open("a", encoding="utf-8") as f:
+                f.write(format_error_block(page_id, str(e)))
             return {"idx": idx, "page_name": img_path.name, "error": True}
         finally:
             pipeline_queue.put(pl)

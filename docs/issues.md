@@ -1,16 +1,12 @@
 # Issues — travaux en cours
 
-## Version paddle (actuelle)
-
-OK
-
----
-
-## Prochaines versions
+## Version refined (actuelle)
 
 ### Feature 1 - Indication de pages
 
 Actuellement les images traitées sont indiquées avec "<!-- Page page_5 -->". Mais une image n'est pas egale a une page. Il est peut etre possible de recuperer le numeros de la page avec `markdown_ignore_labels` (voir `docs\paddleocr\config.md`)
+
+## Prochaines versions
 
 ### Feature 2 — Support PDF multi-pages
 
