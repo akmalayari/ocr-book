@@ -1,7 +1,7 @@
 """
 apply_paddlex_patch_parallel.py — Parallélise les appels VLM intra-page (pool global).
 
-Prérequis : apply_paddlex_patch.py (patch OTSL) doit avoir été appliqué en premier.
+Prérequis : apply_paddlex_patch_otsl.py (patch OTSL) doit avoir été appliqué en premier.
 
 Principe :
     PaddleOCR collecte les blocs par pixel_key puis les traite séquentiellement.
@@ -33,7 +33,7 @@ TARGET = (
     / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
 )
 
-# État attendu : résultat de apply_paddlex_patch.py (boucle séquentielle avec OTSL)
+# État attendu : résultat de apply_paddlex_patch_otsl.py (boucle séquentielle avec OTSL)
 ORIGINAL = """\
         for pixel_key in batch_dict_by_pixel:
             min_pixels, max_pixels = pixel_key
@@ -159,7 +159,7 @@ def main() -> None:
         print("Déjà patché, rien à faire.")
         return
     if state != "original":
-        print("[ERREUR] État inconnu. Vérifier que apply_paddlex_patch.py a été appliqué en premier.")
+        print("[ERREUR] État inconnu. Vérifier que apply_paddlex_patch_otsl.py a été appliqué en premier.")
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
     print("Patch parallèle (pool global) appliqué.")

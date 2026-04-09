@@ -31,7 +31,7 @@ PaddleOCR utilise un pipeline OTSL pour les tableaux complexes :
 2. Encode le contenu en format OTSL (`<fcel>col<fcel>col<nl>...`)
 3. Envoie l'OTSL au VLM pour reconstruction en HTML
 
-**Problème avec llama-cpp-server :** llama-server ne sait pas parser l'OTSL comme image → erreur 500. Contournement : patch paddlex qui intercepte l'erreur, extrait l'OTSL du message d'erreur, et le convertit directement via `convert_otsl_to_html()`. Voir `docs/dev/paddlex_patch.md`.
+**Problème avec llama-cpp-server :** llama-server ne sait pas parser l'OTSL comme image → erreur 500. Contournement : patch paddlex qui intercepte l'erreur, extrait l'OTSL du message d'erreur, et le convertit directement via `convert_otsl_to_html()`. Voir `docs/dev/paddlex_patch_otsl.md`.
 
 ## Modèles impliqués
 

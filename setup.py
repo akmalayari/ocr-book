@@ -52,7 +52,7 @@ def main() -> None:
         steps.extend([
             (conda_run + ["pip", "install", "git+https://github.com/PaddlePaddle/PaddleOCR.git"],
              "Install PaddleOCR from repo (with llama-server compatibility)", False),
-            (conda_run + ["python", str(root / "docs" / "dev" / "apply_paddlex_patch.py")],
+            (conda_run + ["python", str(root / "docs" / "dev" / "apply_paddlex_patch_otsl.py")],
              "Apply paddlex patch (per-region VLM error recovery)", False),
             (conda_run + ["python", "-c", "from paddleocr import PaddleOCRVL; print('✅ PaddleOCR loaded')"],
              "Verify PaddleOCR import", False),

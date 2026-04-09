@@ -22,7 +22,7 @@ conda activate ocr-livre
 pip install git+https://github.com/PaddlePaddle/PaddleOCR.git
 
 # Appliquer le patch paddlex
-python docs/dev/apply_paddlex_patch.py
+python docs/dev/apply_paddlex_patch_otsl.py
 ```
 
 ## Lancer le pipeline
@@ -35,4 +35,4 @@ python src/main.py <photos_dir>
 ## Dépannage
 
 - **paddlex file not found** : Vérifier que l'env est activée (`conda activate ocr-livre-paddle`)
-- **Patch fails** : L'état de paddlex peut être "unknown" si la version diffère. Voir [apply_paddlex_patch.py](dev/apply_paddlex_patch.py) pour détails
+- **Patch fails** : L'état de paddlex peut être "unknown" si la version diffère. Voir [apply_paddlex_patch_otsl.py](dev/apply_paddlex_patch_otsl.py) pour détails

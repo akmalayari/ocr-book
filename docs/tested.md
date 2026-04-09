@@ -310,7 +310,7 @@ Scripts : `draft/test_paddle.py`, `draft/compare_ocr.py`.
 - **paddleocr** depuis le dépôt main (pas PyPI 3.4.0 — `llama-cpp-server` backend absent de la release) — orchestration layout + routing des prompts
 - **paddlepaddle CPU** — layout detection (ppdoclayout)
 - **Python 3.10** (conda env `ocr-livre`) — incompatibilité paddlepaddle avec Python 3.11+
-- Patch paddlex requis : `docs/dev/apply_paddlex_patch.py` (voir `docs/dev/paddlex_patch.md`)
+- Patch paddlex requis : `docs/dev/apply_paddlex_patch_otsl.py` (voir `docs/dev/paddlex_patch_otsl.md`)
 
 ### Résultats de précision (texte pur, référence `page_6_text.md`)
 
@@ -335,7 +335,7 @@ PaddleOCR utilise un pipeline spécialisé pour les tableaux :
 2. Le contenu est encodé en OTSL (`<fcel>col<fcel>col<nl>...`)
 3. Le VLM reçoit l'OTSL pour reconstruction en HTML
 
-Avec le backend `llama-cpp-server`, llama-server ne sait pas parser l'OTSL comme image → erreur 500. Le patch `paddlex_patch.md` intercepte cette erreur par région, extrait l'OTSL depuis le message d'erreur, et le convertit directement via `convert_otsl_to_html()`.
+Avec le backend `llama-cpp-server`, llama-server ne sait pas parser l'OTSL comme image → erreur 500. Le patch `paddlex_patch_otsl.md` intercepte cette erreur par région, extrait l'OTSL depuis le message d'erreur, et le convertit directement via `convert_otsl_to_html()`.
 
 ### Format de sortie
 

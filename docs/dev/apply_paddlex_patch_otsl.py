@@ -1,12 +1,12 @@
 """
-apply_paddlex_patch.py — Applique (ou vérifie) le patch paddlex per-region VLM.
+apply_paddlex_patch_otsl.py — Applique (ou vérifie) le patch paddlex per-region VLM.
 
-Voir paddlex_patch.md pour la description complète.
+Voir paddlex_patch_otsl.md pour la description complète.
 
 Usage :
-    python docs/dev/apply_paddlex_patch.py           # applique le patch
-    python docs/dev/apply_paddlex_patch.py --check   # vérifie sans modifier
-    python docs/dev/apply_paddlex_patch.py --revert  # restaure l'original
+    python docs/dev/apply_paddlex_patch_otsl.py           # applique le patch
+    python docs/dev/apply_paddlex_patch_otsl.py --check   # vérifie sans modifier
+    python docs/dev/apply_paddlex_patch_otsl.py --revert  # restaure l'original
 """
 
 import argparse

@@ -8,7 +8,7 @@ PaddleOCR-VL traite les blocs d'une page séquentiellement : pour chaque bloc d�
 
 `docs/dev/apply_paddlex_patch_parallel.py` patche `paddlex/inference/pipelines/paddleocr_vl/pipeline.py` pour remplacer la boucle séquentielle par un `ThreadPoolExecutor` global.
 
-**Doit être appliqué après `apply_paddlex_patch.py` (patch OTSL).**
+**Doit être appliqué après `apply_paddlex_patch_otsl.py` (patch OTSL).**
 
 ## Fonctionnement
 

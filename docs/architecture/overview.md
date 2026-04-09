@@ -105,7 +105,7 @@ Rapport Markdown écrit dans `output/ocr_report.md`.
 | **paddlex[ocr]** | Sous-pipeline tableaux (OTSL → HTML via `convert_otsl_to_html`) |
 | **openai** | Client HTTP pour le backend `llama-cpp-server` de paddleocr |
 
-Patch requis sur paddlex : `docs/dev/apply_paddlex_patch.py` — gestion des erreurs VLM par région (tableaux complexes). Voir `docs/dev/paddlex_patch.md`.
+Patch requis sur paddlex : `docs/dev/apply_paddlex_patch_otsl.py` — gestion des erreurs VLM par région (tableaux complexes). Voir `docs/dev/paddlex_patch_otsl.md`.
 
 ---
 
