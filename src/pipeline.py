@@ -15,7 +15,7 @@ from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError
-from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths
+from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number
 from images import collect_images
 from progress import Stats
 
@@ -89,7 +89,7 @@ def run_pipeline(cfg: Config) -> Stats:
     ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
     urls  = [f"http://127.0.0.1:{port}" for port in ports]
 
-    logger.info("Démarrage de %d serveur(s) llama-server...", cfg.n_servers)
+    logger.info("Démarrage de %d llama-server...", cfg.n_servers)
     t_load0 = time.time()
     procs = [_start_server(cfg, port) for port in ports]
 
@@ -109,6 +109,7 @@ def run_pipeline(cfg: Config) -> Stats:
         vl_rec_backend="llama-cpp-server",
         vl_rec_api_model_name="paddleocr",
         use_layout_detection=cfg.use_layout_detection,
+        markdown_ignore_labels=["footnote", "header", "header_image", "footer", "footer_image", "aside_text"],
     )
     pipelines = [
         PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base)
@@ -134,6 +135,7 @@ def run_pipeline(cfg: Config) -> Stats:
             t_ocr = metrics["total_latency"]
 
             t_post0 = time.time()
+            page_number, raw_text = extract_page_number(raw_text)
             clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
             clean_text = strip_table_styles(clean_text)
             clean_text = fix_image_paths(clean_text, page_id, figures_rel)
@@ -142,7 +144,7 @@ def run_pipeline(cfg: Config) -> Stats:
             elapsed = time.time() - t0
             part_path = parts_dir / f"{page_id}.part"
             with part_path.open("a", encoding="utf-8") as f:
-                f.write(format_page_block(page_id, clean_text))
+                f.write(format_page_block(page_id, clean_text, page_number))
             return {
                 "idx": idx, "page_name": img_path.name,
                 "elapsed": elapsed, "chars": len(clean_text),
