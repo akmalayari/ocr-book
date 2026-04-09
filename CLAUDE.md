@@ -39,7 +39,8 @@ Vérifie ta mémoire en début de session : `memory/`.
 - Ne pas proposer de corrections au-delà du scope demandé
 - Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
 - Pas de récapitulatif en fin de message sauf si le changement est complexe
-- Repondre de façon honnete sans brosser dans le sens du poil ni contredire sans raison.
+- Repondre de façon honnete: contredire si nécessaire et expliquer son point de vue. 
+- Toujours demander des clarifications avant de coder a part si les consignes sont claires ou évidentes.
 
 ### Git
 - add et commit a chaque issue résolue: grouper les fichiers modifiés de préférence à part si la modification est isolée.

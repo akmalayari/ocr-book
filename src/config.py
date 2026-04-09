@@ -17,7 +17,7 @@ class Config:
     server_timeout: int    = 60   # secondes à attendre avant de déclarer le serveur mort
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 6144   # 2048 tokens/slot avec -np > 1
+    n_ctx: int            = 2048   # 2048 tokens/slot avec -np > 1
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
@@ -26,7 +26,7 @@ class Config:
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
-    n_parallel: int       = 3
+    n_parallel: int       = 1     # VIGILANCE: verifier si `apply_paddlex_patch_parallel.py` est appliqué et avec quelle valeur de _VLM_PARALLEL
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout
