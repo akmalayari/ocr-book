@@ -12,21 +12,21 @@ class Config:
     llama_server_path: str = r"C:\path\to\llama.cpp\llama-b8683-bin-win-vulkan-x64\llama-server.exe"
     model_path: str        = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5.gguf"
     mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
-    server_url: str        = "http://127.0.0.1:8080"
-    server_port: int       = 8080
-    server_timeout: int    = 60   # secondes à attendre avant de déclarer le serveur mort
+    server_base_port: int  = 8080   # ports 8080, 8081, … (un par serveur)
+    server_timeout: int    = 60     # secondes à attendre avant de déclarer le serveur mort
+    n_servers: int         = 2      # nombre de llama-server parallèles
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 2048   # 2048 tokens/slot avec -np > 1
+    n_ctx: int            = 2048   # 1 slot × 2048 tokens (np=1)
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
-    n_threads: int        = 4
+    n_threads: int        = 2      # par serveur (P-cores divisés)
     prio: int             = 2
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
-    n_parallel: int       = 1     # VIGILANCE: verifier si `apply_paddlex_patch_parallel.py` est appliqué et avec quelle valeur de _VLM_PARALLEL
+    n_parallel: int       = 1      # 1 slot par serveur → max n_servers vision encodings simultanés
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout

@@ -28,38 +28,48 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
         (markdown_text, métriques) où métriques = {"total_latency": float}
 
     Raises:
-        OCRError si l'image est introuvable ou si la génération échoue
+        OCRError si l'image est introuvable ou si la génération échoue après retry
     """
     image_path = Path(image_path)
     if not image_path.exists():
         raise OCRError(f"Image introuvable : {image_path}")
 
     save_path = str(cfg.figures_path / image_path.stem)
-
     md_path = Path(save_path) / f"{image_path.stem}.md"
     Path(save_path).mkdir(parents=True, exist_ok=True)
 
-    t0 = time.perf_counter()
-    try:
-        output = list(pipeline.predict(str(image_path)))
-    except Exception as e:
-        raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
+    for attempt in range(2):
+        t0 = time.perf_counter()
+        try:
+            output = list(pipeline.predict(str(image_path)))
+        except Exception as e:
+            raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
 
-    if not output:
-        raise OCRError(f"Contenu vide pour {image_path.name}.")
+        total_latency = time.perf_counter() - t0
 
-    for res in output:
-        res.save_to_markdown(save_path=save_path, pretty=True)
+        if not output:
+            if attempt == 0:
+                logger.warning("%s — sortie vide, retry...", image_path.name)
+                continue
+            raise OCRError(f"Contenu vide pour {image_path.name}.")
 
-    if not md_path.exists():
-        raise OCRError(f"Fichier markdown non généré pour {image_path.name}.")
+        for res in output:
+            res.save_to_markdown(save_path=save_path, pretty=True)
 
-    text = md_path.read_text(encoding="utf-8").strip()
-    total_latency = time.perf_counter() - t0
+        if not md_path.exists():
+            if attempt == 0:
+                logger.warning("%s — MD non généré, retry...", image_path.name)
+                continue
+            raise OCRError(f"Fichier markdown non généré pour {image_path.name}.")
 
-    if not text:
-        raise OCRError(f"Contenu vide pour {image_path.name}.")
+        text = md_path.read_text(encoding="utf-8").strip()
+        if not text:
+            if attempt == 0:
+                logger.warning("%s — MD vide, retry...", image_path.name)
+                continue
+            raise OCRError(f"Contenu vide pour {image_path.name}.")
 
-    logger.debug("%s → %d caractères (%.1fs)", image_path.name, len(text), total_latency)
+        logger.debug("%s → %d caractères (%.1fs)", image_path.name, len(text), total_latency)
+        return text, {"total_latency": total_latency}
 
-    return text, {"total_latency": total_latency}
+    raise OCRError(f"Échec après retry pour {image_path.name}.")

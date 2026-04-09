@@ -2,8 +2,7 @@
 
 ## Version paddle (actuelle)
 
-### Parallelisation pour gain de vitesse
-- Paralleliser le traitement des pages en lançant deux serveurs llama-server concurrents.
+OK
 
 ---
 

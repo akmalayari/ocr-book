@@ -5,7 +5,7 @@ Usage :
     python src/main.py                          # config par défaut
     python src/main.py --images ./photos --out output/livre.md
     python src/main.py --no-resume              # recommencer depuis le début
-    python src/main.py --no-layout              # fallback sans layout detection
+    python src/main.py --no-layout              # désactiver la détection de layout
     python src/main.py --no-postprocess         # sortie brute
     python src/main.py --rename                 # renommer les images puis OCR
     python src/main.py --rename --dry-run       # affiche les renommages sans les faire ni OCR
@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
-                   help="Désactiver la détection de layout (fallback simple)")
+                   help="Désactiver la détection de layout")
 
     # Comportement
     p.add_argument("--no-resume", action="store_true",
