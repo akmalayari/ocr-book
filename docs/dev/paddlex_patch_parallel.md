@@ -34,14 +34,14 @@ _all_results = pool.map(_infer_block, _all_tasks)  # parallèle
 
 | VLM_PARALLEL / -np | -c recommandé | Tokens/slot |
 |---|---|---|
-| 2 | 8192 | 4096 |
-| 3 | 12288 | 4096 — **retenu** |
-| 4 | 16384 | 4096 — crash vision encoder |
+| 2 | 4096 | 2048 |
+| 3 | 6144 | 2048 — **retenu** |
+| 4 | 8192 | 2048 — crash vision encoder |
 
 ## Limites
 
 - **Vision encoder Vulkan saturé à 4 workers** : 4 encodages image simultanés crashent le driver. Plancher stable à 3 workers.
-- **Rendements décroissants** : 60s → 49s → 46s (gain de 3s entre np=2 et np=3). Au-delà de 3, crash.
+- **Rendements décroissants** : 60s → 49s → 43.6s (gain de 2.4s entre np=2 et np=3). Au-delà de 3, crash.
 - **Pages avec peu de blocs** : une page avec 2 blocs n'utilise que 2 workers même avec np=3. Le gain est proportionnel au nombre de blocs.
 
 ## Usage
@@ -60,4 +60,4 @@ python docs/dev/apply_paddlex_patch_parallel.py --revert
 ## Config src/ associée
 
 `src/pipeline.py` : `-np 3`
-`src/config.py` : `n_ctx = 12288`
+`src/config.py` : `n_ctx = 6144`

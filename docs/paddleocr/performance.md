@@ -57,7 +57,7 @@ Cause : le resize s'appliquait **avant** la layout detection qui recevait une im
 ## Paramètres llama-server retenus
 
 ```
--c 12288      # context window (4096 tokens/slot × 3 slots)
+-c 6144      # context window (2048 tokens/slot × 3 slots)
 -np 3         # slots parallèles (cohérent avec VLM_PARALLEL=3 dans le patch)
 -ngl 99       # toutes les couches sur GPU
 -b 512        # batch size
@@ -73,5 +73,3 @@ KV cache avec np=3 : ~297 MiB × 3 / 2 ≈ 445 MiB. VRAM totale occupée : ~4.5 
 ## Pistes non explorées
 
 - **Backend vllm-server** à la place de llama-cpp-server : supporterait `max_pixels` et potentiellement plus performant, mais nécessite un setup différent (Linux-friendly, pas testé sous Windows/Vulkan)
-- **Modèle quantifié plus agressif** (Q4, Q5) : gain de vitesse au prix de la précision
-- **GPU NVIDIA + CUDA** : backend CUDA de llama-server, flash-attn natif, parallélisme réel

@@ -373,6 +373,16 @@ Principe : PaddleOCR traite les blocs séquentiellement. Le patch soumet tous le
 
 Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 6144` (2048/slot). Réduction de `-c 12288` → `-c 6144` : gain supplémentaire ~2.5s/page sans troncature observée.
 
+**Streaming HTTP pour débloquer -np 4 (2026-04-09)** : **abandonné**. `docs/obsolete/apply_paddlex_patch_streaming.py`.
+
+Principe : patcher `GenAIClient.create_chat_completion` (genai.py) pour utiliser `stream=True` et libérer un sémaphore asyncio après le premier token de contenu (= fin du prefill). Permettrait d'avoir 3 prefills simultanés max tout en gardant 4 slots en génération.
+
+Résultats :
+- `-np 3` + streaming : aucun gain (attendu — 3 slots disponibles, le 4ème worker queue côté serveur)
+- `-np 4` + streaming : texte incomplet, aucun gain de temps
+
+Cause probable du texte incomplet : llama-server envoie un chunk `role: assistant` (contenu vide) avant la fin du prefill. La version initiale libérait le sémaphore sur `stream.__anext__()`, soit sur ce chunk vide, laissant passer les 4 prefills simultanément et corrompant les générations. Version corrigée (attente du premier token non-vide) : même résultat — texte incomplet, aucun gain. Cause racine non identifiée, probablement une limitation de llama-server à 4 slots simultanés en streaming sous Vulkan.
+
 ### Verdict
 
 **PaddleOCR VL 1.5 retenu et intégré** — supérieur à DeepSeek-OCR BF16 sur tous les critères :

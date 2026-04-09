@@ -2,9 +2,8 @@
 
 ## Version paddle (actuelle)
 
-### Optimisations vitesse à tester
-
-**Sémaphore vision encoder (invasif)** : le crash à -np 4 vient du vision encoder Vulkan saturé par 4 encodages simultanés. Un `threading.Semaphore(2)` dans `_infer_block` du patch limiterait les encodages simultanés à 2, tout en gardant 4 slots de génération actifs. Permettrait de passer -np 4 sans crash. Gain estimé ~5s supplémentaires.
+### Parallelisation pour gain de vitesse
+- Paralleliser le traitement des pages en lançant deux serveurs llama-server concurrents.
 
 ---
 
