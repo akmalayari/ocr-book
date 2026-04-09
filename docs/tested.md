@@ -413,6 +413,26 @@ Pipeline principale (`src/`) migrée vers PaddleOCR (2026-04-08) : `ocr_client.p
 
 ---
 
+## `markdown_ignore_labels` (2026-04-09)
+
+Paramètre du constructeur `PaddleOCRVL(...)` — liste des labels de blocs exclus de la sortie markdown.
+
+**Config retenue :**
+```python
+markdown_ignore_labels=["header_image", "footer", "footer_image"]
+```
+
+| Label retiré de la liste (inclus) | Effet observé |
+|---|---|
+| `number` | numéro de page imprimé récupéré → extrait dans `<!-- Page page_2 (p. 42-43) -->` via `extract_page_number()` |
+| `header` | en-tête courant récupéré (ex : "Leçon 5") — testé pages 2 et 9, sans bruit particulier |
+| `footnote` | notes de bas de page récupérées — testées, ignorées car bruit sans valeur |
+| `aside_text` | texte marginal récupéré — retenu (contenu potentiellement utile) |
+
+Labels toujours ignorés : `header_image`, `footer`, `footer_image`.
+
+---
+
 ## Paramètres de génération
 
 | Paramètre | Valeur testée | Effet |

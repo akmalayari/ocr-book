@@ -109,7 +109,7 @@ def run_pipeline(cfg: Config) -> Stats:
         vl_rec_backend="llama-cpp-server",
         vl_rec_api_model_name="paddleocr",
         use_layout_detection=cfg.use_layout_detection,
-        markdown_ignore_labels=["footnote", "header", "header_image", "footer", "footer_image", "aside_text"],
+        markdown_ignore_labels=["header_image", "footer", "footer_image"],
     )
     pipelines = [
         PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base)
