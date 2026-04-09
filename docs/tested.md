@@ -366,11 +366,12 @@ Principe : PaddleOCR traite les blocs séquentiellement. Le patch soumet tous le
 |---|---|
 | séquentiel (baseline) | ~60s |
 | -np 2, 2 workers | ~49s |
-| -np 3, 3 workers | ~46s — **retenu** |
+| -np 3, 3 workers | ~46s |
 | -np 4, 4 workers | crash (vision encoder Vulkan saturé) |
 | -np 6, 6 workers | hang |
+| -np 3, 3 workers, **-c 6144** (2048/slot) | **~43.6s** — **retenu** |
 
-Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 12288` (4096 tokens/slot).
+Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 6144` (2048/slot). Réduction de `-c 12288` → `-c 6144` : gain supplémentaire ~2.5s/page sans troncature observée.
 
 ### Verdict
 
