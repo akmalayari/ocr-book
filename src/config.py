@@ -17,7 +17,7 @@ class Config:
     server_timeout: int    = 60   # secondes à attendre avant de déclarer le serveur mort
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 16384  # 4096 tokens/slot avec np=4
+    n_ctx: int            = 12288   # 4096 tokens/slot avec np=2
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512

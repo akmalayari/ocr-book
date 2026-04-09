@@ -346,19 +346,31 @@ HTML embarqué dans Markdown :
 
 Pas de tokens DeepSeek (`<|ref|>`, `<|det|>`).
 
-### Vitesse et optimisations (2026-04-08)
+### Vitesse et optimisations (2026-04-08/09)
 
-Vitesse mesurée : 47–55s/page selon le contenu. Bottleneck = vitesse de génération brute (~36 tok/s sous Vulkan). Pages avec plus de blocs (tableau + graphique) prennent plus de temps — chaque bloc détecté = un appel VLM séparé.
+Vitesse mesurée baseline : ~60s/page. Bottleneck = vitesse de génération brute (~36 tok/s sous Vulkan) + idle entre blocs (GPU alternance layout detection → appel HTTP → idle).
 
-GPU en pics (pas en continu) : alternance layout detection locale (PaddlePaddle) → appel HTTP llama-server → idle entre blocs.
+**`n_parallel=2` seul (llama-server `-np 2`, pages entières en parallèle)** : testé, **abandonné**. Augmente le temps total (128s + 85s vs 55s + 55s). Contention GPU Vulkan — les deux requêtes se battent pour le GPU entier. De plus, le contexte est divisé entre slots : -np 2 avec -c 4096 → 2048 tokens/slot → blocs longs tronqués (HTTP 400).
 
-**`n_parallel=2` (llama-server `-np 2`)** : testé, **abandonné**. Augmente le temps total (128s + 85s vs 55s + 55s). Contention GPU Vulkan — les deux requêtes simultanées se battent pour les ressources, aucun gain de débit.
+**Resize PIL avant predict (`--max-image-size 1500`)** : testé, **abandonné**. Accélère légèrement mais dégrade fortement la qualité OCR. Cause : le resize s'appliquait avant la layout detection. Image source : 4080×3072.
 
-**Resize PIL avant predict (`--max-image-size 1500`)** : testé, **abandonné**. Accélère légèrement mais dégrade fortement la qualité OCR. Cause : le resize s'appliquait avant la layout detection, qui recevait une image dégradée. Image source : 4080×3072.
+**`max_pixels` (param PaddleOCR)** : non applicable pour `llama-cpp-server` (seulement `vllm-server`). Ignoré silencieusement. Défaut interne : `28 × 28 × 3600 = 2 822 400` pixels.
 
-**`max_pixels` (param PaddleOCR)** : non applicable pour `llama-cpp-server` (seulement `vllm-server`). Ignoré silencieusement. Défaut interne : `28 × 28 × 3600 = 2,822,400` pixels.
+**`save_to_markdown(pretty=True)`** : **retenu**. Les styles inline sont ajoutés par PaddleOCR en post-processing, pas générés par le VLM. Strip des styles `<td>`/`<th>` dans `postprocess.py`.
 
-**`save_to_markdown(pretty=True)`** : **retenu**. Les styles inline (`style='text-align: center; word-wrap: break-word;'` sur chaque `<td>`, `<div style="...">` sur les titres) sont ajoutés par PaddleOCR en post-processing dans `_to_markdown(pretty=True)`, pas générés par le VLM. 
+**Parallélisation intra-page (pool global ThreadPoolExecutor, 2026-04-09)** : **retenu**, `docs/dev/apply_paddlex_patch_parallel.py`.
+
+Principe : PaddleOCR traite les blocs séquentiellement. Le patch soumet tous les blocs de toutes les pixel_keys simultanément à un pool global, les workers pickent en continu sans restart.
+
+| Config | Temps/page |
+|---|---|
+| séquentiel (baseline) | ~60s |
+| -np 2, 2 workers | ~49s |
+| -np 3, 3 workers | ~46s — **retenu** |
+| -np 4, 4 workers | crash (vision encoder Vulkan saturé) |
+| -np 6, 6 workers | hang |
+
+Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 12288` (4096 tokens/slot).
 
 ### Verdict
 

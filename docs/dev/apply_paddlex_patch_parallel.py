@@ -1,24 +1,27 @@
 """
-apply_paddlex_patch_parallel.py — Parallélise les appels VLM intra-page.
+apply_paddlex_patch_parallel.py — Parallélise les appels VLM intra-page (pool global).
 
-Prérequis : apply_paddlex_patch.py doit avoir été appliqué en premier (patch OTSL).
+Prérequis : apply_paddlex_patch.py (patch OTSL) doit avoir été appliqué en premier.
 
 Principe :
-    PaddleOCR traite les blocs d'une page séquentiellement (un appel HTTP par bloc).
-    Ce patch remplace la boucle séquentielle par un ThreadPoolExecutor, permettant
-    à N blocs d'être soumis simultanément à llama-server.
+    PaddleOCR collecte les blocs par pixel_key puis les traite séquentiellement.
+    Ce patch remplace la boucle entière for pixel_key par un pool global unique :
+    tous les blocs de toutes les pixel_keys sont soumis simultanément, les workers
+    pickent en continu sans restart entre pixel_keys, et les résultats sont redistribués.
 
-    L'architecture de PaddleX utilise asyncio.run_coroutine_threadsafe() sur un event
-    loop global unique (background thread). Les appels depuis plusieurs threads sont
-    thread-safe par conception. llama-server doit être lancé avec -np N pour ouvrir
-    N slots GPU correspondant à VLM_PARALLEL.
+    Avantage vs pool par pixel_key :
+    - Pas de redémarrage de pool entre pixel_keys
+    - Les blocs rapides (petits textes) libèrent immédiatement un worker
+    - Meilleur équilibrage de charge global
 
-    VLM_PARALLEL = 2 ici, ce qui correspond à -np 2 dans llama-server (config.py).
+    L'architecture PaddleX (asyncio.run_coroutine_threadsafe sur event loop global)
+    est thread-safe : plusieurs threads peuvent appeler predict() simultanément.
+    llama-server doit être lancé avec -np N >= VLM_PARALLEL.
 
 Usage :
-    python docs/dev/apply_paddlex_patch_parallel.py           # applique le patch
-    python docs/dev/apply_paddlex_patch_parallel.py --check   # vérifie sans modifier
-    python docs/dev/apply_paddlex_patch_parallel.py --revert  # restaure le patch OTSL
+    python docs/dev/apply_paddlex_patch_parallel.py           # applique
+    python docs/dev/apply_paddlex_patch_parallel.py --check   # vérifie
+    python docs/dev/apply_paddlex_patch_parallel.py --revert  # retire (retour patch OTSL)
 """
 
 import argparse
@@ -30,8 +33,16 @@ TARGET = (
     / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
 )
 
-# État attendu avant ce patch : résultat de apply_paddlex_patch.py
+# État attendu : résultat de apply_paddlex_patch.py (boucle séquentielle avec OTSL)
 ORIGINAL = """\
+        for pixel_key in batch_dict_by_pixel:
+            min_pixels, max_pixels = pixel_key
+            kwargs = {
+                "use_cache": True,
+                "min_pixels": min_pixels,
+                "max_pixels": max_pixels,
+                **vlm_kwargs,
+            }
             images = batch_dict_by_pixel[pixel_key]["images"]
             queries = batch_dict_by_pixel[pixel_key]["queries"]
             batch_results = []
@@ -56,37 +67,55 @@ ORIGINAL = """\
             del images, queries
             batch_dict_by_pixel[pixel_key]["vlm_results"] = batch_results"""
 
-# Remplacement : boucle parallèle via ThreadPoolExecutor
-# VLM_PARALLEL doit correspondre à -np dans llama-server (config.py : n_parallel)
+# Pool global : tous les blocs de toutes les pixel_keys soumis en une seule passe.
+# VLM_PARALLEL doit correspondre à -np dans llama-server (src/pipeline.py).
 PATCHED = """\
-            images = batch_dict_by_pixel[pixel_key]["images"]
-            queries = batch_dict_by_pixel[pixel_key]["queries"]
+        _VLM_PARALLEL = 3  # doit correspondre à -np dans llama-server
 
-            _VLM_PARALLEL = 2  # doit correspondre à -np dans llama-server
+        def _infer_block(args):
+            _img, _qry, _kw = args
+            try:
+                return list(
+                    self.vl_rec_model.predict(
+                        [{"image": _img, "query": _qry}],
+                        skip_special_tokens=False if has_spotting else True,
+                        **_kw,
+                    )
+                )[0]
+            except Exception as _vlm_err:
+                _err_msg = str(_vlm_err)
+                _otsl = _err_msg.find("<fcel>")
+                if _otsl != -1:
+                    # OTSL content echoed back by llama-server; convert directly
+                    return {"result": _err_msg[_otsl:]}
+                return {"result": ""}
 
-            def _infer_block(args):
-                _img, _qry = args
-                try:
-                    return list(
-                        self.vl_rec_model.predict(
-                            [{"image": _img, "query": _qry}],
-                            skip_special_tokens=False if has_spotting else True,
-                            **kwargs,
-                        )
-                    )[0]
-                except Exception as _vlm_err:
-                    _err_msg = str(_vlm_err)
-                    _otsl = _err_msg.find("<fcel>")
-                    if _otsl != -1:
-                        # OTSL content echoed back by llama-server; convert directly
-                        return {"result": _err_msg[_otsl:]}
-                    return {"result": ""}
+        # Collecter tous les blocs dans l'ordre des pixel_keys
+        _all_tasks = []
+        _key_counts = []
+        for pixel_key in batch_dict_by_pixel:
+            min_pixels, max_pixels = pixel_key
+            _kw = {
+                "use_cache": True,
+                "min_pixels": min_pixels,
+                "max_pixels": max_pixels,
+                **vlm_kwargs,
+            }
+            _imgs = batch_dict_by_pixel[pixel_key]["images"]
+            _qrys = batch_dict_by_pixel[pixel_key]["queries"]
+            for _img, _qry in zip(_imgs, _qrys):
+                _all_tasks.append((_img, _qry, _kw))
+            _key_counts.append((pixel_key, len(_imgs)))
 
-            import concurrent.futures as _cf
-            with _cf.ThreadPoolExecutor(max_workers=_VLM_PARALLEL) as _pool:
-                batch_results = list(_pool.map(_infer_block, zip(images, queries)))
-            del images, queries
-            batch_dict_by_pixel[pixel_key]["vlm_results"] = batch_results"""
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=_VLM_PARALLEL) as _pool:
+            _all_results = list(_pool.map(_infer_block, _all_tasks))
+
+        # Redistribuer les résultats par pixel_key
+        _idx = 0
+        for pixel_key, _n in _key_counts:
+            batch_dict_by_pixel[pixel_key]["vlm_results"] = _all_results[_idx:_idx + _n]
+            _idx += _n"""
 
 
 def status(text: str) -> str:
@@ -100,7 +129,7 @@ def status(text: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check",  action="store_true", help="Vérifie sans modifier.")
-    parser.add_argument("--revert", action="store_true", help="Restaure le patch OTSL (retire le parallélisme).")
+    parser.add_argument("--revert", action="store_true", help="Retire le patch parallèle (retour patch OTSL).")
     args = parser.parse_args()
 
     if not TARGET.exists():
@@ -117,7 +146,7 @@ def main() -> None:
 
     if args.revert:
         if state == "original":
-            print("Déjà à l'état original (patch OTSL), rien à faire.")
+            print("Déjà à l'état original (patch OTSL seul), rien à faire.")
             return
         if state != "patched":
             print("[ERREUR] État inconnu, modification manuelle requise.")
@@ -126,7 +155,6 @@ def main() -> None:
         print("Patch parallèle retiré — retour au patch OTSL seul.")
         return
 
-    # Appliquer le patch
     if state == "patched":
         print("Déjà patché, rien à faire.")
         return
@@ -134,8 +162,8 @@ def main() -> None:
         print("[ERREUR] État inconnu. Vérifier que apply_paddlex_patch.py a été appliqué en premier.")
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
-    print("Patch parallèle appliqué.")
-    print("N'oublie pas de lancer llama-server avec -np 2.")
+    print("Patch parallèle (pool global) appliqué.")
+    print("Assure-toi que llama-server tourne avec -np 3 (VLM_PARALLEL dans le patch).")
 
 
 if __name__ == "__main__":

@@ -34,12 +34,12 @@ def _start_server(cfg: Config) -> subprocess.Popen:
         "-t",       str(cfg.n_threads),
         "--prio",   str(cfg.prio),
         "--temp",   str(cfg.temperature),
-        "-np",      "1",
+        "-np",      "3",
     ]
     if cfg.kv_offload:
         cmd += ["-kvo"]
     logger.info("Démarrage llama-server...")
-    return subprocess.Popen(cmd)  # DEBUG: logs visibles
+    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _wait_for_server(cfg: Config) -> bool:

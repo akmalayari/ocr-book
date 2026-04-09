@@ -2,10 +2,9 @@
 
 ## Version paddle (actuelle)
 
-### Intégration PaddleOCR dans la pipeline principale
+### Validation du patch parallèle sur images de test
 
-**Points à traiter :**
-1. **Gestion des crops figures** — PaddleOCR sauvegarde les crops dans `imgs/` relatif au `save_path`. À intégrer dans la pipeline de sortie.
+Le patch `apply_paddlex_patch_parallel.py` (pool global, np=3) doit être testé sur l'ensemble des images de référence (page_1 à page_9) pour vérifier l'absence de crash et la qualité de l'output.
 
 ---
 
