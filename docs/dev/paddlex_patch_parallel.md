@@ -41,7 +41,7 @@ _all_results = pool.map(_infer_block, _all_tasks)  # parallèle
 ## Limites
 
 - **Vision encoder Vulkan saturé à 4 workers** : 4 encodages image simultanés crashent le driver. Plancher stable à 3 workers.
-- **Rendements décroissants** : 60s → 49s → 43.6s (gain de 2.4s entre np=2 et np=3). Au-delà de 3, crash.
+- **Rendements décroissants** : 60s → 49s → 43.4s texte / 37s graphe (gain de 2.4s entre np=2 et np=3). Au-delà de 3, crash.
 - **Pages avec peu de blocs** : une page avec 2 blocs n'utilise que 2 workers même avec np=3. Le gain est proportionnel au nombre de blocs.
 
 ## Usage
