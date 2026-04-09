@@ -14,19 +14,19 @@ class Config:
     mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
     server_base_port: int  = 8080   # ports 8080, 8081, … (un par serveur)
     server_timeout: int    = 60     # secondes à attendre avant de déclarer le serveur mort
-    n_servers: int         = 2      # nombre de llama-server parallèles
+    n_servers: int         = 1      # nombre de llama-server parallèles
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 2048   # 1 slot × 2048 tokens (np=1)
+    n_ctx: int            = 6144   # 2048 tokens/slot × np=3
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
-    n_threads: int        = 2      # par serveur (P-cores divisés)
+    n_threads: int        = 4      # P-cores
     prio: int             = 2
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
-    n_parallel: int       = 1      # 1 slot par serveur → max n_servers vision encodings simultanés
+    n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py requis)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout
