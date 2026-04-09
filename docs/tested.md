@@ -373,6 +373,27 @@ Principe : PaddleOCR traite les blocs séquentiellement. Le patch soumet tous le
 
 Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 6144` (2048/slot). Réduction de `-c 12288` → `-c 6144` : gain supplémentaire ~2.5s/page sans troncature observée.
 
+**Parallélisation inter-pages — 2 serveurs llama-server (2026-04-09)** : **abandonné**. `src/pipeline.py` modifié pour lancer N serveurs sur des ports distincts (8080, 8081…) et traiter les pages en parallèle via `ThreadPoolExecutor`.
+
+Résultats sur 3 pages test (pages 1–3) :
+- Pages 1 et 2 (simultanées) : ~102s et ~105s chacune
+- Page 3 (serveur libéré) : ~55s
+- Débit moyen : ~53s/page — gain nul vs séquentiel (56s/page baseline)
+
+Cause : sur APU (Ryzen AI 9 HX370), le GPU et la RAM sont physiquement le même LPDDR5X. Sous Vulkan/Windows, les command queues de deux processus distincts sont **sérialisées par le driver** — pas de vrai parallélisme inter-processus. Chaque serveur obtient ~50% du GPU, devenant ~2× plus lent. Le débit total est identique.
+
+Variante testée conceptuellement (1 GPU + 1 CPU) : abandonnée sans implémentation. CPU inference ~5–10× plus lente que GPU, même bus mémoire → débit limité par le serveur CPU.
+
+**Conclusion :** sur GPU unique, le continuous batching intra-page (1 serveur, -np 3) reste la seule optimisation efficace. L'approche multi-serveur n'apporte rien sur APU.
+
+**Config finale retenue (2026-04-09)** : 1 serveur, -np 3, -c 6144. Vitesse mesurée sur `photos/test/` : **43.4s/page texte, 37s/page avec graphe**.
+
+Architecture pipeline mise à jour dans cette version :
+- Pages écrites dans `output/parts/<page_id>.part` (pas de lock, reprise robuste aux crashs)
+- Combinaison dans l'ordre d'entrée en fin de run
+- Retry ×1 dans `ocr_client.py` sur résultat VLM vide
+- Fallback `PaddleOCRVL` supprimé (couvert par le patch OTSL)
+
 **Streaming HTTP pour débloquer -np 4 (2026-04-09)** : **abandonné**. `docs/obsolete/apply_paddlex_patch_streaming.py`.
 
 Principe : patcher `GenAIClient.create_chat_completion` (genai.py) pour utiliser `stream=True` et libérer un sémaphore asyncio après le premier token de contenu (= fin du prefill). Permettrait d'avoir 3 prefills simultanés max tout en gardant 4 slots en génération.
