@@ -7,6 +7,7 @@ dependencies:
   - pip
   - pip:
     - requests==2.33.0
+    - natsort==8.4.0
     - numpy==2.2.6
     - openai==2.30.0
     - paddlepaddle==3.3.1

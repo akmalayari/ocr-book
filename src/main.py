@@ -8,7 +8,11 @@ Usage :
     python src/main.py --no-layout              # désactiver la détection de layout
     python src/main.py --no-postprocess         # sortie brute
     python src/main.py --rename                 # renommer les images puis OCR
+    python src/main.py --rename-only            # renommer les images sans lancer l'OCR
+    python src/main.py --rename-only 15         # renommer en partant de page_015
     python src/main.py --rename --dry-run       # affiche les renommages sans les faire ni OCR
+    python src/main.py --rename-only --chapters "Leçon 1" "Leçon 3"  # sous-dossiers choisis
+    python src/main.py --rename-only --dir-level  # ordre : dossiers alpha > sous-dossiers alpha > images par date
     python src/main.py --verbose                # logs détaillés
 """
 
@@ -17,8 +21,7 @@ import logging
 import sys
 
 from config import Config
-from images import rename_images
-from pipeline import run_pipeline
+from images import rename_images, copy_from_subdirs, has_image_subdirs
 from progress import setup_logging
 
 
@@ -53,8 +56,14 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Renommer les images en page_001.jpg, page_002.jpg… puis lancer l'OCR")
     p.add_argument("--rename-prefix", default=_cfg.rename_prefix,
                    help="Préfixe pour --rename (défaut: page)")
+    p.add_argument("--rename-only", nargs="?", type=int, const=1, default=None, metavar="START",
+                   help="Renommer les images sans lancer l'OCR (optionnel: numéro de départ, défaut: 1)")
+    p.add_argument("--chapters", nargs="+", metavar="NOM",
+                   help="Sous-dossiers à traiter (dans l'ordre fourni). Implique la copie vers le dossier parent.")
+    p.add_argument("--dir-level", action="store_true",
+                   help="Avec --rename/--rename-only : ordre par dossier (dossiers alpha, sous-dossiers alpha, images par date)")
     p.add_argument("--dry-run", action="store_true",
-                   help="Avec --rename : affiche les renommages sans les faire ni lancer l'OCR")
+                   help="Avec --rename/--rename-only : affiche les renommages sans les faire ni lancer l'OCR")
 
     return p
 
@@ -75,11 +84,24 @@ def main() -> int:
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
 
-    # ── Renommage (optionnel, avant OCR) ─────────────────────────────────────
-    if args.rename:
-        logger.info("Renommage des images dans : %s", cfg.images_dir)
-        rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run)
-        if args.dry_run:
+    # ── Renommage / copie depuis sous-dossiers (optionnel, avant OCR) ────────
+    if args.rename or args.rename_only is not None:
+        start = args.rename_only if args.rename_only is not None else 1
+        images_path = cfg.images_path
+        if args.chapters or (images_path.is_dir() and has_image_subdirs(images_path, cfg.extensions)):
+            logger.info("Mode sous-dossiers : copie vers %s", cfg.images_dir)
+            copy_from_subdirs(
+                images_path, cfg.extensions,
+                chapters=args.chapters,
+                prefix=args.rename_prefix,
+                start=start,
+                dry_run=args.dry_run,
+                dir_level=args.dir_level,
+            )
+        else:
+            logger.info("Renommage des images dans : %s", cfg.images_dir)
+            rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run, start=start)
+        if args.dry_run or args.rename_only is not None:
             return 0
 
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
@@ -92,6 +114,7 @@ def main() -> int:
     logger.info("═" * 60)
 
     try:
+        from pipeline import run_pipeline
         stats = run_pipeline(cfg)
     except Exception as e:
         logger.error("Erreur fatale : %s", e)
