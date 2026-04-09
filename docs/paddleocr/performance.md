@@ -49,7 +49,7 @@ Cause : le resize s'appliquait **avant** la layout detection qui recevait une im
 `max_pixels` contrôle le nombre de pixels envoyés au vision encoder. Défaut : `28×28×3600 = 2 822 400` px. Supporté uniquement par le backend `vllm-server`. Pour `llama-cpp-server`, un `warnings.warn` est émis et le paramètre est ignoré. L'image est envoyée telle quelle en base64 à llama-server.
 
 ### `--flash-attn` (llama-server)
-**Non testé** — potentiellement non supporté par Vulkan.
+Activé automatiquement dans llama-server.
 
 ### Augmenter `n_ubatch`
 **Testé (512 → 1024), aucun gain.**

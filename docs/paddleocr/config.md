@@ -87,5 +87,5 @@ PaddleOCRVL(
 llama-server lancé avec :
 ```
 -m <model.gguf> --mmproj <mmproj.gguf>
--c 4096 -ngl 99 -b 512 -ub 512 -t 4 --prio 2 --temp 0.0 -kvo
+-c 6144 -ngl 99 -b 512 -ub 512 -t 4 --prio 2 --temp 0.0 -kvo
 ```
