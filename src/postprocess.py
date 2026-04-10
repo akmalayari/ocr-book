@@ -23,8 +23,10 @@ def clean_page(text: str, cfg: Config, no_layout: bool = False) -> str:
 
     if cfg.rejoin_hyphenated_words:
         text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+        # Continuation minuscule après coupure avec double saut (layout ou no-layout)
+        # Restreint aux minuscules pour ne pas coller avec un titre/paragraphe suivant
+        text = re.sub(r'(\w)-\n\n([a-zéèêëàâîïôùûüçœ])', r'\1\2', text)
         if no_layout:
-            text = re.sub(r'(\w)-\n\n(\w)', r'\1\2', text)
             # Supprime les boucles de génération : sous-chaîne ≥15 chars répétée 3+ fois
             text = re.sub(r'(.{15,}?)\1{2,}', r'\1', text)
         text = re.sub(r'(\w)- (\w)', r'\1\2', text)
