@@ -175,7 +175,6 @@ def run_pipeline(cfg: Config) -> Stats:
                 else:
                     stats.record_success(
                         result["elapsed"], result["chars"],
-                        latency=result["t_ocr"],
                         t_ocr=result["t_ocr"], t_post=result["t_post"],
                         page_name=result["page_name"],
                     )

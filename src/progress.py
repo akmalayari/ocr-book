@@ -47,7 +47,6 @@ class Stats:
 
     # Temps par page (total + par étape)
     times: list[float] = field(default_factory=list)
-    latencies: list[float] = field(default_factory=list)
     preprocess_times: list[float] = field(default_factory=list)
     ocr_times: list[float] = field(default_factory=list)
     postprocess_times: list[float] = field(default_factory=list)
@@ -64,7 +63,6 @@ class Stats:
         self,
         elapsed: float,
         chars: int,
-        latency: float = 0.0,
         t_pre: float = 0.0,
         t_ocr: float = 0.0,
         t_post: float = 0.0,
@@ -73,7 +71,6 @@ class Stats:
     ) -> None:
         self.done += 1
         self.times.append(elapsed)
-        self.latencies.append(latency)
         self.total_chars += chars
         self.preprocess_times.append(t_pre)
         self.ocr_times.append(t_ocr)
@@ -105,10 +102,6 @@ class Stats:
         return sum(self.times) / len(self.times) if self.times else 0.0
 
     @property
-    def avg_latency(self) -> float:
-        return sum(self.latencies) / len(self.latencies) if self.latencies else 0.0
-
-    @property
     def elapsed_total(self) -> float:
         return time.time() - self.start_time
 
@@ -125,10 +118,9 @@ class Stats:
     def log_page(self, index: int, name: str, elapsed: float, chars: int) -> None:
         eta = self.eta_s
         eta_str = f"  ETA ~{eta/60:.0f}min" if eta else ""
-        latency = self.latencies[-1] if self.latencies else elapsed
         logging.getLogger(__name__).info(
-            "[%d/%d] %-30s  %5.1fs (latence %.1fs)  %d car.%s",
-            index, self.total, name, elapsed, latency, chars, eta_str,
+            "[%d/%d] %-30s  %5.1fs  %d car.%s",
+            index, self.total, name, elapsed, chars, eta_str,
         )
 
     def log_summary(self) -> None:
@@ -141,8 +133,8 @@ class Stats:
         )
         if self.done:
             logger.info(
-                "Vitesse moyenne : %.1fs/page  |  Latence moy. : %.1fs  |  %d caractères total",
-                self.avg_time, self.avg_latency, self.total_chars,
+                "Vitesse moyenne : %.1fs/page  |  %d caractères total",
+                self.avg_time, self.total_chars,
             )
 
     # ── Rapport ──────────────────────────────────────────────────────────────
@@ -202,7 +194,7 @@ class Stats:
             lines += [
                 "## Décomposition du temps d'exécution\n",
                 "| Étape | Moy. | Min | Max | Total | % |\n|---|---|---|---|---|---|",
-                _row("OCR (PaddleOCR + save)",
+                _row("Inférence (pipeline.predict)",
                      f"{avg_ocr:.2f}s", f"{min_ocr:.2f}s", f"{max_ocr:.2f}s",
                      f"{tot_ocr:.1f}s", f"{pct_ocr:.1f}%"),
                 _row("Post-traitement",
@@ -223,7 +215,7 @@ class Stats:
             ]
             for p in self._pages:
                 if p.get("error"):
-                    lines.append(_row(p["name"], "—", "—", "—", "—", "ERREUR"))
+                    lines.append(_row(p["name"], "—", "—", "—", "ERREUR"))
                 else:
                     lines.append(_row(
                         p["name"],
