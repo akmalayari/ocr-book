@@ -2,18 +2,20 @@
 main.py — Point d'entrée CLI du pipeline OCR livre
 
 Usage :
-    python src/main.py                          # config par défaut
+    python src/main.py                                # config par défaut (mode base)
     python src/main.py --images ./photos --out output/livre.md
-    python src/main.py --no-resume              # recommencer depuis le début
-    python src/main.py --no-layout              # désactiver la détection de layout
-    python src/main.py --no-postprocess         # sortie brute
-    python src/main.py --rename                 # renommer les images puis OCR
-    python src/main.py --rename-only            # renommer les images sans lancer l'OCR
-    python src/main.py --rename-only 15         # renommer en partant de page_015
-    python src/main.py --rename --dry-run       # affiche les renommages sans les faire ni OCR
+    python src/main.py --no-resume                    # recommencer depuis le début
+    python src/main.py --no-layout                    # désactiver la détection de layout
+    python src/main.py --no-postprocess               # sortie brute
+    python src/main.py --mode obsidian                # OCR + postprocess Obsidian (prompt vault si non configuré)
+    python src/main.py --mode obsidian --postprocess-only  # postprocess Obsidian sans relancer l'OCR
+    python src/main.py --rename                       # renommer les images puis OCR
+    python src/main.py --rename-only                  # renommer les images sans lancer l'OCR
+    python src/main.py --rename-only 15               # renommer en partant de page_015
+    python src/main.py --rename --dry-run             # affiche les renommages sans les faire ni OCR
     python src/main.py --rename-only --chapters "Leçon 1" "Leçon 3"  # sous-dossiers choisis
-    python src/main.py --rename-only --dir-level  # ordre : dossiers alpha > sous-dossiers alpha > images par date
-    python src/main.py --verbose                # logs détaillés
+    python src/main.py --rename-only --dir-level      # ordre : dossiers alpha > sous-dossiers alpha > images par date
+    python src/main.py --verbose                      # logs détaillés
 """
 
 import argparse
@@ -48,6 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Recommencer depuis le début (ignore le fichier existant)")
     p.add_argument("--no-postprocess", action="store_true",
                    help="Désactiver le post-traitement")
+    p.add_argument("--mode", choices=["base", "obsidian"], default=_cfg.mode,
+                   help="Mode de sortie : base (HTML img) ou obsidian (wikilinks ![[]])")
+    p.add_argument("--postprocess-only", action="store_true",
+                   help="Avec --mode obsidian : applique le postprocess sur le .md existant sans relancer l'OCR")
     p.add_argument("--verbose", action="store_true",
                    help="Logs détaillés (DEBUG)")
 
@@ -78,11 +84,23 @@ def main() -> int:
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,
+        mode=args.mode,
         verbose=args.verbose,
     )
 
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
+
+    # ── Mode obsidian --postprocess-only ─────────────────────────────────────
+    if args.postprocess_only:
+        if cfg.mode != "obsidian":
+            logger.error("--postprocess-only requiert --mode obsidian")
+            return 1
+        from obsidian import prompt_if_needed, postprocess_file
+        prompt_if_needed(cfg)
+        postprocess_file(cfg)
+        logger.info("Postprocess obsidian appliqué : %s", cfg.output_path.resolve())
+        return 0
 
     # ── Renommage / copie depuis sous-dossiers (optionnel, avant OCR) ────────
     if args.rename or args.rename_only is not None:

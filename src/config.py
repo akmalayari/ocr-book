@@ -44,6 +44,9 @@ class Config:
 
     # ── Post-traitement ──────────────────────────────────────────────────────
     postprocess: bool                   = True
+    mode: str                           = "base"   # "base" | "obsidian"
+    vault_path: str | None              = None      # chemin absolu du vault Obsidian
+    vault_figures_dir: str | None       = None      # chemin figures relatif à la racine du vault
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True

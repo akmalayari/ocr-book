@@ -16,6 +16,7 @@ from paddleocr import PaddleOCRVL
 from config import Config
 from ocr_client import ocr_image, OCRError
 from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number
+from obsidian import fix_image_paths_obsidian, prompt_if_needed
 from images import collect_images
 from progress import Stats
 
@@ -66,6 +67,9 @@ def run_pipeline(cfg: Config) -> Stats:
       6. Combine les parts dans l'ordre en fin de run
       7. Retourne les statistiques
     """
+    if cfg.mode == "obsidian":
+        prompt_if_needed(cfg)
+
     images = collect_images(cfg)
 
     # ── Parts dir ────────────────────────────────────────────────────────────
@@ -138,7 +142,10 @@ def run_pipeline(cfg: Config) -> Stats:
             page_number, raw_text = extract_page_number(raw_text)
             clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
             clean_text = strip_table_styles(clean_text)
-            clean_text = fix_image_paths(clean_text, page_id, figures_rel)
+            if cfg.mode == "obsidian":
+                clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
+            else:
+                clean_text = fix_image_paths(clean_text, page_id, figures_rel)
             t_post = time.time() - t_post0
 
             elapsed = time.time() - t0
@@ -186,7 +193,7 @@ def run_pipeline(cfg: Config) -> Stats:
         logger.info("%d serveur(s) arrêté(s).", cfg.n_servers)
 
     # ── Combinaison dans l'ordre d'entrée ─────────────────────────────────────
-    with cfg.output_path.open("w", encoding="utf-8") as out:
+    with cfg.output_path.open("w", encoding="utf-8", newline="\n") as out:
         out.write("# Livre OCR\n\n")
         out.write("<!-- Généré avec PaddleOCR-VL-1.5 via llama-server -->\n")
         for img_path in images:

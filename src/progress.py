@@ -235,5 +235,5 @@ class Stats:
             lines.append("")
 
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text("\n".join(lines), encoding="utf-8")
+        report_path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
         logging.getLogger(__name__).info("Rapport : %s", report_path.resolve())

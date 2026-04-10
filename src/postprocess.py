@@ -99,3 +99,5 @@ def fix_image_paths(text: str, page_id: str, figures_rel: str) -> str:
     """
     prefix = figures_rel.replace("\\", "/")
     return re.sub(r'src="imgs/', f'src="{prefix}/{page_id}/imgs/', text)
+
+
