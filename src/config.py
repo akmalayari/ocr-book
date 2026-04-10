@@ -17,7 +17,7 @@ class Config:
     n_servers: int         = 1      # nombre de llama-server parallèles
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 6144   # 2048 tokens/slot × np=3
+    n_ctx: int            = 12288   # 2048 tokens/slot × np=3
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
@@ -27,7 +27,7 @@ class Config:
     max_tokens: int       = 4096
     temperature: float    = 0.0
     n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py requis)
-    page_timeout: int     = 300    # secondes max par page avant abandon (0 = désactivé)
+    page_timeout: int     = 120    # secondes max par page avant abandon (0 = désactivé)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout

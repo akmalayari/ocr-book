@@ -125,6 +125,19 @@ def run_pipeline(cfg: Config) -> Stats:
 
     # ── Redémarrage serveur ───────────────────────────────────────────────────
     restart_lock = threading.Lock()
+    _fallback_pipeline: list = [None]
+    fallback_init_lock = threading.Lock()
+
+    def get_fallback_pipeline():
+        if _fallback_pipeline[0] is None:
+            with fallback_init_lock:
+                if _fallback_pipeline[0] is None:
+                    logger.info("Instanciation du pipeline fallback (sans layout)...")
+                    _fallback_pipeline[0] = PaddleOCRVL(
+                        vl_rec_server_url=f"{urls[0]}/v1",
+                        **{**_vlm_kwargs_base, "use_layout_detection": False},
+                    )
+        return _fallback_pipeline[0]
 
     def restart_servers() -> None:
         logger.warning("Redémarrage des serveurs llama-server...")
@@ -143,6 +156,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 break
         for pl in [PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base) for url in urls]:
             pipeline_queue.put(pl)
+        _fallback_pipeline[0] = None
         logger.info("Serveurs redémarrés avec succès.")
 
     # ── Traitement parallèle ──────────────────────────────────────────────────
@@ -154,11 +168,11 @@ def run_pipeline(cfg: Config) -> Stats:
     def process_page(idx: int, img_path: Path) -> dict:
         page_id = img_path.stem
 
-        def _postprocess_and_write(raw_text, metrics, t0) -> dict:
+        def _postprocess_and_write(raw_text, metrics, t0, no_layout: bool = False) -> dict:
             t_ocr = metrics["total_latency"]
             t_post0 = time.time()
             page_number, text = extract_page_number(raw_text)
-            clean_text = clean_page(text, cfg) if cfg.postprocess else text
+            clean_text = clean_page(text, cfg, no_layout=no_layout) if cfg.postprocess else text
             clean_text = strip_table_styles(clean_text)
             if cfg.mode == "obsidian":
                 clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
@@ -202,11 +216,13 @@ def run_pipeline(cfg: Config) -> Stats:
             else:
                 restart_lock.acquire()
                 restart_lock.release()
-            pl = pipeline_queue.get()
+            pl_fallback = get_fallback_pipeline()
+            logger.info("[%d/%d] %s — retry sans layout detection.",
+                        idx, len(images), img_path.name)
             t0 = time.time()
             try:
-                raw_text, metrics = ocr_image(img_path, pl, cfg)
-                return _postprocess_and_write(raw_text, metrics, t0)
+                raw_text, metrics = ocr_image(img_path, pl_fallback, cfg)
+                return _postprocess_and_write(raw_text, metrics, t0, no_layout=True)
             except OCRError as e2:
                 return _write_error(e2, time.time() - t0)
         except OCRError as e:

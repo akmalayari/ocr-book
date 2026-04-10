@@ -10,18 +10,23 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 
-def clean_page(text: str, cfg: Config) -> str:
+def clean_page(text: str, cfg: Config, no_layout: bool = False) -> str:
     """
     Applique les nettoyages activés dans la config :
       - suppression des numéros de page isolés
       - réassemblage des mots coupés en fin de ligne (ex: condi-\ntion)
       - réduction des lignes vides excessives
+    no_layout : True si la page a été traitée sans layout detection (fallback).
     """
     if cfg.remove_isolated_page_numbers:
         text = re.sub(r'^\s*\d{1,3}\s*$', '', text, flags=re.MULTILINE)
 
     if cfg.rejoin_hyphenated_words:
         text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
+        if no_layout:
+            text = re.sub(r'(\w)-\n\n(\w)', r'\1\2', text)
+            # Supprime les boucles de génération : sous-chaîne ≥15 chars répétée 3+ fois
+            text = re.sub(r'(.{15,}?)\1{2,}', r'\1', text)
         text = re.sub(r'(\w)- (\w)', r'\1\2', text)
         # Paragraphe coupé mid-phrase : ligne se terminant par minuscule/virgule
         # suivie d'un paragraphe vide puis d'une minuscule ou '('
