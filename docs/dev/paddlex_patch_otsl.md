@@ -83,6 +83,15 @@ reçu** dans le message d'erreur. On extrait ce contenu depuis `err_msg` (recher
 `convert_otsl_to_html(result_str)` à la ligne ~452, ce qui convertit l'OTSL en table
 HTML normalement — comme si le VLM avait répondu correctement.
 
-## Restaurer l'original
+## Usage
 
-Remplacer le bloc "Après" par le bloc "Avant" ci-dessus.
+```bash
+# Appliquer le patch
+python docs/dev/apply_paddlex_patch_otsl.py
+
+# Vérifier sans modifier
+python docs/dev/apply_paddlex_patch_otsl.py --check
+
+# Restaurer l'original
+python docs/dev/apply_paddlex_patch_otsl.py --revert
+```
