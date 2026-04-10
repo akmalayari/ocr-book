@@ -93,10 +93,20 @@ def main() -> int:
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
 
+    # ── Setup obsidian (commun à tous les modes obsidian) ────────────────────
+    if cfg.mode == "obsidian" or args.migrate:
+        from pathlib import Path as _Path
+        from obsidian import prompt_if_needed
+        prompt_if_needed(cfg)
+        if not cfg.vault_figures_dir or not cfg.vault_path:
+            logger.error("vault_path et vault_figures_dir doivent être configurés.")
+            return 1
+        if not args.migrate:
+            cfg.output_file = str(_Path(cfg.vault_path) / _Path(cfg.output_file).name)
+
     # ── Migration des figures vers le vault ──────────────────────────────────
     if args.migrate:
-        from obsidian import prompt_if_needed, migrate_figures
-        prompt_if_needed(cfg)
+        from obsidian import migrate_figures
         migrate_figures(cfg, dry_run=args.dry_run)
         return 0
 
@@ -105,8 +115,7 @@ def main() -> int:
         if cfg.mode != "obsidian":
             logger.error("--postprocess-only requiert --mode obsidian")
             return 1
-        from obsidian import prompt_if_needed, postprocess_file, migrate_figures
-        prompt_if_needed(cfg)
+        from obsidian import postprocess_file, migrate_figures
         postprocess_file(cfg)
         migrate_figures(cfg)
         logger.info("Postprocess obsidian appliqué : %s", cfg.output_path.resolve())
@@ -131,14 +140,6 @@ def main() -> int:
             rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run, start=start)
         if args.dry_run or args.rename_only is not None:
             return 0
-
-    # ── Prompt obsidian si nécessaire ────────────────────────────────────────
-    if cfg.mode == "obsidian":
-        from obsidian import prompt_if_needed
-        prompt_if_needed(cfg)
-        if not cfg.vault_figures_dir:
-            logger.error("vault_figures_dir non configuré — abandon.")
-            return 1
 
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
