@@ -46,7 +46,7 @@ def strip_table_styles(text: str) -> str:
     Les <div style="..."> (captions, titres) sont conservés.
     Toujours appliqué, indépendamment de cfg.postprocess.
     """
-    text = re.sub(r"<table\b[^>]*\bstyle='[^']*'", "<table border=1", text)
+    text = re.sub(r"<table\b[^>]*\bstyle='[^']*'", '<table align="center" border=1', text)
     text = re.sub(r"<(t[dh])\b[^>]*\bstyle='[^']*'>", r"<\1>", text)
     return text
 

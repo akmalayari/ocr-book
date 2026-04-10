@@ -98,11 +98,11 @@ def main() -> int:
         from pathlib import Path as _Path
         from obsidian import prompt_if_needed
         prompt_if_needed(cfg)
-        if not cfg.vault_figures_dir or not cfg.vault_path:
-            logger.error("vault_path et vault_figures_dir doivent être configurés.")
+        if not cfg.vault_root or not cfg.vault_figures_dir or not cfg.vault_path:
+            logger.error("vault_root, vault_path et vault_figures_dir doivent être configurés.")
             return 1
         if not args.migrate:
-            cfg.output_file = str(_Path(cfg.vault_path) / _Path(cfg.output_file).name)
+            cfg.output_file = str(_Path(cfg.vault_root) / cfg.vault_path / _Path(cfg.output_file).name)
 
     # ── Migration des figures vers le vault ──────────────────────────────────
     if args.migrate:

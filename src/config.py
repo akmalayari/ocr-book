@@ -2,7 +2,7 @@
 config.py — Configuration centrale du pipeline OCR
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -17,7 +17,7 @@ class Config:
     n_servers: int         = 1      # nombre de llama-server parallèles
 
     # ── Paramètres llama-server (tuning) ─────────────────────────────────────
-    n_ctx: int            = 12288   # 2048 tokens/slot × np=3
+    n_ctx: int            = 6144   # 2048 tokens/slot × np=3
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
@@ -46,15 +46,16 @@ class Config:
     # ── Post-traitement ──────────────────────────────────────────────────────
     postprocess: bool                   = True
     mode: str                           = "base"   # "base" | "obsidian"
-    vault_path: str | None              = "C:/path/to/Documents/Classique Obsidian/Documents/OCR"
-    vault_figures_dir: str | None       = "Files"      # chemin figures relatif à la racine du vault
+    vault_root: str | None               = "C:/path/to/Documents/Classique Obsidian"  # racine du vault
+    vault_path: str | None              = "Documents/OCR"          # sous-dossier de sortie, relatif à vault_root
+    vault_figures_dir: str | None       = "Files/OCR"    # chemin figures relatif à vault_root
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
     # Liste de (regex_début_de_ligne, niveau) pour la détection de headers sur le fichier final.
     # None = désactivé (prompt au lancement). [] = désactivé sans prompt.
     # Ex : [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
-    header_patterns: list[tuple[str, int]] | None = None
+    header_patterns: list[tuple[str, int]] | None = field(default_factory=list)
 
     # ── Logging ──────────────────────────────────────────────────────────────
     log_file: str    = "output/ocr_run.log"

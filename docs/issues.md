@@ -2,11 +2,7 @@
 
 ## Version refined (actuelle)
 
-### Bug 1
-Crash llama-server (hang) sur la page_125.
-
-### OCR (objectif final)
-Quand cette version est complétée: lancer  `python src/main.py --images "C:\path\to\Documents\Livres\Leçons d'introduction à la sociologie\livre" --mode obsidian` pour OCRiser le livre.
+OK
 
 ## Prochaines versions
 
