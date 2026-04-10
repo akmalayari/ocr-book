@@ -16,7 +16,7 @@ from paddleocr import PaddleOCRVL
 from config import Config
 from ocr_client import ocr_image, OCRError
 from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number
-from obsidian import fix_image_paths_obsidian, prompt_if_needed
+from obsidian import fix_image_paths_obsidian
 from images import collect_images
 from progress import Stats
 
@@ -67,9 +67,6 @@ def run_pipeline(cfg: Config) -> Stats:
       6. Combine les parts dans l'ordre en fin de run
       7. Retourne les statistiques
     """
-    if cfg.mode == "obsidian":
-        prompt_if_needed(cfg)
-
     images = collect_images(cfg)
 
     # ── Parts dir ────────────────────────────────────────────────────────────

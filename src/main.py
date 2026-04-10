@@ -122,6 +122,14 @@ def main() -> int:
         if args.dry_run or args.rename_only is not None:
             return 0
 
+    # ── Prompt obsidian si nécessaire ────────────────────────────────────────
+    if cfg.mode == "obsidian":
+        from obsidian import prompt_if_needed
+        prompt_if_needed(cfg)
+        if not cfg.vault_figures_dir:
+            logger.error("vault_figures_dir non configuré — abandon.")
+            return 1
+
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
     logger.info("Pipeline OCR — PaddleOCR-VL-1.5")
