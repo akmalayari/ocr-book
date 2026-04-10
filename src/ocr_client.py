@@ -3,6 +3,7 @@ ocr_client.py — OCR d'une image via PaddleOCRVL + llama-server
 """
 
 import logging
+import threading
 import time
 from pathlib import Path
 
@@ -13,6 +14,31 @@ logger = logging.getLogger(__name__)
 
 class OCRError(RuntimeError):
     pass
+
+
+class OCRTimeout(OCRError):
+    pass
+
+
+def _predict_with_timeout(pipeline, image_path_str: str, timeout: int, name: str) -> list:
+    result: list = []
+    exc: list = []
+
+    def _run():
+        try:
+            result.extend(list(pipeline.predict(image_path_str)))
+        except Exception as e:
+            exc.append(e)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=timeout if timeout > 0 else None)
+
+    if t.is_alive():
+        raise OCRTimeout(f"Timeout ({timeout}s) dépassé pour {name}.")
+    if exc:
+        raise exc[0]
+    return result
 
 
 def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]:
@@ -41,7 +67,9 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
     for attempt in range(2):
         t0 = time.perf_counter()
         try:
-            output = list(pipeline.predict(str(image_path)))
+            output = _predict_with_timeout(pipeline, str(image_path), cfg.page_timeout, image_path.name)
+        except OCRError:
+            raise
         except Exception as e:
             raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
 

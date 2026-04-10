@@ -6,6 +6,7 @@ import logging
 import os
 import queue
 import subprocess
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -14,7 +15,7 @@ import requests
 from paddleocr import PaddleOCRVL
 
 from config import Config
-from ocr_client import ocr_image, OCRError
+from ocr_client import ocr_image, OCRError, OCRTimeout
 from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number
 from obsidian import fix_image_paths_obsidian
 from images import collect_images
@@ -121,6 +122,28 @@ def run_pipeline(cfg: Config) -> Stats:
     for pl in pipelines:
         pipeline_queue.put(pl)
 
+    # ── Redémarrage serveur ───────────────────────────────────────────────────
+    restart_lock = threading.Lock()
+
+    def restart_servers() -> None:
+        logger.warning("Redémarrage des serveurs llama-server...")
+        for proc in procs:
+            proc.kill()
+            proc.wait()
+        new_procs = [_start_server(cfg, port) for port in ports]
+        procs[:] = new_procs
+        for url in urls:
+            if not _wait_for_server(url, cfg.server_timeout):
+                raise RuntimeError(f"Redémarrage échoué : {url} n'a pas répondu.")
+        while not pipeline_queue.empty():
+            try:
+                pipeline_queue.get_nowait()
+            except queue.Empty:
+                break
+        for pl in [PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base) for url in urls]:
+            pipeline_queue.put(pl)
+        logger.info("Serveurs redémarrés avec succès.")
+
     # ── Traitement parallèle ──────────────────────────────────────────────────
     cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
     figures_rel = os.path.relpath(cfg.figures_path, cfg.output_path.parent)
@@ -129,22 +152,18 @@ def run_pipeline(cfg: Config) -> Stats:
 
     def process_page(idx: int, img_path: Path) -> dict:
         page_id = img_path.stem
-        pl = pipeline_queue.get()
-        t0 = time.time()
-        try:
-            raw_text, metrics = ocr_image(img_path, pl, cfg)
-            t_ocr = metrics["total_latency"]
 
+        def _postprocess_and_write(raw_text, metrics, t0) -> dict:
+            t_ocr = metrics["total_latency"]
             t_post0 = time.time()
-            page_number, raw_text = extract_page_number(raw_text)
-            clean_text = clean_page(raw_text, cfg) if cfg.postprocess else raw_text
+            page_number, text = extract_page_number(raw_text)
+            clean_text = clean_page(text, cfg) if cfg.postprocess else text
             clean_text = strip_table_styles(clean_text)
             if cfg.mode == "obsidian":
                 clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
             else:
                 clean_text = fix_image_paths(clean_text, page_id, figures_rel)
             t_post = time.time() - t_post0
-
             elapsed = time.time() - t0
             part_path = parts_dir / f"{page_id}.part"
             with part_path.open("a", encoding="utf-8") as f:
@@ -154,16 +173,46 @@ def run_pipeline(cfg: Config) -> Stats:
                 "elapsed": elapsed, "chars": len(clean_text),
                 "t_ocr": t_ocr, "t_post": t_post, "error": False,
             }
-        except OCRError as e:
-            elapsed = time.time() - t0
+
+        def _write_error(e, elapsed) -> dict:
             logger.error("[%d/%d] %s — ERREUR (%.1fs) : %s",
                          idx, len(images), img_path.name, elapsed, e)
             part_path = parts_dir / f"{page_id}.part"
             with part_path.open("a", encoding="utf-8") as f:
                 f.write(format_error_block(page_id, str(e)))
             return {"idx": idx, "page_name": img_path.name, "error": True}
-        finally:
+
+        pl = pipeline_queue.get()
+        t0 = time.time()
+        try:
+            raw_text, metrics = ocr_image(img_path, pl, cfg)
+            return _postprocess_and_write(raw_text, metrics, t0)
+        except OCRTimeout as e:
+            elapsed = time.time() - t0
+            logger.warning("[%d/%d] %s — timeout (%.1fs). Redémarrage serveur...",
+                           idx, len(images), img_path.name, elapsed)
             pipeline_queue.put(pl)
+            pl = None
+            if restart_lock.acquire(blocking=False):
+                try:
+                    restart_servers()
+                finally:
+                    restart_lock.release()
+            else:
+                restart_lock.acquire()
+                restart_lock.release()
+            pl = pipeline_queue.get()
+            t0 = time.time()
+            try:
+                raw_text, metrics = ocr_image(img_path, pl, cfg)
+                return _postprocess_and_write(raw_text, metrics, t0)
+            except OCRError as e2:
+                return _write_error(e2, time.time() - t0)
+        except OCRError as e:
+            return _write_error(e, time.time() - t0)
+        finally:
+            if pl is not None:
+                pipeline_queue.put(pl)
 
     try:
         with ThreadPoolExecutor(max_workers=cfg.n_servers) as executor:

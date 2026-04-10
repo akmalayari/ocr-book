@@ -27,6 +27,7 @@ class Config:
     max_tokens: int       = 4096
     temperature: float    = 0.0
     n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py requis)
+    page_timeout: int     = 300    # secondes max par page avant abandon (0 = désactivé)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback sans layout
