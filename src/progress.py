@@ -125,11 +125,12 @@ class Stats:
 
     def log_summary(self) -> None:
         logger = logging.getLogger(__name__)
-        minutes = self.elapsed_total / 60
+        elapsed_s = self.elapsed_total
+        elapsed_str = f"{elapsed_s:.0f}s" if elapsed_s < 60 else f"{elapsed_s / 60:.1f} min"
         logger.info("─" * 60)
         logger.info(
-            "Terminé en %.1f min  |  %d pages OK  |  %d skippées  |  %d erreurs",
-            minutes, self.done, self.skipped, self.errors,
+            "Terminé en %s  |  %d pages OK  |  %d skippées  |  %d erreurs",
+            elapsed_str, self.done, self.skipped, self.errors,
         )
         if self.done:
             logger.info(
@@ -165,7 +166,8 @@ class Stats:
         ]
 
         # ── Résumé ──────────────────────────────────────────────────────────
-        elapsed_min = self.elapsed_total / 60
+        elapsed_s = self.elapsed_total
+        elapsed_str = f"{elapsed_s:.0f}s" if elapsed_s < 60 else f"{elapsed_s / 60:.1f} min"
         avg_chars = self.total_chars // self.done if self.done else 0
         lines += [
             "## Résumé\n",
@@ -176,7 +178,7 @@ class Stats:
             _row("Ignorées (reprise)", self.skipped),
             _row("Erreurs", self.errors),
             _row("Chargement modèle", f"{self.model_load_time:.1f}s"),
-            _row("Durée totale (pipeline)", f"{elapsed_min:.1f} min"),
+            _row("Durée totale (pipeline)", elapsed_str),
             _row("Caractères total", f"{self.total_chars:,}"),
             _row("Caractères moy./page", f"{avg_chars:,}"),
             "",
