@@ -13,14 +13,35 @@ Pages de référence utilisées pour les tests : `page_1` à `page_9`.
 
 ---
 
-## Stack d'inférence
+## Résumé des explorations
 
-### REST API `nexa serve`
+| Sujet | Résultat |
+|---|---|
+| **Stack DeepSeek-OCR + nexaai** | Abandonné — migration vers PaddleOCR VL 1.5 |
+| **Prompts DeepSeek-OCR** (layout, plain, rec…) | Abandonné avec le modèle |
+| **Prétraitement images** (binarize, sauvola, nlmeans, sesr…) | Abandonné — PaddleOCR fonctionne sur image brute |
+| **Parallélisation inter-pages** (`n_servers > 1`) | Abandonné sur APU — sérialisation GPU Vulkan |
+| **Streaming HTTP pour -np 4** | Abandonné — texte incomplet, aucun gain |
+| **Patch OTSL** (`apply_paddlex_patch_otsl.py`) | Retenu — erreurs VLM par région sur tableaux complexes |
+| **Patch parallélisme intra-page** (`apply_paddlex_patch_parallel.py`, -np 3) | Retenu — gain ~30% (60s → 43s/page) |
+| **PaddleOCR VL 1.5 + llama-server** | Retenu — stack actuel |
+| **`page_timeout` + fallback no-layout** | Retenu — protection contre boucles llama-server |
+
+---
+
+## DeepSeek-OCR (abandonné — migration vers PaddleOCR VL 1.5)
+
+> Les statuts "retenu" dans cette section sont relatifs à l'ère DeepSeek-OCR uniquement.
+> Ce modèle a été entièrement remplacé par PaddleOCR VL 1.5 le 2026-04-08.
+
+### Stack d'inférence
+
+#### REST API `nexa serve`
 **Statut : abandonné.**
 Retournait systématiquement HTTP 500 sur les requêtes multimodales sous Windows. Le serveur REST de Nexa ne sait pas gérer le format GGUF + mmproj de DeepSeek-OCR.
 
-### `nexaai.VLM` Python direct
-**Statut : retenu.**
+#### `nexaai.VLM` Python direct
+**Statut : retenu (ère DeepSeek-OCR).**
 Charge les deux fichiers du modèle (GGUF + mmproj) via `nexa_bridge.dll`. Contourne le serveur REST entièrement. Interface : `VlmChatMessage` + `apply_chat_template` + `vlm.generate(GenerationConfig(image_paths=[...]))`.
 
 Nexaai utilise llama-cpp sous le capot — DeepSeek-OCR peut tourner sur GPU via Vulkan.
@@ -29,7 +50,7 @@ Nexaai utilise llama-cpp sous le capot — DeepSeek-OCR peut tourner sur GPU via
 
 ---
 
-## Quantization du modèle
+### Quantization du modèle
 
 | Quantization | Vitesse | Qualité |
 |---|---|---|
@@ -37,11 +58,11 @@ Nexaai utilise llama-cpp sous le capot — DeepSeek-OCR peut tourner sur GPU via
 | BF16 | ~50s/page | plus fidèle que F16 sur les passages difficiles |
 | F16  | ~50s/page | moins fidèle que BF16 — hallucinations et reformulations sur passages difficiles |
 
-**Statut : BF16 retenu.** Comparaison BF16 vs F16 (2026-04-02, `compare.py` mode sentence, page_1) : BF16 retranscrit fidèlement plusieurs passages là où F16 hallucine ou reformule. BF16 reste imparfait (voir Bug #1 et #5).
+**Statut : BF16 retenu (ère DeepSeek-OCR).** Comparaison BF16 vs F16 (2026-04-02, `compare.py` mode sentence, page_1) : BF16 retranscrit fidèlement plusieurs passages là où F16 hallucine ou reformule. BF16 reste imparfait (voir Bug #1 et #5).
 
 ---
 
-## Prompts
+### Prompts
 
 Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 
@@ -54,11 +75,11 @@ Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 | `rec` | `"Locate <\|ref\|>{target}<\|/ref\|> in the image."` | retourne la/les bbox correspondant au target. Voir section dédiée ci-dessous. |
 | `classic` | (supprimé) | une grounding box par phrase, dépasse systématiquement `n_ctx` |
 
-**Statut :** `layout` retenu pour usage principal. Précision légèrement supérieure à `plain`. Permet de récupérer les bbox pour le traitement des images dans la deuxième passe.
+**Statut :** `layout` retenu (ère DeepSeek-OCR). Précision légèrement supérieure à `plain`. Permet de récupérer les bbox pour le traitement des images dans la deuxième passe.
 
 **`repetition_penalty`** testé — apparemment sans effet sur les boucles de génération.
 
-### Comportement du mode `rec` (2026-04-03, page_6, BF16, binarize)
+#### Comportement du mode `rec` (2026-04-03, page_6, BF16, binarize)
 
 `Locate <|ref|>{target}<|/ref|> in the image.`
 
@@ -74,9 +95,9 @@ Testés sur pages 1–6 avec `preprocess=binarize` (`draft/test_prompts.py`).
 
 **Comportement observé :** quand le modèle ne trouve pas l'élément demandé (ou que le target est trop générique), il retourne toutes les bboxes de la page. Quand il trouve un élément spécifique, il retourne uniquement sa bbox et s'arrête. Toute instruction ajoutée après le `<|det|>` est ignorée — la deux passes est obligatoire pour obtenir le contenu d'une région.
 
-**Usage retenu :** `Locate <|ref|>A figure or graph<|/ref|> in the image.` pour test rapide, mais non nécessaire dans la pipeline puisque `layout` repère déjà les bbox avec le texte en plus. 
+**Usage retenu :** `Locate <|ref|>A figure or graph<|/ref|> in the image.` pour test rapide, mais non nécessaire dans la pipeline puisque `layout` repère déjà les bbox avec le texte en plus.
 
-### Vocabulaire de labels grounding (mode `layout` et `rec`)
+#### Vocabulaire de labels grounding (mode `layout` et `rec`)
 
 Observé sur pages 1–6 (BF16, binarize) :
 
@@ -95,7 +116,7 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 **Contenu des régions `image` :** toujours vide — le modèle détecte et délimite la région mais ne génère aucune description. Voir section ci-dessous pour les résultats des deux passes sur le crop.
 
-### Deuxième passe sur crop de graphique (2026-04-05, page_6, BF16, `draft/test_two_pass.py`)
+#### Deuxième passe sur crop de graphique (2026-04-05, page_6, BF16, `draft/test_two_pass.py`)
 
 | Combinaison | Résultat |
 |---|---|
@@ -104,9 +125,9 @@ Observé sur pages 1–6 (BF16, binarize) :
 | `describe` + raw | description générale + bruit d'interprétation |
 | `describe` + binarize | description générale + bruit d'interprétation |
 
-**Verdict : `parse` + `binarize` retenu** pour la deuxième passe sur les régions `image`. Meilleure extraction des éléments visuels. Limitation connue : les notes de bas de tableau sont incluses dans le tableau au lieu d'être séparées.
+**Verdict : `parse` + `binarize` retenu (ère DeepSeek-OCR)** pour la deuxième passe sur les régions `image`. Limitation connue : les notes de bas de tableau sont incluses dans le tableau au lieu d'être séparées.
 
-### Prompts custom testés (2026-04-03, BF16, binarize)
+#### Prompts custom testés (2026-04-03, BF16, binarize)
 
 | Prompt | Résultat |
 |---|---|
@@ -129,50 +150,52 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 ---
 
-## Prétraitement des images
+### Prétraitement des images
 
-### Image originale (aucun prétraitement) — mode `"none"`
-**Statut : retenu comme référence.** Initialement abandonné (boucles en Q8_0 + prompt `plain` sur page_1). Réévalué en BF16 + prompt `layout` (2026-04-06/07) : aucune boucle sur pages 4, 5, 6, 9. Meilleur score texte sur image floue (94.9% sur page_5). Seule config sans boucle sur toutes les pages testées avec preprocess léger.
+> Explorations menées avec DeepSeek-OCR. PaddleOCR fonctionne directement sur image brute —
+> aucun prétraitement n'est appliqué dans le pipeline actuel.
+
+#### Image originale (aucun prétraitement) — mode `"none"`
+**Statut : retenu comme référence (ère DeepSeek-OCR).** Initialement abandonné (boucles en Q8_0 + prompt `plain` sur page_1). Réévalué en BF16 + prompt `layout` (2026-04-06/07) : aucune boucle sur pages 4, 5, 6, 9. Meilleur score texte sur image floue (94.9% sur page_5). Seule config sans boucle sur toutes les pages testées avec preprocess léger.
 
 **Limite :** ne détecte pas la figure sur page_6 nette (graphique ignoré ou absorbé dans le texte).
 
-### Exposure boost Pillow (contrast ×1.8 + brightness ×1.2)
+#### Exposure boost Pillow (contrast ×1.8 + brightness ×1.2)
 **Statut : abandonné.** Évite les boucles mais produit moins de mots (~830 vs ~1000 pour binarize_adaptive), plus lent (~25s), davantage d'hallucinations.
 
-### CLAHE (égalisation adaptative du contraste, OpenCV LAB)
+#### CLAHE (égalisation adaptative du contraste, OpenCV LAB)
 **Statut : abandonné.** Testé visuellement (`draft/viz_preprocess2.py`) et en OCR (`draft/preprocess_test.py`). Produit ~1519 mots mais avec des boucles en fin de génération. Pas d'amélioration nette sur la précision.
 
-### Binarisation Otsu (GaussianBlur(5,5) + seuil global Otsu)
+#### Binarisation Otsu (GaussianBlur(5,5) + seuil global Otsu)
 **Statut : abandonné.** Boucle immédiatement, hallucinations massives (page_1 : répétitions de "Ils sont des mots utilisés dans la société").
 
-### EqualizeHist seul / EqualizeHist + binarize adaptive
+#### EqualizeHist seul / EqualizeHist + binarize adaptive
 **Statut : abandonné.** Testé visuellement (`draft/viz_preprocess2.py`). EqualizeHist amplifie le bruit de fond et les gradients d'éclairage — contre-productif avant binarisation adaptative.
 
-### bg_divide + binarize adaptive
-**Statut : non retenu pour l'instant.** Testé visuellement (`draft/viz_preprocess2.py`). Normalise l'illumination en divisant par un fond estimé (GaussianBlur 101×101). Résultat visuel intéressant sur les pages avec éclairage très inégal, mais non testé en OCR.
+#### bg_divide + binarize adaptive
+**Statut : non retenu.** Testé visuellement (`draft/viz_preprocess2.py`). Normalise l'illumination en divisant par un fond estimé (GaussianBlur 101×101). Résultat visuel intéressant sur les pages avec éclairage très inégal, mais non testé en OCR.
 
-### Binarisation adaptive (GAUSSIAN_C, blockSize=31, C=10)
+#### Binarisation adaptive (GAUSSIAN_C, blockSize=31, C=10)
 **Statut : remplacé par blockSize=31, C=15.** Provoque des boucles de génération sur pages floues ou bruitées.
 
-**Avantages :** rapide, supprime le fond, robuste aux variations d'éclairage locales.  
+**Avantages :** rapide, supprime le fond, robuste aux variations d'éclairage locales.
 **Limites :** C=10 efface les traits mous sur images floues → boucles `<td>` HTML.
 
-### GaussianBlur(5,5) + binarize adaptive (blockSize=31, C=15)
-**Statut : retenu, paramètres par défaut mis à jour.** Grid test blockSize ∈ {21,31} × C ∈ {10,15} sur page_5 (bruitée, Laplacien=58) et page_6 (nette, Laplacien=134) via `draft/test_binarize_grid.py` + `draft/compare_grid.py`.
+#### GaussianBlur(5,5) + binarize adaptive (blockSize=31, C=15)
+**Statut : retenu (ère DeepSeek-OCR).** Grid test blockSize ∈ {21,31} × C ∈ {10,15} sur page_5 (bruitée, Laplacien=58) et page_6 (nette, Laplacien=134) via `draft/test_binarize_grid.py` + `draft/compare_grid.py`.
 
 - C=10 (ancien défaut) : boucles HTML `<tr><td>` sur pages floues/bruitées. Détection de boucle par fréquence de mots insuffisante pour ce type de boucle — ajout de `_has_char_repeat` dans `ocr_client.py`.
 - C=15 : aucune boucle sur page_5 ni page_6. blockSize=31 >≈ blockSize=21 sur page bruitée (91 % vs 85 % de similarité word-level vs référence page_6).
-- Paramètre `C` augmenté de 10 à 15 dans `config.py`.
 
-**Limites :** précision dégradée sur pages très bruitées (page_5) — amélioration supplémentaire à explorer.
+**Limites :** précision dégradée sur pages très bruitées (page_5).
 
-### Opérations morphologiques après binarisation (opening/closing)
-**Statut : abandonné.** Testé sur pages 1, 2, 5, 6 via `draft/test_morpho.py` (kernels 2×2 et 3×3, opening, closing, open+close, close+open). Le texte reste haché sur les pages bruitées — les opérations morphologiques ne récupèrent pas les traits effaces par la binarisation adaptative.
+#### Opérations morphologiques après binarisation (opening/closing)
+**Statut : abandonné.** Testé sur pages 1, 2, 5, 6 via `draft/test_morpho.py` (kernels 2×2 et 3×3, opening, closing, open+close, close+open). Le texte reste haché sur les pages bruitées — les opérations morphologiques ne récupèrent pas les traits effacés par la binarisation adaptative.
 
-### Sauvola binarization seul (scikit-image, `threshold_sauvola`)
+#### Sauvola binarization seul (scikit-image, `threshold_sauvola`)
 **Statut : abandonné.** Rend bien le texte en général, mais efface le texte dans les zones à faible variance locale (pliure, ombre de reliure) → la variante `AND` ci-dessous est retenue à la place.
 
-### fastNlMeansDenoising + binarize adaptive — mode `"nlmeans"`
+#### fastNlMeansDenoising + binarize adaptive — mode `"nlmeans"`
 **Statut : phase OCR terminée sur pages 4, 5, 6, 9.** Testé visuellement sur pages 4, 5, 9 via `draft/test_nlmeans.py`. Configs évaluées : `nlmeans_5`, `nlmeans_10`, `nlmeans_15`, `nlm5_median`, `nlm5_open`, `nlm5_and`, `nlm10_and`, `nlm10_bgdiv`, `nlm10_bgdiv_and`, `median_adaptive`, `median_and`.
 
 **Observations visuelles :**
@@ -198,11 +221,11 @@ Observé sur pages 1–6 (BF16, binarize) :
 
 **Intégration :** `src/preprocess.py::nlmeans_binarize()`, `nlmeans_h: int = 15` dans `Config`.
 
-### medianBlur(3) seul + adaptive
+#### medianBlur(3) seul + adaptive
 Testé visuellement dans `draft/test_nlmeans.py`. La variante `median_and` (avec AND Sauvola) est retenue pour l'OCR.
 
-### AND(Sauvola w=51 k=0.3, binarize adaptive) — mode `"sauvola"`
-**Statut : retenu.** Testé sur pages 1, 2, 5, 6 via `draft/test_sauvola_patch.py` + pipeline complète (`--preprocess sauvola`).
+#### AND(Sauvola w=51 k=0.3, binarize adaptive) — mode `"sauvola"`
+**Statut : retenu (ère DeepSeek-OCR).** Testé sur pages 1, 2, 5, 6 via `draft/test_sauvola_patch.py` + pipeline complète (`--preprocess sauvola`).
 
 `bitwise_and(sauvola(gray, w=51, k=0.3), adaptive_binarize(gray))` — conserve les pixels texte détectés par l'un ou l'autre → corrige la perte de texte de Sauvola dans la pliure, améliore la précision sur les pages bruitées.
 
@@ -224,7 +247,7 @@ Testé visuellement dans `draft/test_nlmeans.py`. La variante `median_and` (avec
 
 **Intégration :** `src/preprocess.py::sauvola_binarize()`, `preprocess_mode="sauvola"` dans `Config`, `--preprocess sauvola` en CLI.
 
-### Évaluation comparative des prétraitements — page_5 / page_6 (2026-04-06)
+#### Évaluation comparative des prétraitements — page_5 / page_6 (2026-04-06)
 
 5 configs × 2 pages via `compare_ocr.py` (diff=sentence, score=word). Référence : `photos/md/page_6.md`.
 Rapport complet : `output/rapports/preprocess_p5_p6.md`.
@@ -255,20 +278,20 @@ Rapport complet : `output/rapports/preprocess_p5_p6.md`.
 - La figure reste intraitable sur image floue quelle que soit la config (max 38%).
 - **Piste :** prétraitement conditionnel selon Laplacian — `blur_adaptive` si > seuil, `none` sinon.
 
-### Prétraitements légers sans binarisation (2026-04-07, `draft/test_preprocess.py`, pages 4/5/6/9, BF16, layout)
+#### Prétraitements légers sans binarisation (2026-04-07, `draft/test_preprocess.py`, pages 4/5/6/9, BF16, layout)
 
 Hypothèse testée : DeepSeek-OCR étant entraîné sur photos naturelles, les filtres légers préservant le look photo sont préférables à la binarisation. Scripts : `draft/test_preprocess.py` (OCR), `draft/realesrgan_sesr.py` (génération SR).
 
 Rapport complet : `output/rapports/preprocess_legers_analyse.md`.
 
-#### fastNlMeansDenoising seul — mode `"nlmeans"`
-**Statut : retenu, défaut pipeline.** `h = nlmeans_k × noise_level`. Boucle sur page_4 bruitée (noise=5.5) — seule page problématique. Aucune boucle sur pages 5, 6, 9, 10 et variantes clean. Précision texte pur ~99% sur images clean (p56c_nlmeans=99.3%). Coût preprocess ~2-3s.
+**fastNlMeansDenoising seul — mode `"nlmeans"`**
+**Statut : retenu, défaut pipeline (ère DeepSeek-OCR).** `h = nlmeans_k × noise_level`. Boucle sur page_4 bruitée (noise=5.5) — seule page problématique. Aucune boucle sur pages 5, 6, 9, 10 et variantes clean. Précision texte pur ~99% sur images clean (p56c_nlmeans=99.3%). Coût preprocess ~2-3s.
 
-#### bilateralFilter(d=9, σ=75) — mode `"bilateral"`
+**bilateralFilter(d=9, σ=75) — mode `"bilateral"`**
 **Statut : abandonné.** Boucle sur page_6 (nette, 31 mots) et page_4. L'effet "cartoon" (zones très lisses + bords très nets) perturbe le modèle sur images nettes. Comportement inverse de l'attendu.
 
-#### SESR-M7 x2 (AMD NPU, 256×256 tiles) → resize original — mode `"sesr"`
-**Statut : retenu, disponible en option.** ~7s/image sur NPU. Boucle sur page_4 bruitée (noise=5.5) et sur page_4_clean sur symboles de bas de page (texte principal complet). Précision texte pur légèrement supérieure à nlmeans sur images clean (p56c_sesr=98.8%, p6_sesr=99.2%). Intégré dans `src/sesr.py`.
+**SESR-M7 x2 (AMD NPU, 256×256 tiles) → resize original — mode `"sesr"`**
+**Statut : retenu, disponible en option (ère DeepSeek-OCR).** ~7s/image sur NPU. Boucle sur page_4 bruitée (noise=5.5) et sur page_4_clean sur symboles de bas de page (texte principal complet). Précision texte pur légèrement supérieure à nlmeans sur images clean (p56c_sesr=98.8%, p6_sesr=99.2%). Intégré dans `src/sesr.py`.
 
 | Config | p5 texte % | p6 texte % | p56c texte % |
 |--------|:---:|:---:|:---:|
@@ -278,19 +301,19 @@ Rapport complet : `output/rapports/preprocess_legers_analyse.md`.
 
 Résultats 2026-04-07, `compare_ocr.py` mode composant texte pur, référence `photos/md/page_6_text.md`, rapport `output/rapports/global_report_5-6.md`.
 
-#### RealESRGAN x4 (AMD NPU, 128×128 tiles) → resize original — mode `"esrgan"`
+**RealESRGAN x4 (AMD NPU, 128×128 tiles) → resize original — mode `"esrgan"`**
 **Statut : abandonné.** ~137s/image. Gain nul ou marginal vs `none`. Ratio coût/bénéfice rédhibitoire.
 
-#### Pivot architectural (2026-04-07)
+**Pivot architectural (2026-04-07)**
 Tables et figures traitées comme des crops (référencées par chemin image, non retranscrites). Score de précision calculé sur **texte pur** uniquement. Objectif : >99% texte sur image clean. Images clean disponibles : page_4, page_5, page_6, page_9, page_10.
 
-### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
+#### Unsharp Mask (standard : `img + alpha*(img - blurred)`)
 **Statut : abandonné.** Testé dans `draft/test_unsharp.py`. Amplifie les hautes fréquences — ajoute des granulés sombres, dégrade la binarisation sur la plupart des configs. Inefficace sur du flou de mise au point (l'information haute fréquence est physiquement perdue).
 
-### Unsharp Mask inversé (`blurred - alpha*(img - blurred)`)
+#### Unsharp Mask inversé (`blurred - alpha*(img - blurred)`)
 **Statut : abandonné.** Aucune amélioration sur la binarisation, introduce des artefacts sur certaines configs.
 
-### page-dewarp (lmmx, `pip install page-dewarp[jax]`)
+#### page-dewarp (lmmx, `pip install page-dewarp[jax]`)
 **Statut : abandonné.**
 
 Nos images sont des doubles pages (deux pages par photo). page-dewarp est conçu pour une seule page — il ne détecte pas correctement les contours ni les lignes de texte sur des images deux pages et produit un résultat dégradé.
@@ -299,7 +322,7 @@ Tentative de contournement : couper l'image en deux moitiés (mi-largeur), dewar
 
 ---
 
-## PaddleOCR VL 1.5 (2026-04-07)
+## PaddleOCR VL 1.5 (stack actuel, 2026-04-07)
 
 Modèle : PaddleOCR-VL-1.5, 0.9B paramètres, format GGUF (F16).
 Scripts : `draft/test_paddle.py`, `draft/compare_ocr.py`.
@@ -373,7 +396,7 @@ Principe : PaddleOCR traite les blocs séquentiellement. Le patch soumet tous le
 
 Gain : ~35 min sur 150 pages. Config retenue : `-np 3 -c 6144` (2048/slot). Réduction de `-c 12288` → `-c 6144` : gain supplémentaire ~2.5s/page sans troncature observée.
 
-**Parallélisation inter-pages — 2 serveurs llama-server (2026-04-09)** : **abandonné**. `src/pipeline.py` modifié pour lancer N serveurs sur des ports distincts (8080, 8081…) et traiter les pages en parallèle via `ThreadPoolExecutor`.
+**Parallélisation inter-pages — 2 serveurs llama-server (2026-04-09)** : **abandonné** (encore disponible via `n_servers > 1` dans `Config`, mais inutile sur APU). `src/pipeline.py` modifié pour lancer N serveurs sur des ports distincts (8080, 8081…) et traiter les pages en parallèle via `ThreadPoolExecutor`.
 
 Résultats sur 3 pages test (pages 1–3) :
 - Pages 1 et 2 (simultanées) : ~102s et ~105s chacune
@@ -405,7 +428,8 @@ Sur `OCRTimeout` dans `pipeline.py` :
 
 **Motivation :** certaines pages déclenchent des boucles de génération interne à llama-server non détectées par `ocr_client.py` (l'appel HTTP ne revient jamais). Ni le retry, ni le patch OTSL ne couvrent ce cas. Le timeout + restart est le seul moyen de récupérer proprement sans bloquer le run.
 
-**Streaming HTTP pour débloquer -np 4 (2026-04-09)** : **abandonné**. `docs/obsolete/apply_paddlex_patch_streaming.py`.
+### Streaming HTTP pour débloquer -np 4 (2026-04-09)
+**Statut : abandonné.** `docs/obsolete/apply_paddlex_patch_streaming.py`.
 
 Principe : patcher `GenAIClient.create_chat_completion` (genai.py) pour utiliser `stream=True` et libérer un sémaphore asyncio après le premier token de contenu (= fin du prefill). Permettrait d'avoir 3 prefills simultanés max tout en gardant 4 slots en génération.
 
@@ -424,7 +448,7 @@ Pipeline principale (`src/`) migrée vers PaddleOCR (2026-04-08) : `ocr_client.p
 
 ---
 
-## `markdown_ignore_labels` (2026-04-09)
+### `markdown_ignore_labels`
 
 Paramètre du constructeur `PaddleOCRVL(...)` — liste des labels de blocs exclus de la sortie markdown.
 
@@ -444,7 +468,7 @@ Labels toujours ignorés : `header_image`, `footer`, `footer_image`.
 
 ---
 
-## Paramètres de génération
+### Paramètres de génération
 
 | Paramètre | Valeur testée | Effet |
 |---|---|---|
