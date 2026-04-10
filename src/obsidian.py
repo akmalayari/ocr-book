@@ -39,11 +39,14 @@ def fix_image_paths_obsidian(text: str, vault_figures_dir: str) -> str:
     return text
 
 
-def migrate_figures(cfg: Config, dry_run: bool = False) -> int:
+def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: bool = False) -> int:
     """
     Copie les figures depuis output/figures/*/imgs/* vers vault_path/vault_figures_dir/.
     Structure aplatie : page_001/imgs/fig.jpg → vault_figures_dir/fig.jpg.
     Skippe les fichiers déjà présents. Retourne le nombre de fichiers copiés.
+
+    page_ids : si fourni, limite la copie aux sous-dossiers correspondants (pages du run courant).
+               Si None, copie tout le contenu de figures_path.
     """
     if not cfg.vault_path or not cfg.vault_figures_dir:
         raise ValueError("vault_path et vault_figures_dir doivent être configurés")
@@ -52,7 +55,16 @@ def migrate_figures(cfg: Config, dry_run: bool = False) -> int:
     if not dry_run:
         dest.mkdir(parents=True, exist_ok=True)
 
-    sources = sorted(cfg.figures_path.glob("*/imgs/*"))
+    if page_ids is not None:
+        sources = sorted(
+            src
+            for page_id in page_ids
+            for src in (cfg.figures_path / page_id / "imgs").glob("*")
+            if (cfg.figures_path / page_id / "imgs").exists()
+        )
+    else:
+        sources = sorted(cfg.figures_path.glob("*/imgs/*"))
+
     copied = 0
     for src in sources:
         if not src.is_file():

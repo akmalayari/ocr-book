@@ -203,7 +203,7 @@ def run_pipeline(cfg: Config) -> Stats:
 
     if cfg.mode == "obsidian":
         from obsidian import migrate_figures
-        migrate_figures(cfg)
+        migrate_figures(cfg, page_ids=[img.stem for img in images])
 
     if stats.done == 0 and stats.skipped == 0 and cfg.output_path.exists():
         cfg.output_path.unlink()
