@@ -25,7 +25,7 @@ def clean_page(text: str, cfg: Config) -> str:
         text = re.sub(r'(\w)- (\w)', r'\1\2', text)
         # Paragraphe coupé mid-phrase : ligne se terminant par minuscule/virgule
         # suivie d'un paragraphe vide puis d'une minuscule ou '('
-        text = re.sub(r'([a-zéèêëàâîïôùûüçœ,])\n\n(\(|[a-zéèêëàâîïôùûüçœ])', r'\1 \2', text)
+        text = re.sub(r'([a-zéèêëàâîïôùûüçœ,])\n\n(\(|[a-zéèêëàâîïôùûüçœ\d])', r'\1 \2', text)
 
     if cfg.collapse_blank_lines:
         text = re.sub(r'\n{3,}', '\n\n', text)
