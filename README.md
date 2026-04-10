@@ -33,6 +33,7 @@ ocr-livre/
 │   ├── config.py        # Configuration centrale (dataclass)
 │   ├── ocr_client.py    # OCR d'une image via PaddleOCRVL
 │   ├── postprocess.py   # Nettoyage du texte OCR
+│   ├── obsidian.py      # Export Obsidian (wikilinks, migration)
 │   ├── images.py        # Collecte et renommage des images
 │   ├── pipeline.py      # Orchestration complète
 │   └── progress.py      # Logging et statistiques
@@ -73,6 +74,28 @@ python main.py --verbose
 
 ---
 
+## Export Obsidian
+
+En mode `obsidian`, le pipeline :
+- convertit les figures en wikilinks `![[Files/image.jpg]]`
+- sauvegarde le `.md` directement dans le vault
+- copie les figures vers `vault_path/vault_figures_dir/`
+
+Configurer `vault_path` et `vault_figures_dir` dans `config.py`, puis :
+
+```bash
+# OCR complet + export obsidian
+python main.py --mode obsidian
+
+# Ré-appliquer le postprocess obsidian sans relancer l'OCR
+python main.py --mode obsidian --postprocess-only
+
+# Migrer les figures vers le vault uniquement
+python main.py --migrate
+```
+
+---
+
 ## Renommage des images
 
 ```bash
@@ -80,7 +103,13 @@ python main.py --verbose
 python main.py --rename --dry-run
 
 # Renommer effectivement (→ page_001.jpg, page_002.jpg, …)
-python main.py --rename --rename-prefix page
+python main.py --rename
+
+# Renommer sans lancer l'OCR
+python main.py --rename-only
+
+# Traiter des sous-dossiers par chapitre
+python main.py --rename-only --chapters "Chapitre 1" "Chapitre 2"
 ```
 
 ---
@@ -100,15 +129,21 @@ Les pages déjà traitées sont automatiquement ignorées.
 ## Options complètes
 
 ```
---images PATH         Dossier des photos            (défaut: ./photos)
---out FILE            Fichier Markdown de sortie    (défaut: output/livre.md)
---no-layout           Désactiver layout detection
---no-resume           Recommencer depuis le début
---no-postprocess      Sortie brute sans nettoyage
---verbose             Logs DEBUG
---rename              Renommer les images avant OCR
---rename-prefix P     Préfixe renommage             (défaut: page)
---dry-run             Simuler --rename sans modifier
+--images PATH              Dossier des photos                (défaut: ./photos)
+--out FILE                 Fichier Markdown de sortie        (défaut: output/livre.md)
+--mode {base,obsidian}     Mode de sortie                    (défaut: base)
+--no-layout                Désactiver layout detection
+--no-resume                Recommencer depuis le début
+--no-postprocess           Sortie brute sans nettoyage
+--postprocess-only         Postprocess obsidian sans OCR     (requiert --mode obsidian)
+--migrate                  Copier les figures vers le vault  (requiert vault_path configuré)
+--dry-run                  Simuler sans modifier
+--verbose                  Logs DEBUG
+--rename                   Renommer les images avant OCR
+--rename-only [N]          Renommer sans lancer l'OCR        (N = numéro de départ)
+--rename-prefix P          Préfixe renommage                 (défaut: page)
+--chapters NOM…            Sous-dossiers à traiter (dans l'ordre)
+--dir-level                Ordre par dossier pour --rename
 ```
 
 ---
