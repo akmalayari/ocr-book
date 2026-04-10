@@ -10,8 +10,9 @@ src/
   config.py      — Config dataclass (toutes les valeurs par défaut ici)
   ocr_client.py  — OCR d'une image via PaddleOCRVL
   postprocess.py — Nettoyage texte + gestion des blocs page dans le .md
-  images.py      — Collecte et renommage des images
-  pipeline.py    — Orchestration complète
+  images.py      — Collecte, renommage et copie depuis sous-dossiers
+  pipeline.py    — Orchestration complète (multi-serveurs, parts, fallback)
+  obsidian.py    — Export Obsidian (wikilinks, migrate_figures, postprocess_file)
   progress.py    — Logging + statistiques (Stats dataclass)
 ```
 
