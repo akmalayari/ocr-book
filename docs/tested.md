@@ -391,8 +391,19 @@ Variante testée conceptuellement (1 GPU + 1 CPU) : abandonnée sans implémenta
 Architecture pipeline mise à jour dans cette version :
 - Pages écrites dans `output/parts/<page_id>.part` (pas de lock, reprise robuste aux crashs)
 - Combinaison dans l'ordre d'entrée en fin de run
-- Retry ×1 dans `ocr_client.py` sur résultat VLM vide
-- Fallback `PaddleOCRVL` supprimé (couvert par le patch OTSL)
+- Retry ×1 dans `ocr_client.py` sur sortie vide, MD non généré ou MD vide
+- Fallback `PaddleOCRVL` (layout → no-layout) supprimé à ce stade (couvert par le patch OTSL)
+
+### Timeout page + fallback no-layout (post 2026-04-09)
+
+`page_timeout = 120s` : `pipeline.predict()` s'exécute dans un thread de surveillance. Si la timeout est dépassée, `OCRTimeout` est levé.
+
+Sur `OCRTimeout` dans `pipeline.py` :
+1. Tous les serveurs sont killés et relancés (`restart_servers()`)
+2. La page est retraitée avec un pipeline fallback `use_layout_detection=False`
+3. Si le fallback échoue aussi (`OCRError`) : bloc `<!-- Page page_xxx — ERREUR -->` + poursuite
+
+**Motivation :** certaines pages déclenchent des boucles de génération interne à llama-server non détectées par `ocr_client.py` (l'appel HTTP ne revient jamais). Ni le retry, ni le patch OTSL ne couvrent ce cas. Le timeout + restart est le seul moyen de récupérer proprement sans bloquer le run.
 
 **Streaming HTTP pour débloquer -np 4 (2026-04-09)** : **abandonné**. `docs/obsolete/apply_paddlex_patch_streaming.py`.
 
