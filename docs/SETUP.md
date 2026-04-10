@@ -7,6 +7,8 @@
 ```bash
 python setup.py
 conda activate ocr-livre
+# Optionnel : patch parallélisme intra-page
+python docs/dev/apply_paddlex_patch_parallel.py
 ```
 
 ### Option 2 : Manuel
@@ -21,8 +23,11 @@ conda activate ocr-livre
 # Installer PaddleOCR depuis le repo git (version dev avec llama-server compatibility)
 pip install git+https://github.com/PaddlePaddle/PaddleOCR.git
 
-# Appliquer le patch paddlex
+# Appliquer le patch paddlex (obligatoire)
 python docs/dev/apply_paddlex_patch_otsl.py
+
+# Appliquer le patch parallélisme intra-page (optionnel, gain ~30%, dépend du hardware)
+python docs/dev/apply_paddlex_patch_parallel.py
 ```
 
 ## Lancer le pipeline
