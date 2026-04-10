@@ -2,8 +2,11 @@
 
 ## Version refined (actuelle)
 
+### Bug 1
+Crash llama-server (hang) sur la page_125.
+
 ### OCR (objectif final)
-Quand cette version est complétée: lancer  `python src/main.py --images "C:\path\to\Documents\Livres\Leçons d'introduction à la sociologie\livre" --no-resume --mode obsidian` pour OCRiser le livre.
+Quand cette version est complétée: lancer  `python src/main.py --images "C:\path\to\Documents\Livres\Leçons d'introduction à la sociologie\livre" --mode obsidian` pour OCRiser le livre.
 
 ## Prochaines versions
 
@@ -13,4 +16,4 @@ Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pd
 
 ### Fragilité 1 (en suspens) - Liberation de ressources 
 
-Les ressources ne sont pas toujours libérées lors de la fermeture du serveur: "Background thread did not terminate in time. Some resources may not be properly released." 2Go qui restent éternellement en Ram. 
+Les ressources ne sont pas toujours libérées lors de la fermeture du serveur: "Background thread did not terminate in time. Some resources may not be properly released."

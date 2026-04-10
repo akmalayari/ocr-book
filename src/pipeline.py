@@ -71,7 +71,8 @@ def run_pipeline(cfg: Config) -> Stats:
     images = collect_images(cfg)
 
     # ── Parts dir ────────────────────────────────────────────────────────────
-    parts_dir = cfg.output_path.parent / "parts"
+    # Toujours dans output/parts, même en mode obsidian où output_path pointe vers le vault
+    parts_dir = Path(cfg.log_file).parent / "parts"
     parts_dir.mkdir(parents=True, exist_ok=True)
 
     # ── Reprise ──────────────────────────────────────────────────────────────
