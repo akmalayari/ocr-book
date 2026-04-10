@@ -70,6 +70,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Avec --rename/--rename-only : ordre par dossier (dossiers alpha, sous-dossiers alpha, images par date)")
     p.add_argument("--dry-run", action="store_true",
                    help="Avec --rename/--rename-only : affiche les renommages sans les faire ni lancer l'OCR")
+    p.add_argument("--migrate", action="store_true",
+                   help="Copier les figures vers le vault Obsidian (vault_path/vault_figures_dir) sans lancer l'OCR")
 
     return p
 
@@ -90,6 +92,13 @@ def main() -> int:
 
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
+
+    # ── Migration des figures vers le vault ──────────────────────────────────
+    if args.migrate:
+        from obsidian import prompt_if_needed, migrate_figures
+        prompt_if_needed(cfg)
+        migrate_figures(cfg, dry_run=args.dry_run)
+        return 0
 
     # ── Mode obsidian --postprocess-only ─────────────────────────────────────
     if args.postprocess_only:
