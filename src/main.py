@@ -105,9 +105,10 @@ def main() -> int:
         if cfg.mode != "obsidian":
             logger.error("--postprocess-only requiert --mode obsidian")
             return 1
-        from obsidian import prompt_if_needed, postprocess_file
+        from obsidian import prompt_if_needed, postprocess_file, migrate_figures
         prompt_if_needed(cfg)
         postprocess_file(cfg)
+        migrate_figures(cfg)
         logger.info("Postprocess obsidian appliqué : %s", cfg.output_path.resolve())
         return 0
 

@@ -201,6 +201,10 @@ def run_pipeline(cfg: Config) -> Stats:
     stats.log_summary()
     stats.write_report(Path(cfg.report_file), cfg)
 
+    if cfg.mode == "obsidian":
+        from obsidian import migrate_figures
+        migrate_figures(cfg)
+
     if stats.done == 0 and stats.skipped == 0 and cfg.output_path.exists():
         cfg.output_path.unlink()
         logger.warning("Aucune page traitée avec succès — fichier de sortie supprimé.")
