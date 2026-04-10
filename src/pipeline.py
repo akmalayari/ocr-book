@@ -16,7 +16,7 @@ from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError, OCRTimeout
-from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number
+from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number, apply_header_detection
 from obsidian import fix_image_paths_obsidian
 from images import collect_images
 from progress import Stats
@@ -187,6 +187,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 "idx": idx, "page_name": img_path.name,
                 "elapsed": elapsed, "chars": len(clean_text),
                 "t_ocr": t_ocr, "t_post": t_post, "error": False,
+                "no_layout": no_layout,
             }
 
         def _write_error(e, elapsed) -> dict:
@@ -243,6 +244,7 @@ def run_pipeline(cfg: Config) -> Stats:
                         result["elapsed"], result["chars"],
                         t_ocr=result["t_ocr"], t_post=result["t_post"],
                         page_name=result["page_name"],
+                        no_layout=result.get("no_layout", False),
                     )
                     stats.log_page(
                         result["idx"], result["page_name"],
@@ -262,6 +264,14 @@ def run_pipeline(cfg: Config) -> Stats:
             part = parts_dir / f"{img_path.stem}.part"
             if part.exists():
                 out.write(part.read_text(encoding="utf-8"))
+
+    if cfg.header_patterns:
+        text = cfg.output_path.read_text(encoding="utf-8")
+        cfg.output_path.write_text(
+            apply_header_detection(text, cfg.header_patterns),
+            encoding="utf-8", newline="\n",
+        )
+        logger.info("Détection de headers appliquée.")
 
     stats.log_summary()
     stats.write_report(Path(cfg.report_file), cfg)

@@ -141,6 +141,19 @@ def main() -> int:
         if args.dry_run or args.rename_only is not None:
             return 0
 
+    # ── Détection de headers (prompt si non configuré) ───────────────────────
+    if cfg.header_patterns is None:
+        print("Détection de headers sur le fichier final (laisser vide pour désactiver) :")
+        patterns = []
+        for level, label, example in [
+            (2,  "sections    (##) ", r"^[IVX]+\."),
+            (3,  "sous-sections (###)", r"^[A-Z]\."),
+        ]:
+            val = input(f"  Pattern {label} [ex: {example}] : ").strip()
+            if val:
+                patterns.append((val, level))
+        cfg.header_patterns = patterns or []
+
     # ── Pipeline OCR ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
     logger.info("Pipeline OCR — PaddleOCR-VL-1.5")

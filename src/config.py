@@ -51,6 +51,10 @@ class Config:
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
+    # Liste de (regex_début_de_ligne, niveau) pour la détection de headers sur le fichier final.
+    # None = désactivé (prompt au lancement). [] = désactivé sans prompt.
+    # Ex : [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
+    header_patterns: list[tuple[str, int]] | None = None
 
     # ── Logging ──────────────────────────────────────────────────────────────
     log_file: str    = "output/ocr_run.log"

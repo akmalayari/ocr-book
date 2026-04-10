@@ -53,6 +53,7 @@ class Stats:
 
     # Détail par page (pour le rapport)
     _pages: list[dict] = field(default_factory=list)
+    fallback_pages: list[str] = field(default_factory=list)  # pages traitées en no-layout
 
     model_load_time: float = 0.0
     start_time: float = field(default_factory=time.time)
@@ -68,6 +69,7 @@ class Stats:
         t_post: float = 0.0,
         looped: bool = False,
         page_name: str = "",
+        no_layout: bool = False,
     ) -> None:
         self.done += 1
         self.times.append(elapsed)
@@ -77,6 +79,8 @@ class Stats:
         self.postprocess_times.append(t_post)
         if looped:
             self.loop_stops += 1
+        if no_layout and page_name:
+            self.fallback_pages.append(page_name)
         self._pages.append({
             "name": page_name,
             "t_pre": t_pre,
@@ -85,6 +89,7 @@ class Stats:
             "total": elapsed,
             "chars": chars,
             "looped": looped,
+            "no_layout": no_layout,
             "error": False,
         })
 
@@ -177,6 +182,7 @@ class Stats:
             _row("Traitées avec succès", self.done),
             _row("Ignorées (reprise)", self.skipped),
             _row("Erreurs", self.errors),
+            _row("Fallback no-layout", len(self.fallback_pages)),
             _row("Chargement modèle", f"{self.model_load_time:.1f}s"),
             _row("Durée totale (pipeline)", elapsed_str),
             _row("Caractères total", f"{self.total_chars:,}"),
@@ -208,23 +214,36 @@ class Stats:
                 "",
             ]
 
+        # ── Pages fallback no-layout ────────────────────────────────────────
+        if self.fallback_pages:
+            lines += [
+                "## Pages traitées en fallback (sans layout) — à vérifier\n",
+                "Ces pages ont déclenché un timeout et ont été retraitées sans layout detection.",
+                "La qualité peut être dégradée (headers manquants, mots coupés).\n",
+            ]
+            for name in self.fallback_pages:
+                lines.append(f"- {name}")
+            lines.append("")
+
         # ── Détail par page ─────────────────────────────────────────────────
         if self._pages:
             lines += [
                 "## Détail par page\n",
-                "| Page | OCR | Post-traitement | Total | Caractères |",
-                "|---|---|---|---|---|",
+                "| Page | OCR | Post-traitement | Total | Caractères | Notes |",
+                "|---|---|---|---|---|---|",
             ]
             for p in self._pages:
                 if p.get("error"):
-                    lines.append(_row(p["name"], "—", "—", "—", "ERREUR"))
+                    lines.append(_row(p["name"], "—", "—", "—", "ERREUR", ""))
                 else:
+                    note = "fallback" if p.get("no_layout") else ""
                     lines.append(_row(
                         p["name"],
                         f"{p['t_ocr']:.2f}s",
                         f"{p['t_post']:.3f}s",
                         f"{p['total']:.2f}s",
                         f"{p['chars']:,}",
+                        note,
                     ))
             lines.append("")
 

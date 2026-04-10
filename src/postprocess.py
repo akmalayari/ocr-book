@@ -97,6 +97,39 @@ def extract_done_pages(output_text: str) -> set[str]:
     return set(re.findall(r'<!-- Page (\S+)', output_text))
 
 
+def apply_header_detection(text: str, header_patterns: list[tuple[str, int]]) -> str:
+    """
+    Détecte et ajoute les headers markdown sur le fichier de sortie complet.
+    Appliqué une fois après assemblage de toutes les pages.
+
+    Heuristiques anti-faux-positifs :
+      - Ligne déjà en header (commence par #) → ignorée
+      - Ligne > 120 chars → trop longue pour être un header
+      - Ligne se terminant par , ; : → corps de texte
+      - Ligne de commentaire HTML → ignorée
+    """
+    lines = text.splitlines()
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if (not stripped
+                or stripped.startswith('#')
+                or stripped.startswith('<!--')
+                or len(stripped) > 120
+                or stripped.endswith((',', ';', ':'))):
+            result.append(line)
+            continue
+        matched = False
+        for pattern, level in header_patterns:
+            if re.match(pattern, stripped):
+                result.append('#' * level + ' ' + stripped)
+                matched = True
+                break
+        if not matched:
+            result.append(line)
+    return '\n'.join(result)
+
+
 def fix_image_paths(text: str, page_id: str, figures_rel: str) -> str:
     """
     Corrige les chemins relatifs aux images générées par PaddleOCR.
