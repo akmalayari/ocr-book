@@ -5,7 +5,7 @@ setup.py — Setup ocr-livre environment (PaddleOCR version)
 Usage:
     python setup.py                    # Full setup
     python setup.py --env-only         # Only create conda env
-    python setup.py --patch-only       # Only apply paddlex patch
+    python setup.py --patch-only       # Only apply paddlex patch OTSL
 """
 
 import argparse
