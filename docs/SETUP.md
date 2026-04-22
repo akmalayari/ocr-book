@@ -1,43 +1,43 @@
-# Setup — ocr-livre (PaddleOCR version)
+# Setup — ocr-book (PaddleOCR version)
 
-## Installation de l'environnement
+## Environment Installation
 
-### Option 1 : Script automatique (recommandé)
+### Option 1: Automatic Script (recommended)
 
 ```bash
 python setup.py
 conda activate ocr-livre
-# Optionnel : patch parallélisme intra-page
+# Optional: intra-page parallelism patch
 python docs/dev/apply_paddlex_patch_parallel.py
 ```
 
-### Option 2 : Manuel
+### Option 2: Manual
 
 ```bash
-# Créer l'env conda depuis environment.yml
+# Create conda env from environment.yml
 conda env create -f environment.yml
 
-# Activer l'env
+# Activate env
 conda activate ocr-livre
 
-# Installer PaddleOCR depuis le repo git (version dev avec llama-server compatibility)
+# Install PaddleOCR from git repo (dev version with llama-server compatibility)
 pip install git+https://github.com/PaddlePaddle/PaddleOCR.git
 
-# Appliquer le patch paddlex (obligatoire)
+# Apply required paddlex patch
 python docs/dev/apply_paddlex_patch_otsl.py
 
-# Appliquer le patch parallélisme intra-page (optionnel, gain ~30%, dépend du hardware)
+# Apply optional intra-page parallelism patch (gain ~30%, hardware dependent)
 python docs/dev/apply_paddlex_patch_parallel.py
 ```
 
-## Lancer le pipeline
+## Run the Pipeline
 
 ```bash
 python src/main.py --help
 python src/main.py <photos_dir>
 ```
 
-## Dépannage
+## Troubleshooting
 
-- **paddlex file not found** : Vérifier que l'env est activée (`conda activate ocr-livre-paddle`)
-- **Patch fails** : L'état de paddlex peut être "unknown" si la version diffère. Voir [apply_paddlex_patch_otsl.py](dev/apply_paddlex_patch_otsl.py) pour détails
+- **paddlex file not found**: Verify the env is activated (`conda activate ocr-livre`)
+- **Patch fails**: paddlex state may be "unknown" if the version differs. See [apply_paddlex_patch_otsl.py](dev/apply_paddlex_patch_otsl.py) for details

@@ -1,15 +1,15 @@
-# ocr-livre — Pipeline OCR livre → Markdown
+# ocr-book — Book OCR Pipeline → Markdown
 
-Digitalise un livre entier en Markdown à partir de photos de pages,
-en utilisant **PaddleOCR-VL-1.5** via **llama-server** (inférence locale).
+Digitizes an entire book into Markdown from page photos,
+using **PaddleOCR-VL-1.5** via **llama-server** (local inference).
 
 ---
 
-## Prérequis
+## Prerequisites
 
-- [miniforge](https://github.com/conda-forge/miniforge) ou Anaconda
-- [llama-server](https://github.com/ggerganov/llama.cpp) (Vulkan recommandé sur Windows)
-- Modèle GGUF : [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5)
+- [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
+- [llama-server](https://github.com/ggerganov/llama.cpp) (Vulkan recommended on Windows)
+- GGUF model: [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5)
 
 ---
 
@@ -20,138 +20,138 @@ python setup.py
 conda activate ocr-livre
 ```
 
-Voir [docs/SETUP.md](docs/SETUP.md) pour le détail.
+See [docs/SETUP.md](docs/SETUP.md) for details.
 
 ---
 
-## Structure du projet
+## Project Structure
 
 ```
 ocr-livre/
 ├── src/
-│   ├── main.py          # Point d'entrée CLI
-│   ├── config.py        # Configuration centrale (dataclass)
-│   ├── ocr_client.py    # OCR d'une image via PaddleOCRVL
-│   ├── postprocess.py   # Nettoyage du texte OCR
-│   ├── obsidian.py      # Export Obsidian (wikilinks, migration)
-│   ├── images.py        # Collecte et renommage des images
-│   ├── pipeline.py      # Orchestration complète
-│   └── progress.py      # Logging et statistiques
+│   ├── main.py          # CLI entry point
+│   ├── config.py        # Central configuration (dataclass)
+│   ├── ocr_client.py    # OCR of an image via PaddleOCRVL
+│   ├── postprocess.py   # OCR text cleanup
+│   ├── obsidian.py      # Obsidian export (wikilinks, migration)
+│   ├── images.py        # Image collection and renaming
+│   ├── pipeline.py      # Full orchestration
+│   └── progress.py      # Logging and statistics
 ├── docs/
-│   ├── architecture/    # Documentation architecture
-│   ├── dev/             # Patches et notes de développement
-│   ├── SETUP.md         # Instructions d'installation
-│   ├── tested.md        # Résultats des expérimentations
-│   └── issues.md        # Travaux en cours
-├── photos/              # Images source (une par page)
-├── output/              # Markdown généré + logs + figures
-├── environment.yml      # Dépendances conda
-└── setup.py             # Script d'installation automatisé
+│   ├── architecture/    # Architecture documentation
+│   ├── dev/             # Patches and development notes
+│   ├── SETUP.md         # Installation instructions
+│   ├── tested.md        # Experiment results
+│   └── issues.md        # Work in progress
+├── photos/              # Source images (one per page)
+├── output/              # Generated Markdown + logs + figures
+├── environment.yml      # Conda dependencies
+└── setup.py             # Automated installation script
 ```
 
 ---
 
-## Utilisation
+## Usage
 
-Lancer depuis `src/` :
+Run from `src/`:
 
 ```bash
-# Pipeline par défaut (photos dans ./photos, sortie output/livre.md)
+# Default pipeline (photos in ./photos, output output/book.md)
 python main.py
 
-# Spécifier les dossiers
-python main.py --images ./mes_photos --out output/mon_livre.md
+# Specify folders
+python main.py --images ./my_photos --out output/my_book.md
 
-# Sans layout detection
+# Without layout detection
 python main.py --no-layout
 
-# Recommencer depuis le début
+# Restart from the beginning
 python main.py --no-resume
 
-# Logs détaillés
+# Detailed logs
 python main.py --verbose
 ```
 
 ---
 
-## Export Obsidian
+## Obsidian Export
 
-En mode `obsidian`, le pipeline :
-- convertit les figures en wikilinks `![[Files/image.jpg]]`
-- sauvegarde le `.md` directement dans le vault
-- copie les figures vers `vault_path/vault_figures_dir/`
+In `obsidian` mode, the pipeline:
+- converts figures to wikilinks `![[Files/image.jpg]]`
+- saves the `.md` directly into the vault
+- copies figures to `vault_path/vault_figures_dir/`
 
-Configurer `vault_path` et `vault_figures_dir` dans `config.py`, puis :
+Configure `vault_path` and `vault_figures_dir` in `config.py`, then:
 
 ```bash
-# OCR complet + export obsidian
+# Full OCR + obsidian export
 python main.py --mode obsidian
 
-# Ré-appliquer le postprocess obsidian sans relancer l'OCR
+# Re-apply obsidian postprocess without re-running OCR
 python main.py --mode obsidian --postprocess-only
 
-# Migrer les figures vers le vault uniquement
+# Migrate figures to the vault only
 python main.py --migrate
 ```
 
 ---
 
-## Renommage des images
+## Image Renaming
 
 ```bash
-# Prévisualiser sans modifier
+# Preview without modifying
 python main.py --rename --dry-run
 
-# Renommer effectivement (→ page_001.jpg, page_002.jpg, …)
+# Rename for real (→ page_001.jpg, page_002.jpg, …)
 python main.py --rename
 
-# Renommer sans lancer l'OCR
+# Rename without running OCR
 python main.py --rename-only
 
-# Traiter des sous-dossiers par chapitre
-python main.py --rename-only --chapters "Chapitre 1" "Chapitre 2"
+# Process subfolders by chapter
+python main.py --rename-only --chapters "Chapter 1" "Chapter 2"
 ```
 
 ---
 
-## Reprise automatique
+## Automatic Resume
 
-Si le pipeline est interrompu, relancez simplement :
+If the pipeline is interrupted, simply re-run:
 
 ```bash
 python main.py
 ```
 
-Les pages déjà traitées sont automatiquement ignorées.
+Already processed pages are automatically skipped.
 
 ---
 
-## Options complètes
+## Full Options
 
 ```
---images PATH              Dossier des photos                (défaut: ./photos)
---out FILE                 Fichier Markdown de sortie        (défaut: output/livre.md)
---mode {base,obsidian}     Mode de sortie                    (défaut: base)
---no-layout                Désactiver layout detection
---no-resume                Recommencer depuis le début
---no-postprocess           Sortie brute sans nettoyage
---postprocess-only         Postprocess obsidian sans OCR     (requiert --mode obsidian)
---migrate                  Copier les figures vers le vault  (requiert vault_path configuré)
---dry-run                  Simuler sans modifier
---verbose                  Logs DEBUG
---rename                   Renommer les images avant OCR
---rename-only [N]          Renommer sans lancer l'OCR        (N = numéro de départ)
---rename-prefix P          Préfixe renommage                 (défaut: page)
---chapters NOM…            Sous-dossiers à traiter (dans l'ordre)
---dir-level                Ordre par dossier pour --rename
+--images PATH              Photo folder                (default: ./photos)
+--out FILE                 Output Markdown file        (default: output/book.md)
+--mode {base,obsidian}     Output mode                 (default: base)
+--no-layout                Disable layout detection
+--no-resume                Restart from the beginning
+--no-postprocess           Raw output without cleanup
+--postprocess-only         Obsidian postprocess without OCR  (requires --mode obsidian)
+--migrate                  Copy figures to the vault  (requires vault_path configured)
+--dry-run                  Simulate without modifying
+--verbose                  DEBUG logs
+--rename                   Rename images before OCR
+--rename-only [N]          Rename without running OCR (N = starting number)
+--rename-prefix P          Rename prefix                 (default: page)
+--chapters NAME…           Subfolders to process (in order)
+--dir-level                Folder-level order for --rename
 ```
 
 ---
 
-## Codes de retour
+## Exit Codes
 
-| Code | Signification                                |
+| Code | Meaning                                      |
 |------|----------------------------------------------|
-| 0    | Succès total                                 |
-| 1    | Erreur fatale                                |
-| 2    | Terminé avec des erreurs sur certaines pages |
+| 0    | Full success                                 |
+| 1    | Fatal error                                  |
+| 2    | Finished with errors on some pages           |

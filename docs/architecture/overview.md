@@ -1,49 +1,49 @@
-# Architecture — ocr-livre (version PaddleOCR)
+# Architecture — ocr-book (PaddleOCR version)
 
-Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via PaddleOCR-VL-1.5 servi localement par llama-server.
+Python CLI pipeline that OCRs a book (page photos) into Markdown via PaddleOCR-VL-1.5 served locally by llama-server.
 
 ---
 
-## Vue d'ensemble
+## Overview
 
 ```
-photos/          →  pipeline  →  output/livre.md  (ou vault_root/vault_path/livre.md en mode obsidian)
+photos/          →  pipeline  →  output/book.md  (or vault_root/vault_path/book.md in obsidian mode)
                                   output/figures/<page>/
                                   output/parts/<page>.part
                                   output/ocr_report.md
 ```
 
-Flux d'exécution :
+Execution flow:
 
 ```
 main.py
   └── pipeline.run_pipeline(cfg)
-        ├── images.collect_images(cfg)                 # liste des images triées
+        ├── images.collect_images(cfg)                 # sorted image list
         ├── _start_server(cfg, port) × n_servers       # n subprocesses llama-server
-        ├── _wait_for_server(url, timeout)             # polling /health pour chaque serveur
-        ├── PaddleOCRVL(...) × n_servers               # un pipeline par serveur
+        ├── _wait_for_server(url, timeout)             # /health polling for each server
+        ├── PaddleOCRVL(...) × n_servers               # one pipeline per server
         │
-        └── ThreadPoolExecutor(max_workers=n_servers) — pour chaque image :
+        └── ThreadPoolExecutor(max_workers=n_servers) — for each image:
               ├── ocr_client.ocr_image(img, pipeline, cfg)
               │     ├── pipeline.predict(image)            # layout + OCR
-              │     ├── save_to_markdown(save_path)        # écrit figures/page/page.md + imgs/
-              │     └── retourne (markdown_text, {total_latency})
+              │     ├── save_to_markdown(save_path)        # writes figures/page/page.md + imgs/
+              │     └── returns (markdown_text, {total_latency})
               │
               ├── postprocess.extract_page_number(text)
               ├── postprocess.clean_page(text, cfg)
               ├── postprocess.strip_table_styles(text)
               ├── fix_image_paths / fix_image_paths_obsidian
               ├── postprocess.format_page_block(page_id, text, page_number)
-              └── écriture dans output/parts/<page_id>.part
+              └── writes to output/parts/<page_id>.part
         │
-        ├── Combinaison des parts dans l'ordre d'entrée → output/livre.md
-        ├── postprocess.apply_header_detection(text, cfg.header_patterns)  # si configuré
-        ├── obsidian.migrate_figures(cfg)               # si mode obsidian
+        ├── Combines parts in input order → output/book.md
+        ├── postprocess.apply_header_detection(text, cfg.header_patterns)  # if configured
+        ├── obsidian.migrate_figures(cfg)               # if obsidian mode
         └── stats.write_report(...)
 
-  Sur timeout page :
-        ├── restart_servers()                           # kill + relaunch tous les serveurs
-        └── retry avec pipeline fallback (use_layout_detection=False)
+  On page timeout:
+        ├── restart_servers()                           # kill + relaunch all servers
+        └── retry with fallback pipeline (use_layout_detection=False)
 ```
 
 ---
@@ -51,160 +51,160 @@ main.py
 ## Modules
 
 ### `main.py`
-Point d'entrée CLI (argparse). Parse les arguments, construit `Config`, appelle `run_pipeline`.
+CLI entry point (argparse). Parses arguments, builds `Config`, calls `run_pipeline`.
 
-Options principales :
-- `--images`, `--out` — chemins
-- `--no-layout`, `--no-resume`, `--no-postprocess` — comportement OCR
-- `--mode [base|obsidian]` — mode de sortie
-- `--postprocess-only` — avec `--mode obsidian` : postprocess sur le `.md` existant sans relancer l'OCR
-- `--migrate` — copier les figures vers le vault sans lancer l'OCR
-- `--rename`, `--rename-only [START]`, `--rename-prefix` — renommage des images
-- `--chapters NOM…` — sous-dossiers à traiter dans l'ordre fourni
-- `--dir-level` — ordre par dossier (alpha dossiers > alpha sous-dossiers > images par date)
+Main options:
+- `--images`, `--out` — paths
+- `--no-layout`, `--no-resume`, `--no-postprocess` — OCR behavior
+- `--mode [base|obsidian]` — output mode
+- `--postprocess-only` — with `--mode obsidian`: postprocess on existing `.md` without re-running OCR
+- `--migrate` — copy figures to vault without running OCR
+- `--rename`, `--rename-only [START]`, `--rename-prefix` — image renaming
+- `--chapters NAME…` — subfolders to process in given order
+- `--dir-level` — folder-level order (alpha folders > alpha subfolders > images by date)
 - `--dry-run`, `--verbose`
 
 ### `config.py`
-Dataclass `Config` — toutes les valeurs par défaut en un seul endroit.
+`Config` dataclass — all default values in one place.
 
-Groupes de paramètres :
+Parameter groups:
 
-- **Chemins llama-server** : `llama_server_path`, `model_path`, `mmproj_path`, `server_base_port`, `server_timeout`
-- **Tuning llama-server** : `n_ctx`, `n_gpu_layers`, `n_batch`, `n_ubatch`, `n_threads`, `prio`, `kv_offload`, `temperature`, `max_tokens`
-- **Parallélisme** : `n_servers` (serveurs parallèles), `n_parallel` (slots intra-page, requiert patch), `page_timeout` (secondes max par page, 0 = désactivé)
-- **PaddleOCR** : `use_layout_detection`
-- **Images** : `images_dir`, `extensions`, `rename_prefix`, `image_files` (liste explicite, court-circuite `images_dir`)
-- **Sortie** : `output_file`, `figures_dir`, `resume`
-- **Mode** : `mode` (`"base"` | `"obsidian"`)
-- **Obsidian** : `vault_root`, `vault_path`, `vault_figures_dir`
-- **Post-traitement** : `postprocess`, `remove_isolated_page_numbers`, `rejoin_hyphenated_words`, `collapse_blank_lines`, `header_patterns`
-- **Logging** : `log_file`, `report_file`, `verbose`
+- **llama-server paths**: `llama_server_path`, `model_path`, `mmproj_path`, `server_base_port`, `server_timeout`
+- **llama-server tuning**: `n_ctx`, `n_gpu_layers`, `n_batch`, `n_ubatch`, `n_threads`, `prio`, `kv_offload`, `temperature`, `max_tokens`
+- **Parallelism**: `n_servers` (parallel servers), `n_parallel` (intra-page slots, requires patch), `page_timeout` (max seconds per page, 0 = disabled)
+- **PaddleOCR**: `use_layout_detection`
+- **Images**: `images_dir`, `extensions`, `rename_prefix`, `image_files` (explicit list, bypasses `images_dir`)
+- **Output**: `output_file`, `figures_dir`, `resume`
+- **Mode**: `mode` (`"base"` | `"obsidian"`)
+- **Obsidian**: `vault_root`, `vault_path`, `vault_figures_dir`
+- **Post-processing**: `postprocess`, `remove_isolated_page_numbers`, `rejoin_hyphenated_words`, `collapse_blank_lines`, `header_patterns`
+- **Logging**: `log_file`, `report_file`, `verbose`
 
 ### `pipeline.py`
-Orchestration complète. Responsabilités :
+Full orchestration. Responsibilities:
 
-1. Démarrer `n_servers` llama-server en subprocess (ports `server_base_port`, `server_base_port+1`, …)
-2. Attendre que chaque serveur réponde sur `/health`
-3. Instancier `n_servers` pipelines PaddleOCRVL dans une queue
-4. Traiter les pages en parallèle via `ThreadPoolExecutor(max_workers=n_servers)`
-5. Écrire chaque page dans `output/parts/<page_id>.part` (atomique)
-6. En cas de timeout (`OCRTimeout`) : redémarrer tous les serveurs, retry avec pipeline fallback (sans layout)
-7. Combiner les parts dans l'ordre d'entrée en fin de run
-8. Appliquer `apply_header_detection` si `cfg.header_patterns`
-9. Appeler `obsidian.migrate_figures` si mode obsidian
-10. Arrêter tous les serveurs dans le bloc `finally`
+1. Start `n_servers` llama-server as subprocesses (ports `server_base_port`, `server_base_port+1`, …)
+2. Wait for each server to respond on `/health`
+3. Instantiate `n_servers` PaddleOCRVL pipelines in a queue
+4. Process pages in parallel via `ThreadPoolExecutor(max_workers=n_servers)`
+5. Write each page to `output/parts/<page_id>.part` (atomic)
+6. On timeout (`OCRTimeout`): restart all servers, retry with fallback pipeline (without layout)
+7. Combine parts in input order at end of run
+8. Apply `apply_header_detection` if `cfg.header_patterns`
+9. Call `obsidian.migrate_figures` if obsidian mode
+10. Stop all servers in `finally` block
 
 ### `ocr_client.py`
-OCR d'une image unique. Interface : `ocr_image(image_path, pipeline, cfg) → (text, metrics)`.
+OCR of a single image. Interface: `ocr_image(image_path, pipeline, cfg) → (text, metrics)`.
 
-Étapes internes :
-1. `pipeline.predict(image_path)` — layout detection (ppdoclayout) + OCR VLM par région
-2. `save_to_markdown(save_path)` — écrit `figures/<page>/<page>.md` + crops dans `figures/<page>/imgs/`
-3. `read_text()` — charge le Markdown généré
-4. Retourne `(text, {"total_latency": float})` — latence mesurée sur predict+save+read
+Internal steps:
+1. `pipeline.predict(image_path)` — layout detection (ppdoclayout) + VLM OCR per region
+2. `save_to_markdown(save_path)` — writes `figures/<page>/<page>.md` + crops in `figures/<page>/imgs/`
+3. `read_text()` — loads generated Markdown
+4. Returns `(text, {"total_latency": float})` — latency measured on predict+save+read
 
-Lève `OCRTimeout` si `cfg.page_timeout` est dépassé (capturé dans `pipeline.py`).
+Raises `OCRTimeout` if `cfg.page_timeout` is exceeded (caught in `pipeline.py`).
 
 ### `postprocess.py`
-Nettoyage du Markdown généré par PaddleOCR.
+Cleanup of Markdown generated by PaddleOCR.
 
-- `clean_page(text, cfg, no_layout)` — suppression numéros de page isolés, réassemblage mots coupés, réduction lignes vides ; en mode no_layout, supprime aussi les boucles de génération
-- `strip_table_styles(text)` — supprime les styles inline CSS des `<table>` et `<td>/<th>` générés par PaddleOCR, centre les tableaux
-- `extract_page_number(text)` — extrait le numéro de page imprimé depuis les N premières/dernières lignes ; retourne `(label, texte_nettoyé)` où label vaut `None`, `"42"` ou `"42-43"`
-- `apply_header_detection(text, header_patterns)` — ajoute les headers markdown selon les patterns regex configurés, avec heuristiques anti-faux-positifs
-- `fix_image_paths(text, page_id, figures_rel)` — corrige les chemins `src="imgs/..."` en chemins relatifs depuis le dossier du fichier de sortie (mode base)
-- `format_page_block(page_id, text, page_number)` — encadre chaque page avec `<!-- Page xxx (p. NN) -->`
-- `format_error_block(page_id, error)` — bloc d'erreur pour une page échouée
-- `extract_done_pages(output_text)` — lit les marqueurs `<!-- Page ... -->` pour la reprise (ancienne méthode, remplacée par parts)
+- `clean_page(text, cfg, no_layout)` — isolated page number removal, hyphenated word rejoining, blank line reduction; in no_layout mode, also removes generation loops
+- `strip_table_styles(text)` — removes inline CSS styles from `<table>` and `<td>/<th>` generated by PaddleOCR, centers tables
+- `extract_page_number(text)` — extracts printed page number from first/last N lines; returns `(label, cleaned_text)` where label is `None`, `"42"`, or `"42-43"`
+- `apply_header_detection(text, header_patterns)` — adds markdown headers according to configured regex patterns, with anti-false-positive heuristics
+- `fix_image_paths(text, page_id, figures_rel)` — fixes `src="imgs/..."` paths to be relative from the output file's folder (base mode)
+- `format_page_block(page_id, text, page_number)` — wraps each page with `<!-- Page xxx (p. NN) -->`
+- `format_error_block(page_id, error)` — error block for a failed page
+- `extract_done_pages(output_text)` — reads `<!-- Page ... -->` markers for resume (old method, replaced by parts)
 
 ### `obsidian.py`
-Utilitaires pour l'export Obsidian.
+Utilities for Obsidian export.
 
-- `prompt_if_needed(cfg)` — invite interactive pour `vault_root`, `vault_path`, `vault_figures_dir` si non configurés
-- `fix_image_paths_obsidian(text, vault_figures_dir)` — convertit `<img src="imgs/...">` en wikilinks `![[vault_figures_dir/...]]` ; supprime les `<div>` wrappers
-- `migrate_figures(cfg, page_ids, dry_run)` — copie les crops `output/figures/*/imgs/*` vers `vault_root/vault_figures_dir/` (structure aplatie, skip si déjà présent)
-- `postprocess_file(cfg)` — applique le postprocess complet (`clean_page`, `strip_table_styles`, conversion img → wikilinks, `apply_header_detection`) sur un `.md` existant sans relancer l'OCR
+- `prompt_if_needed(cfg)` — interactive prompt for `vault_root`, `vault_path`, `vault_figures_dir` if not configured
+- `fix_image_paths_obsidian(text, vault_figures_dir)` — converts `<img src="imgs/...">` to Obsidian wikilinks `![[vault_figures_dir/...]]`; removes `<div>` wrappers
+- `migrate_figures(cfg, page_ids, dry_run)` — copies crops from `output/figures/*/imgs/*` to `vault_root/vault_figures_dir/` (flat structure, skip if already present)
+- `postprocess_file(cfg)` — applies full postprocess (`clean_page`, `strip_table_styles`, img → wikilinks conversion, `apply_header_detection`) on an existing `.md` without re-running OCR
 
 ### `images.py`
-- `collect_images(cfg)` — liste et trie les images dans `cfg.images_dir` ; si `cfg.image_files` est fourni, l'utilise directement ; détecte les noms dupliqués
-- `rename_images(folder, extensions, prefix, dry_run, start)` — renomme les images en `page_001.jpg`, `page_002.jpg`…
-- `has_image_subdirs(folder, extensions)` — retourne True si le dossier contient des sous-dossiers avec des images
-- `copy_from_subdirs(folder, extensions, chapters, prefix, start, dry_run, dir_level)` — copie les images des sous-dossiers vers le dossier parent avec numérotation séquentielle ; `chapters` permet de choisir les sous-dossiers dans l'ordre ; `dir_level` trie par dossier puis date
+- `collect_images(cfg)` — lists and sorts images in `cfg.images_dir`; if `cfg.image_files` is provided, uses it directly; detects duplicate names
+- `rename_images(folder, extensions, prefix, dry_run, start)` — renames images to `page_001.jpg`, `page_002.jpg`…
+- `has_image_subdirs(folder, extensions)` — returns True if the folder contains subfolders with images
+- `copy_from_subdirs(folder, extensions, chapters, prefix, start, dry_run, dir_level)` — copies images from subfolders to parent folder with sequential numbering; `chapters` allows choosing subfolders in order; `dir_level` sorts by folder then date
 
 ### `progress.py`
-Dataclass `Stats` — accumule les métriques de run et génère le rapport final.
+`Stats` dataclass — accumulates run metrics and generates the final report.
 
-Métriques collectées : temps OCR par page, temps post-traitement, temps total, caractères, erreurs, pages fallback (no_layout), pages skippées.
+Collected metrics: OCR time per page, post-processing time, total time, characters, errors, fallback (no_layout) pages, skipped pages.
 
-Rapport Markdown écrit dans `output/ocr_report.md`.
+Markdown report written to `output/ocr_report.md`.
 
 ---
 
-## Stack d'inférence
+## Inference Stack
 
-| Composant | Rôle |
+| Component | Role |
 |-----------|------|
-| **llama-server** (llama.cpp, Vulkan) | Inférence VLM (PaddleOCR-VL-1.5 GGUF F16) |
-| **paddleocr** (depuis repo git) | Orchestration : layout detection → routing prompts → appels VLM |
+| **llama-server** (llama.cpp, Vulkan) | VLM inference (PaddleOCR-VL-1.5 GGUF F16) |
+| **paddleocr** (from git repo) | Orchestration: layout detection → prompt routing → VLM calls |
 | **paddlepaddle CPU** | Layout detection (ppdoclayout) |
-| **paddlex[ocr]** | Sous-pipeline tableaux (OTSL → HTML via `convert_otsl_to_html`) |
-| **openai** | Client HTTP pour le backend `llama-cpp-server` de paddleocr |
+| **paddlex[ocr]** | Table sub-pipeline (OTSL → HTML via `convert_otsl_to_html`) |
+| **openai** | HTTP client for paddleocr's `llama-cpp-server` backend |
 
-Patches requis sur paddlex :
-- `docs/dev/apply_paddlex_patch_otsl.py` — gestion des erreurs VLM par région (tableaux complexes). Voir `docs/dev/paddlex_patch_otsl.md`.
-- `docs/dev/apply_paddlex_patch_parallel.py` — parallélisme intra-page (`n_parallel`). Requis si `n_parallel > 1`. Voir `docs/dev/paddlex_patch_parallel.md`.
+Required paddlex patches:
+- `docs/dev/apply_paddlex_patch_otsl.py` — per-region VLM error handling (complex tables). See `docs/dev/paddlex_patch_otsl.md`.
+- `docs/dev/apply_paddlex_patch_parallel.py` — intra-page parallelism (`n_parallel`). Required if `n_parallel > 1`. See `docs/dev/paddlex_patch_parallel.md`.
 
 ---
 
-## Format de sortie
+## Output Format
 
-PaddleOCR génère du HTML embarqué dans Markdown (compatible Obsidian) :
+PaddleOCR generates embedded HTML in Markdown (Obsidian-compatible):
 
 ```markdown
 <!-- Page page_001 (p. 42) -->
 
-Texte courant paragraphe...
+Regular paragraph text...
 
 <table align="center" border=1>...</table>
 
-![[Files/OCR/page_001_fig_0.png]]  (mode obsidian)
-<img src="figures/page_001/imgs/page_001_fig_0.png" />  (mode base)
+![[Files/OCR/page_001_fig_0.png]]  (obsidian mode)
+<img src="figures/page_001/imgs/page_001_fig_0.png" />  (base mode)
 ```
 
-Les crops de figures sont sauvegardés dans `output/figures/<page>/imgs/`.
+Figure crops are saved in `output/figures/<page>/imgs/`.
 
 ---
 
-## Reprise (`--resume`)
+## Resume (`--resume`)
 
-Chaque page traitée est écrite dans `output/parts/<page_id>.part`. Au démarrage, le pipeline liste les fichiers `.part` existants — les pages déjà présentes sont skippées. En fin de run, les parts sont combinées dans l'ordre d'entrée. Désactiver avec `--no-resume` (supprime les parts existants).
-
----
-
-## Mode Obsidian (`--mode obsidian`)
-
-Quand `--mode obsidian` est activé :
-1. `vault_root`, `vault_path`, `vault_figures_dir` sont demandés si non configurés dans `Config`
-2. Le fichier de sortie est écrit dans `vault_root/vault_path/livre.md`
-3. Les `<img src="imgs/...">` sont convertis en wikilinks `![[vault_figures_dir/...]]`
-4. En fin de run, les crops sont copiés vers `vault_root/vault_figures_dir/` (`migrate_figures`)
-
-Options dérivées :
-- `--postprocess-only` — applique le postprocess sur le `.md` existant sans relancer l'OCR
-- `--migrate` — copie uniquement les figures vers le vault
+Each processed page is written to `output/parts/<page_id>.part`. On startup, the pipeline lists existing `.part` files — already present pages are skipped. At end of run, parts are combined in input order. Disable with `--no-resume` (deletes existing parts).
 
 ---
 
-## Tuning performances
+## Obsidian Mode (`--mode obsidian`)
 
-Paramètres llama-server configurables dans `Config` :
+When `--mode obsidian` is active:
+1. `vault_root`, `vault_path`, `vault_figures_dir` are prompted if not configured in `Config`
+2. Output file is written to `vault_root/vault_path/book.md`
+3. `<img src="imgs/...">` are converted to wikilinks `![[vault_figures_dir/...]]`
+4. At end of run, crops are copied to `vault_root/vault_figures_dir/` (`migrate_figures`)
 
-| Paramètre | Défaut | Effet |
-|-----------|--------|-------|
-| `n_servers` | 1 | Nombre de llama-server parallèles (une page par serveur simultanément) |
-| `n_gpu_layers` | 99 | Couches déchargées sur GPU (Vulkan) |
-| `n_batch` / `n_ubatch` | 512 | Taille des batches |
-| `kv_offload` | True | Offload du KV cache sur CPU |
-| `n_ctx` | 6144 | Contexte max (2048 tokens/slot × n_parallel=3) |
-| `n_parallel` | 3 | Slots parallèles intra-page (requiert patch paddlex) |
-| `page_timeout` | 120 | Secondes max par page avant abandon et redémarrage serveur (0 = désactivé) |
+Derived options:
+- `--postprocess-only` — applies postprocess on existing `.md` without re-running OCR
+- `--migrate` — copies only figures to the vault
+
+---
+
+## Performance Tuning
+
+Configurable llama-server parameters in `Config`:
+
+| Parameter | Default | Effect |
+|-----------|--------|--------|
+| `n_servers` | 1 | Number of parallel llama-servers (one page per server simultaneously) |
+| `n_gpu_layers` | 99 | Layers offloaded to GPU (Vulkan) |
+| `n_batch` / `n_ubatch` | 512 | Batch sizes |
+| `kv_offload` | True | KV cache offload to CPU |
+| `n_ctx` | 6144 | Max context (2048 tokens/slot × n_parallel=3) |
+| `n_parallel` | 3 | Intra-page parallel slots (requires paddlex patch) |
+| `page_timeout` | 120 | Max seconds per page before giving up and restarting server (0 = disabled) |

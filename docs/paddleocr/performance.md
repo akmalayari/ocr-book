@@ -1,75 +1,75 @@
-# PaddleOCR-VL — Performance et optimisations
+# PaddleOCR-VL — Performance and Optimizations
 
-## Mesures de référence
+## Reference Measurements
 
-Hardware : Windows 11, GPU AMD Radeon 890M (Vulkan, iGPU), llama-server Vulkan backend.
-Modèle : PaddleOCR-VL-1.5-0.9B, GGUF BF16, 890 MiB. VRAM totale : ~23 GiB.
-Images : 4080×3072 px (12.5 MP), photos de pages de livre.
+Hardware: Windows 11, GPU AMD Radeon 890M (Vulkan, iGPU), llama-server Vulkan backend.
+Model: PaddleOCR-VL-1.5-0.9B, GGUF BF16, 890 MiB. Total VRAM: ~23 GiB.
+Images: 4080×3072 px (12.5 MP), book page photos.
 
-| Config | Vitesse/page | Notes |
+| Config | Speed/page | Notes |
 |---|---|---|
-| -np 1, séquentiel (baseline) | ~60s | état initial |
-| -np 2, 2 workers (pool global) | ~49s | -11s |
-| -np 3, 3 workers (pool global) | ~46s | -14s, **retenu** |
-| -np 4, 4 workers | crash | vision encoder Vulkan saturé |
-| -np 6, 6 workers | hang | contention GPU totale |
+| -np 1, sequential (baseline) | ~60s | initial state |
+| -np 2, 2 workers (global pool) | ~49s | -11s |
+| -np 3, 3 workers (global pool) | ~46s | -14s, **retained** |
+| -np 4, 4 workers | crash | vision encoder Vulkan saturated |
+| -np 6, 6 workers | hang | total GPU contention |
 
-Le temps par page est proportionnel au nombre de blocs détectés par PP-DocLayoutV3 (chaque bloc = un appel VLM séparé). Gain réel sur 150 pages : ~35 min.
+Time per page is proportional to the number of blocks detected by PP-DocLayoutV3 (each block = separate VLM call). Real gain on 150 pages: ~35 min.
 
-## Goulot d'étranglement
+## Bottlenecks
 
-Deux goulots distincts :
-1. **Vision encoder** (encodage image en base64 → tokens) : ~350-4500 ms/bloc selon la taille. Saturé à partir de 4 encodages simultanés sous Vulkan → crash.
-2. **Génération LLM** : ~36 tok/s par slot, mais plusieurs slots peuvent générer en parallèle si le vision encoder n'est pas saturé.
+Two distinct bottlenecks:
+1. **Vision encoder** (image encoding to base64 → tokens): ~350-4500 ms/block depending on size. Saturated from 4 simultaneous encodings under Vulkan → crash.
+2. **LLM generation**: ~36 tok/s per slot, but multiple slots can generate in parallel if the vision encoder is not saturated.
 
-## Optimisations testées
+## Tested Optimizations
 
-### Parallélisation intra-page (pool global) — **retenu**
+### Intra-page Parallelism (global pool) — **retained**
 
-PaddleOCR traite les blocs d'une page séquentiellement. Un patch (`docs/dev/apply_paddlex_patch_parallel.py`) remplace la boucle par un `ThreadPoolExecutor` global qui soumet tous les blocs de toutes les `pixel_key` simultanément.
+PaddleOCR processes blocks of a page sequentially. A patch (`docs/dev/apply_paddlex_patch_parallel.py`) replaces the loop with a global `ThreadPoolExecutor` that submits all blocks from all `pixel_key`s simultaneously.
 
-**Pourquoi "pool global" plutôt que "pool par pixel_key"** : la version initiale (pool par pixel_key) recréait un pool à chaque groupe de blocs — pas de chevauchement entre groupes. Le pool global collecte tous les blocs en une seule liste, les workers pickent en continu, les résultats sont redistribués par pixel_key après.
+**Why "global pool" rather than "per pixel_key pool"**: the initial version (per pixel_key pool) recreated a pool for each block group — no overlap between groups. The global pool collects all blocks into a single list, workers pick continuously, results are redistributed by pixel_key afterwards.
 
-Limite : le vision encoder Vulkan crashe à partir de 4 encodages simultanés. Plancher à 3 workers.
+Limit: Vulkan vision encoder crashes from 4 simultaneous encodings. Floor at 3 workers.
 
-### `-np N` seul (sans parallélisation intra-page)
-**Résultat : contre-productif. Abandonné.**
+### `-np N` Alone (without intra-page parallelism)
+**Result: counter-productive. Abandoned.**
 
-Testé avec `n_parallel=2` sur 2 pages entières simultanées : 213s vs 110s. Les requêtes se battent pour le GPU entier. Contexte divisé entre slots → chaque slot n'a que 2048 tokens → blocs longs tronqués (HTTP 400).
+Tested with `n_parallel=2` on 2 full pages simultaneously: 213s vs 110s. Requests fight for the entire GPU. Context divided between slots → each slot only has 2048 tokens → long blocks truncated (HTTP 400).
 
-### Resize PIL avant predict (`--max-image-size 1500`)
-**Résultat : qualité fortement dégradée. Abandonné.**
+### PIL Resize Before predict (`--max-image-size 1500`)
+**Result: strongly degraded quality. Abandoned.**
 
-Testé sur images 4080×3072 → 1500×1129. Légèrement plus rapide mais OCR fortement dégradé.
-Cause : le resize s'appliquait **avant** la layout detection qui recevait une image dégradée, compromettant la détection des blocs.
+Tested on 4080×3072 → 1500×1129 images. Slightly faster but OCR strongly degraded.
+Cause: resize was applied **before** layout detection which received a degraded image, compromising block detection.
 
-### Paramètre `max_pixels`
-**Non applicable pour `llama-cpp-server`. Ignoré.**
+### `max_pixels` Parameter
+**Not applicable for `llama-cpp-server`. Ignored.**
 
-`max_pixels` contrôle le nombre de pixels envoyés au vision encoder. Défaut : `28×28×3600 = 2 822 400` px. Supporté uniquement par le backend `vllm-server`. Pour `llama-cpp-server`, un `warnings.warn` est émis et le paramètre est ignoré. L'image est envoyée telle quelle en base64 à llama-server.
+`max_pixels` controls the number of pixels sent to the vision encoder. Default: `28×28×3600 = 2,822,400` px. Only supported by the `vllm-server` backend. For `llama-cpp-server`, a `warnings.warn` is emitted and the parameter is ignored. The image is sent as-is in base64 to llama-server.
 
 ### `--flash-attn` (llama-server)
-Activé automatiquement dans llama-server.
+Automatically enabled in llama-server.
 
-### Augmenter `n_ubatch`
-**Testé (512 → 1024), aucun gain.**
+### Increasing `n_ubatch`
+**Tested (512 → 1024), no gain.**
 
-## Paramètres llama-server retenus
+## Retained llama-server Parameters
 
 ```
 -c 6144      # context window (2048 tokens/slot × 3 slots)
--np 3         # slots parallèles (cohérent avec VLM_PARALLEL=3 dans le patch)
--ngl 99       # toutes les couches sur GPU
+-np 3         # parallel slots (consistent with VLM_PARALLEL=3 in patch)
+-ngl 99       # all layers on GPU
 -b 512        # batch size
--ub 512       # ubatch size (testé 1024 : 0 gain)
--t 4          # threads CPU
---prio 2      # priorité process
---temp 0.0    # déterministe
+-ub 512       # ubatch size (tested 1024: 0 gain)
+-t 4          # CPU threads
+--prio 2      # process priority
+--temp 0.0    # deterministic
 -kvo          # KV cache offload
 ```
 
-KV cache avec np=3 : ~297 MiB × 3 / 2 ≈ 445 MiB. VRAM totale occupée : ~4.5 GiB sur 23 GiB.
+KV cache with np=3: ~297 MiB × 3 / 2 ≈ 445 MiB. Total VRAM used: ~4.5 GiB out of 23 GiB.
 
-## Pistes non explorées
+## Unexplored Paths
 
-- **Backend vllm-server** à la place de llama-cpp-server : supporterait `max_pixels` et potentiellement plus performant, mais nécessite un setup différent (Linux-friendly, pas testé sous Windows/Vulkan)
+- **vllm-server backend** instead of llama-cpp-server: would support `max_pixels` and potentially be more performant, but requires a different setup (Linux-friendly, not tested on Windows/Vulkan)

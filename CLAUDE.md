@@ -1,72 +1,72 @@
-# CLAUDE.md — ocr-livre
+# CLAUDE.md — ocr-book
 
-Pipeline CLI Python qui OCRise un livre (photos de pages) en Markdown via PaddleOCR-VL-1.5 servi localement par llama-server.
+Python CLI pipeline that OCRs a book (page photos) into Markdown via PaddleOCR-VL-1.5 served locally by llama-server.
 
 ## Architecture
 
 ```
 src/
-  main.py        — CLI argparse, point d'entrée
-  config.py      — Config dataclass (toutes les valeurs par défaut ici)
-  ocr_client.py  — OCR d'une image via PaddleOCRVL
-  postprocess.py — Nettoyage texte + gestion des blocs page dans le .md
-  images.py      — Collecte, renommage et copie depuis sous-dossiers
-  pipeline.py    — Orchestration complète (multi-serveurs, parts, fallback)
-  obsidian.py    — Export Obsidian (wikilinks, migrate_figures, postprocess_file)
-  progress.py    — Logging + statistiques (Stats dataclass)
+  main.py        — CLI argparse, entry point
+  config.py      — Config dataclass (all defaults here)
+  ocr_client.py  — OCR of an image via PaddleOCRVL
+  postprocess.py — Text cleanup + page block management in .md
+  images.py      — Collection, renaming and copying from subfolders
+  pipeline.py    — Full orchestration (multi-servers, parts, fallback)
+  obsidian.py    — Obsidian export (wikilinks, migrate_figures, postprocess_file)
+  progress.py    — Logging + statistics (Stats dataclass)
 ```
 
-Dépendances : `environment.yaml`. Venv conda: `ocr-livre`. Lancer depuis `src/` : `python main.py`.
+Dependencies: `environment.yaml`. Conda env: `ocr-livre`. Run from `src/`: `python main.py`.
 
-Doc projet: `docs/`.
+Project docs: `docs/`.
 
-Explorations et tests informels : `draft/`. Resultats des explorations: `docs/tested.md`.
+Explorations and informal tests: `draft/`. Experiment results: `docs/tested.md`.
 
-Travaux en cours : `docs/issues.md`.
+Work in progress: `docs/issues.md`.
 
-Vérifie ta mémoire en début de session : `memory/`.
+Check your memory at session start: `memory/`.
 
 ## Conventions
 
-- **Commits** : message bref en anglais (`fix(module): description`)
-- **Langue** : code et commits en anglais
-- **Pas de README** sauf demande explicite
-- **Pas de tests** sauf demande explicite
+- **Commits**: brief English message (`fix(module): description`)
+- **Language**: code and commits in English
+- **Do not modify README** unless explicitly requested
+- **Do not add tests** unless explicitly requested
 
-## Préférences de travail
+## Work Preferences
 
-### Général
-- Lire les fichiers directement (Glob/Grep/Read) sans passer par un sous-agent sauf si la recherche est vraiment ouverte
-- Ne pas proposer de corrections au-delà du scope demandé
-- Si l'utilisateur dit "j'ai corrigé X", vérifier l'état actuel du fichier avant de supposer quoi que ce soit
-- Pas de récapitulatif en fin de message sauf si le changement est complexe
-- Repondre de façon honnete: contredire si nécessaire et expliquer son point de vue. 
-- Toujours demander des clarifications avant de coder a part si les consignes sont claires ou évidentes.
+### General
+- Read files directly (Glob/Grep/Read) without using a sub-agent unless the search is really open-ended
+- Do not suggest corrections beyond the requested scope
+- If the user says "I fixed X", check the actual file state before assuming anything
+- No recap at the end of the message unless the change is complex
+- Answer honestly: disagree if necessary and explain your point of view
+- Always ask for clarifications before coding unless instructions are clear or obvious
 
 ### Git
-- add et commit a chaque issue résolue: grouper les fichiers modifiés de préférence à part si la modification est isolée.
-- `draft/` est gitignored.
-- ne pas ajouter le message "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+- add and commit for each resolved issue: group modified files when relevant unless the change is isolated
+- `draft/` is gitignored
+- do not add the message "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ### Issues
-- après implémentation, mettre a jour issues.md si pertinent.
-- après implémentation, effacer les sous-sections (`###`) et items de la sous-section qui sont résolus (`issues.md`).
-- eviter de laisser une section (`##`) de issues.md vide: écrire "OK".
+- after implementation, update issues.md if relevant
+- after implementation, delete resolved subsections (`###`) and items (`issues.md`)
+- avoid leaving an empty section (`##`) in issues.md: write "OK"
 
 ### Draft
-- Toutes les explorations et tests initiaux se font dans `draft/`. 
-- Toutes les sorties issues de `drat/` doivent atterir dans `output/`.
-- Avant de coder un script de test, toujours vérifier si des modules ou fonctions de `src/` peuvent etre utilisé.
+- All explorations and initial tests go in `draft/`
+- All outputs from `draft/` must land in `output/`
+- Before writing a test script, always check if modules or functions from `src/` can be reused
 
-## Limiter la consommation de tokens
+## Limit token consumption
 
-- Ne pas re-lire un fichier déjà lu dans la conversation s'il n'a pas changé à part sur demande explicite
-- Utiliser Grep ciblé plutôt qu'un Glob large sur tout le repo
-- Ne pas explorer `output/` ni `photos/` ni `__pycache__` ni `.pytest_cache` (contenu non pertinent, très volumineux)
-- Ne pas générer de docstrings ou commentaires sur du code non modifié
+- Do not re-read a file already read in the conversation unless it has changed or explicitly requested
+- Use targeted Grep rather than a broad Glob across the whole repo
+- Do not explore `output/` nor `photos/` nor `__pycache__` nor `.pytest_cache` (irrelevant, very large content)
+- Do not generate docstrings or comments on unmodified code
 
-## Ressources
-Documentation sur le stack spécifique utilisé dans le projet.
+## Resources
+Documentation on the specific stack used in the project.
 
 ### llama-server
 
@@ -74,13 +74,13 @@ Documentation sur le stack spécifique utilisé dans le projet.
 
 ### PaddleOCR
 
-- Documentation générale: https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html
+- General documentation: https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html
 
-- Page HuggingFace: https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5
+- HuggingFace page: https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5
 
-- Page GitHub: https://github.com/PaddlePaddle/PaddleOCR
+- GitHub page: https://github.com/PaddlePaddle/PaddleOCR
 
-- Doc interne: `docs/paddleocr/`
+- Internal docs: `docs/paddleocr/`
 
 ## Troubleshooting
 - Run `python src/main.py --images photos/page_1.jpg --no-resume`.

@@ -1,5 +1,5 @@
 """
-progress.py — Suivi de progression, statistiques, logging et rapport final
+progress.py — Progress tracking, statistics, logging and final report
 """
 
 import datetime
@@ -13,9 +13,9 @@ from config import Config
 
 def setup_logging(cfg: Config) -> None:
     """
-    Configure le logging :
-      - console  : INFO (ou DEBUG si cfg.verbose)
-      - fichier  : DEBUG toujours (cfg.log_file)
+    Configures logging:
+      - console : INFO (or DEBUG if cfg.verbose)
+      - file    : DEBUG always (cfg.log_file)
     """
     level = logging.DEBUG if cfg.verbose else logging.INFO
 
@@ -31,7 +31,7 @@ def setup_logging(cfg: Config) -> None:
 
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt, handlers=handlers)
 
-    # Réduire le bruit des bibliothèques tierces
+    # Reduce noise from third-party libraries
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
 
@@ -45,20 +45,20 @@ class Stats:
     loop_stops: int = 0
     total_chars: int = 0
 
-    # Temps par page (total + par étape)
+    # Time per page (total + per step)
     times: list[float] = field(default_factory=list)
     preprocess_times: list[float] = field(default_factory=list)
     ocr_times: list[float] = field(default_factory=list)
     postprocess_times: list[float] = field(default_factory=list)
 
-    # Détail par page (pour le rapport)
+    # Per-page detail (for the report)
     _pages: list[dict] = field(default_factory=list)
-    fallback_pages: list[str] = field(default_factory=list)  # pages traitées en no-layout
+    fallback_pages: list[str] = field(default_factory=list)  # pages processed without layout
 
     model_load_time: float = 0.0
     start_time: float = field(default_factory=time.time)
 
-    # ── Mise à jour ──────────────────────────────────────────────────────────
+    # ── Updates ──────────────────────────────────────────────────────────────
 
     def record_success(
         self,
@@ -100,7 +100,7 @@ class Stats:
         self.errors += 1
         self._pages.append({"name": page_name, "error": True})
 
-    # ── Calculs ──────────────────────────────────────────────────────────────
+    # ── Calculations ─────────────────────────────────────────────────────────
 
     @property
     def avg_time(self) -> float:
@@ -112,19 +112,19 @@ class Stats:
 
     @property
     def eta_s(self) -> float | None:
-        """Estimation du temps restant (secondes)."""
+        """Estimated time remaining (seconds)."""
         remaining = self.total - self.done - self.skipped - self.errors
         if self.avg_time and remaining > 0:
             return self.avg_time * remaining
         return None
 
-    # ── Affichage ────────────────────────────────────────────────────────────
+    # ── Display ──────────────────────────────────────────────────────────────
 
     def log_page(self, index: int, name: str, elapsed: float, chars: int) -> None:
         eta = self.eta_s
         eta_str = f"  ETA ~{eta/60:.0f}min" if eta else ""
         logging.getLogger(__name__).info(
-            "[%d/%d] %-30s  %5.1fs  %d car.%s",
+            "[%d/%d] %-30s  %5.1fs  %d chars%s",
             index, self.total, name, elapsed, chars, eta_str,
         )
 
@@ -134,63 +134,63 @@ class Stats:
         elapsed_str = f"{elapsed_s:.0f}s" if elapsed_s < 60 else f"{elapsed_s / 60:.1f} min"
         logger.info("─" * 60)
         logger.info(
-            "Terminé en %s  |  %d pages OK  |  %d skippées  |  %d erreurs",
+            "Finished in %s  |  %d pages OK  |  %d skipped  |  %d errors",
             elapsed_str, self.done, self.skipped, self.errors,
         )
         if self.done:
             logger.info(
-                "Vitesse moyenne : %.1fs/page  |  %d caractères total",
+                "Average speed: %.1fs/page  |  %d characters total",
                 self.avg_time, self.total_chars,
             )
 
-    # ── Rapport ──────────────────────────────────────────────────────────────
+    # ── Report ───────────────────────────────────────────────────────────────
 
     def write_report(self, report_path: Path, cfg: Config) -> None:
-        """Écrit un rapport Markdown détaillé du run."""
+        """Writes a detailed Markdown report of the run."""
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         def _row(*cells) -> str:
             return "| " + " | ".join(str(c) for c in cells) + " |"
 
         def _lst_stats(lst: list[float]):
-            """Retourne (avg, min, max, total) ou (0,0,0,0) si vide."""
+            """Returns (avg, min, max, total) or (0,0,0,0) if empty."""
             if not lst:
                 return 0.0, 0.0, 0.0, 0.0
             return sum(lst) / len(lst), min(lst), max(lst), sum(lst)
 
         lines: list[str] = []
 
-        # ── En-tête ─────────────────────────────────────────────────────────
+        # ── Header ─────────────────────────────────────────────────────────
         lines += [
-            "# Rapport de run OCR\n",
+            "# OCR Run Report\n",
             f"**Date** : {now}  ",
-            f"**Modèle** : PaddleOCR-VL-1.5  ",
+            f"**Model** : PaddleOCR-VL-1.5  ",
             f"**Layout detection** : {cfg.use_layout_detection}  ",
-            f"**Sortie** : `{cfg.output_file}`  ",
+            f"**Output** : `{cfg.output_file}`  ",
             "",
         ]
 
-        # ── Résumé ──────────────────────────────────────────────────────────
+        # ── Summary ─────────────────────────────────────────────────────────
         elapsed_s = self.elapsed_total
         elapsed_str = f"{elapsed_s:.0f}s" if elapsed_s < 60 else f"{elapsed_s / 60:.1f} min"
         avg_chars = self.total_chars // self.done if self.done else 0
         lines += [
-            "## Résumé\n",
-            "| Indicateur | Valeur |",
+            "## Summary\n",
+            "| Metric | Value |",
             "|---|---|",
-            _row("Pages total", self.total),
-            _row("Traitées avec succès", self.done),
-            _row("Ignorées (reprise)", self.skipped),
-            _row("Erreurs", self.errors),
+            _row("Total pages", self.total),
+            _row("Processed successfully", self.done),
+            _row("Skipped (resume)", self.skipped),
+            _row("Errors", self.errors),
             _row("Fallback no-layout", len(self.fallback_pages)),
-            _row("Chargement modèle", f"{self.model_load_time:.1f}s"),
-            _row("Durée totale (pipeline)", elapsed_str),
-            _row("Caractères total", f"{self.total_chars:,}"),
-            _row("Caractères moy./page", f"{avg_chars:,}"),
+            _row("Model load", f"{self.model_load_time:.1f}s"),
+            _row("Total duration (pipeline)", elapsed_str),
+            _row("Total characters", f"{self.total_chars:,}"),
+            _row("Average characters/page", f"{avg_chars:,}"),
             "",
         ]
 
-        # ── Décomposition du temps ──────────────────────────────────────────
+        # ── Time breakdown ──────────────────────────────────────────────────
         if self.done:
             avg_ocr, min_ocr, max_ocr, tot_ocr = _lst_stats(self.ocr_times)
             avg_post, min_post, max_post, tot_post = _lst_stats(self.postprocess_times)
@@ -200,12 +200,12 @@ class Stats:
             pct_post = 100 * tot_post / tot_tot if tot_tot else 0
 
             lines += [
-                "## Décomposition du temps d'exécution\n",
-                "| Étape | Moy. | Min | Max | Total | % |\n|---|---|---|---|---|---|",
-                _row("Inférence (pipeline.predict)",
+                "## Execution Time Breakdown\n",
+                "| Step | Avg | Min | Max | Total | % |\n|---|---|---|---|---|---|",
+                _row("Inference (pipeline.predict)",
                      f"{avg_ocr:.2f}s", f"{min_ocr:.2f}s", f"{max_ocr:.2f}s",
                      f"{tot_ocr:.1f}s", f"{pct_ocr:.1f}%"),
-                _row("Post-traitement",
+                _row("Post-processing",
                      f"{avg_post:.3f}s", f"{min_post:.3f}s", f"{max_post:.3f}s",
                      f"{tot_post:.2f}s", f"{pct_post:.1f}%"),
                 _row("**Total/page**",
@@ -214,27 +214,27 @@ class Stats:
                 "",
             ]
 
-        # ── Pages fallback no-layout ────────────────────────────────────────
+        # ── Fallback no-layout pages ────────────────────────────────────────
         if self.fallback_pages:
             lines += [
-                "## Pages traitées en fallback (sans layout) — à vérifier\n",
-                "Ces pages ont déclenché un timeout et ont été retraitées sans layout detection.",
-                "La qualité peut être dégradée (headers manquants, mots coupés).\n",
+                "## Pages processed in fallback (without layout) — to review\n",
+                "These pages triggered a timeout and were reprocessed without layout detection.",
+                "Quality may be degraded (missing headers, broken words).\n",
             ]
             for name in self.fallback_pages:
                 lines.append(f"- {name}")
             lines.append("")
 
-        # ── Détail par page ─────────────────────────────────────────────────
+        # ── Per-page detail ─────────────────────────────────────────────────
         if self._pages:
             lines += [
-                "## Détail par page\n",
-                "| Page | OCR | Post-traitement | Total | Caractères | Notes |",
+                "## Per-page Detail\n",
+                "| Page | OCR | Post-processing | Total | Characters | Notes |",
                 "|---|---|---|---|---|---|",
             ]
             for p in self._pages:
                 if p.get("error"):
-                    lines.append(_row(p["name"], "—", "—", "—", "ERREUR", ""))
+                    lines.append(_row(p["name"], "—", "—", "—", "ERROR", ""))
                 else:
                     note = "fallback" if p.get("no_layout") else ""
                     lines.append(_row(
@@ -249,4 +249,4 @@ class Stats:
 
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
-        logging.getLogger(__name__).info("Rapport : %s", report_path.resolve())
+        logging.getLogger(__name__).info("Report: %s", report_path.resolve())

@@ -1,5 +1,5 @@
 """
-ocr_client.py — OCR d'une image via PaddleOCRVL + llama-server
+ocr_client.py — OCR of an image via PaddleOCRVL + llama-server
 """
 
 import logging
@@ -35,7 +35,7 @@ def _predict_with_timeout(pipeline, image_path_str: str, timeout: int, name: str
     t.join(timeout=timeout if timeout > 0 else None)
 
     if t.is_alive():
-        raise OCRTimeout(f"Timeout ({timeout}s) dépassé pour {name}.")
+        raise OCRTimeout(f"Timeout ({timeout}s) exceeded for {name}.")
     if exc:
         raise exc[0]
     return result
@@ -43,22 +43,22 @@ def _predict_with_timeout(pipeline, image_path_str: str, timeout: int, name: str
 
 def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]:
     """
-    OCRise une image avec le pipeline PaddleOCRVL.
+    Runs OCR on an image with the PaddleOCRVL pipeline.
 
     Args:
-        image_path : chemin vers l'image
-        pipeline   : instance PaddleOCRVL (chargée une fois dans pipeline.py)
+        image_path : path to the image
+        pipeline   : PaddleOCRVL instance (loaded once in pipeline.py)
         cfg        : configuration
 
     Returns:
-        (markdown_text, métriques) où métriques = {"total_latency": float}
+        (markdown_text, metrics) where metrics = {"total_latency": float}
 
     Raises:
-        OCRError si l'image est introuvable ou si la génération échoue après retry
+        OCRError if the image is not found or generation fails after retry
     """
     image_path = Path(image_path)
     if not image_path.exists():
-        raise OCRError(f"Image introuvable : {image_path}")
+        raise OCRError(f"Image not found: {image_path}")
 
     save_path = str(cfg.figures_path / image_path.stem)
     md_path = Path(save_path) / f"{image_path.stem}.md"
@@ -71,33 +71,33 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
         except OCRError:
             raise
         except Exception as e:
-            raise OCRError(f"Échec génération pour {image_path.name} : {e}") from e
+            raise OCRError(f"Generation failed for {image_path.name}: {e}") from e
 
         total_latency = time.perf_counter() - t0
 
         if not output:
             if attempt == 0:
-                logger.warning("%s — sortie vide, retry...", image_path.name)
+                logger.warning("%s — empty output, retry...", image_path.name)
                 continue
-            raise OCRError(f"Contenu vide pour {image_path.name}.")
+            raise OCRError(f"Empty content for {image_path.name}.")
 
         for res in output:
             res.save_to_markdown(save_path=save_path, pretty=True)
 
         if not md_path.exists():
             if attempt == 0:
-                logger.warning("%s — MD non généré, retry...", image_path.name)
+                logger.warning("%s — MD not generated, retry...", image_path.name)
                 continue
-            raise OCRError(f"Fichier markdown non généré pour {image_path.name}.")
+            raise OCRError(f"Markdown file not generated for {image_path.name}.")
 
         text = md_path.read_text(encoding="utf-8").strip()
         if not text:
             if attempt == 0:
-                logger.warning("%s — MD vide, retry...", image_path.name)
+                logger.warning("%s — empty MD, retry...", image_path.name)
                 continue
-            raise OCRError(f"Contenu vide pour {image_path.name}.")
+            raise OCRError(f"Empty content for {image_path.name}.")
 
-        logger.debug("%s → %d caractères (%.1fs)", image_path.name, len(text), total_latency)
+        logger.debug("%s → %d characters (%.1fs)", image_path.name, len(text), total_latency)
         return text, {"total_latency": total_latency}
 
-    raise OCRError(f"Échec après retry pour {image_path.name}.")
+    raise OCRError(f"Failed after retry for {image_path.name}.")

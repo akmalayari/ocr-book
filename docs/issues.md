@@ -1,19 +1,19 @@
-# Issues — travaux en cours
+# Issues — Work in Progress
 
-## Version refined (actuelle)
+## Refined version (current)
 
 OK
 
-## Prochaines versions
+## Next versions
 
-### Feature 1 — Support PDF multi-pages
+### Feature 1 — Multi-page PDF Support
 
-Splitter un PDF en images (une par page) avant de l'envoyer au pipeline, via `pdf2image` ou `pymupdf`. À intégrer dans `collect_images` ou en amont.
+Split a PDF into images (one per page) before sending to the pipeline, via `pdf2image` or `pymupdf`. To integrate into `collect_images` or upstream.
 
-### Feature 2 - Postprocess du LaTeX
+### Feature 2 - LaTeX Postprocess
 
-Rendre robuste l'OCR des documents académiques contenant beaucoup d''equations LateX. 
+Make OCR of academic documents with many LaTeX equations more robust.
 
-### Fragilité 1 (en suspens) - Liberation de ressources 
+### Fragility 1 (pending) - Resource Release
 
-Les ressources ne sont pas toujours libérées lors de la fermeture du serveur: "Background thread did not terminate in time. Some resources may not be properly released."
+Resources are not always released when closing the server: "Background thread did not terminate in time. Some resources may not be properly released."

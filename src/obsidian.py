@@ -1,5 +1,5 @@
 """
-obsidian.py — Utilitaires pour l'export Obsidian
+obsidian.py — Utilities for Obsidian export
 """
 
 import logging
@@ -13,23 +13,23 @@ logger = logging.getLogger(__name__)
 
 
 def prompt_if_needed(cfg: Config) -> None:
-    """Prompt interactif pour vault_root, vault_path et vault_figures_dir si non configurés."""
+    """Interactive prompt for vault_root, vault_path and vault_figures_dir if not configured."""
     if cfg.vault_root is None:
-        cfg.vault_root = input("Chemin absolu de la racine du vault Obsidian : ").strip().strip('"').strip("'")
+        cfg.vault_root = input("Absolute path to the Obsidian vault root: ").strip().strip('"').strip("'")
     if cfg.vault_path is None:
-        cfg.vault_path = input("Sous-dossier de sortie relatif à la racine du vault (ex: Documents/OCR) : ").strip().strip('"').strip("'")
+        cfg.vault_path = input("Output subfolder relative to the vault root (ex: Documents/OCR): ").strip().strip('"').strip("'")
     if cfg.vault_figures_dir is None:
-        cfg.vault_figures_dir = input("Chemin des figures relatif à la RACINE du vault (ex: Documents/OCR/Files) : ").strip().strip('"').strip("'")
+        cfg.vault_figures_dir = input("Figures path relative to the vault ROOT (ex: Documents/OCR/Files): ").strip().strip('"').strip("'")
 
 
 def fix_image_paths_obsidian(text: str, vault_figures_dir: str) -> str:
     """
-    Convertit les balises <img src="imgs/..."> en wikilinks Obsidian ![[...]].
-    Utilisé pendant l'OCR (chemins raw PaddleOCR).
-    Le chemin est construit depuis la racine du vault.
+    Converts <img src="imgs/..."> tags into Obsidian wikilinks ![[...]].
+    Used during OCR (raw PaddleOCR paths).
+    The path is built from the vault root.
     """
     if not vault_figures_dir:
-        raise ValueError("vault_figures_dir non configuré")
+        raise ValueError("vault_figures_dir not configured")
     prefix = vault_figures_dir.replace("\\", "/").rstrip("/")
 
     def _replace(m: re.Match) -> str:
@@ -43,15 +43,15 @@ def fix_image_paths_obsidian(text: str, vault_figures_dir: str) -> str:
 
 def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: bool = False) -> int:
     """
-    Copie les figures depuis output/figures/*/imgs/* vers vault_root/vault_figures_dir/.
-    Structure aplatie : page_001/imgs/fig.jpg → vault_figures_dir/fig.jpg.
-    Skippe les fichiers déjà présents. Retourne le nombre de fichiers copiés.
+    Copies figures from output/figures/*/imgs/* to vault_root/vault_figures_dir/.
+    Flat structure: page_001/imgs/fig.jpg → vault_figures_dir/fig.jpg.
+    Skips files already present. Returns the number of files copied.
 
-    page_ids : si fourni, limite la copie aux sous-dossiers correspondants (pages du run courant).
-               Si None, copie tout le contenu de figures_path.
+    page_ids : if provided, limits copying to the corresponding subfolders (pages of the current run).
+               If None, copies all content from figures_path.
     """
     if not cfg.vault_root or not cfg.vault_figures_dir:
-        raise ValueError("vault_root et vault_figures_dir doivent être configurés")
+        raise ValueError("vault_root and vault_figures_dir must be configured")
 
     dest = Path(cfg.vault_root) / cfg.vault_figures_dir
     if not dry_run:
@@ -78,24 +78,24 @@ def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: boo
             logger.info("[dry-run] %s → %s", src.name, target)
         else:
             shutil.copy2(src, target)
-            logger.info("Copié : %s", src.name)
+            logger.info("Copied: %s", src.name)
         copied += 1
 
-    logger.info("%d fichier(s) copié(s) vers %s", copied, dest)
+    logger.info("%d file(s) copied to %s", copied, dest)
     return copied
 
 
 def postprocess_file(cfg: Config) -> None:
     """
-    Applique le postprocess complet sur un fichier .md déjà généré (sans relancer l'OCR) :
-      - nettoyage texte (clean_page, strip_table_styles)
-      - conversion des balises <img> en wikilinks ![[]]
-      - détection de headers (si cfg.header_patterns)
+    Applies full postprocess on an already generated .md file (without re-running OCR):
+      - text cleanup (clean_page, strip_table_styles)
+      - conversion of <img> tags to wikilinks ![[ ]]
+      - header detection (if cfg.header_patterns)
     """
     from postprocess import clean_page, strip_table_styles, apply_header_detection
 
     if not cfg.vault_figures_dir:
-        raise ValueError("vault_figures_dir non configuré")
+        raise ValueError("vault_figures_dir not configured")
     prefix = cfg.vault_figures_dir.replace("\\", "/").rstrip("/")
 
     def _replace(m: re.Match) -> str:

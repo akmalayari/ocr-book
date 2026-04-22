@@ -1,12 +1,12 @@
 """
-apply_paddlex_patch_otsl.py — Applique (ou vérifie) le patch paddlex per-region VLM.
+apply_paddlex_patch_otsl.py — Applies (or checks) the paddlex per-region VLM patch.
 
-Voir paddlex_patch_otsl.md pour la description complète.
+See paddlex_patch_otsl.md for full description.
 
 Usage :
-    python docs/dev/apply_paddlex_patch_otsl.py           # applique le patch
-    python docs/dev/apply_paddlex_patch_otsl.py --check   # vérifie sans modifier
-    python docs/dev/apply_paddlex_patch_otsl.py --revert  # restaure l'original
+    python docs/dev/apply_paddlex_patch_otsl.py           # apply patch
+    python docs/dev/apply_paddlex_patch_otsl.py --check   # check without modifying
+    python docs/dev/apply_paddlex_patch_otsl.py --revert  # restore original
 """
 
 import argparse
@@ -73,42 +73,42 @@ def status(text: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check",  action="store_true", help="Vérifie sans modifier.")
-    parser.add_argument("--revert", action="store_true", help="Restaure l'original.")
+    parser.add_argument("--check",  action="store_true", help="Check without modifying.")
+    parser.add_argument("--revert", action="store_true", help="Restore original.")
     args = parser.parse_args()
 
     if not TARGET.exists():
-        print(f"[ERREUR] Fichier introuvable : {TARGET}")
+        print(f"[ERROR] File not found: {TARGET}")
         sys.exit(1)
 
     text = TARGET.read_text(encoding="utf-8")
     state = status(text)
-    print(f"Fichier  : {TARGET}")
-    print(f"État     : {state}")
+    print(f"File  : {TARGET}")
+    print(f"State : {state}")
 
     if args.check:
         sys.exit(0 if state == "patched" else 1)
 
     if args.revert:
         if state == "original":
-            print("Déjà à l'état original, rien à faire.")
+            print("Already at original state, nothing to do.")
             return
         if state != "patched":
-            print("[ERREUR] État inconnu, modification manuelle requise.")
+            print("[ERROR] Unknown state, manual modification required.")
             sys.exit(1)
         TARGET.write_text(text.replace(PATCHED, ORIGINAL), encoding="utf-8")
-        print("Patch retiré.")
+        print("Patch removed.")
         return
 
-    # Appliquer le patch
+    # Apply patch
     if state == "patched":
-        print("Déjà patché, rien à faire.")
+        print("Already patched, nothing to do.")
         return
     if state != "original":
-        print("[ERREUR] État inconnu, modification manuelle requise.")
+        print("[ERROR] Unknown state, manual modification required.")
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
-    print("Patch appliqué.")
+    print("Patch applied.")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-config.py — Configuration centrale du pipeline OCR
+config.py — Central configuration for the OCR pipeline
 """
 
 from dataclasses import dataclass, field
@@ -12,11 +12,11 @@ class Config:
     llama_server_path: str = r"C:\path\to\llama.cpp\llama-b8683-bin-win-vulkan-x64\llama-server.exe"
     model_path: str        = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5.gguf"
     mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
-    server_base_port: int  = 8080   # ports 8080, 8081, … (un par serveur)
-    server_timeout: int    = 60     # secondes à attendre avant de déclarer le serveur mort
-    n_servers: int         = 1      # nombre de llama-server parallèles
+    server_base_port: int  = 8080   # ports 8080, 8081, … (one per server)
+    server_timeout: int    = 60     # seconds to wait before declaring the server dead
+    n_servers: int         = 1      # number of parallel llama-server instances
 
-    # ── Paramètres llama-server (tuning) ─────────────────────────────────────
+    # ── llama-server parameters (tuning) ─────────────────────────────────────
     n_ctx: int            = 6144   # 2048 tokens/slot × np=3
     n_gpu_layers: int     = 99
     n_batch: int          = 512
@@ -26,35 +26,35 @@ class Config:
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
-    n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py requis)
-    page_timeout: int     = 120    # secondes max par page avant abandon (0 = désactivé)
+    n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py required)
+    page_timeout: int     = 120    # max seconds per page before giving up (0 = disabled)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
-    use_layout_detection: bool = True   # False = fallback sans layout
+    use_layout_detection: bool = True   # False = fallback without layout
 
     # ── Images ───────────────────────────────────────────────────────────────
     rename_prefix: str          = "page"
     images_dir: str             = "./photos"
     extensions: tuple           = (".jpg", ".jpeg", ".png", ".webp")
-    image_files: list | None    = None   # si fourni, court-circuite images_dir
+    image_files: list | None    = None   # if provided, bypasses images_dir
 
-    # ── Sortie ───────────────────────────────────────────────────────────────
-    output_file: str = "./output/livre.md"
+    # ── Output ───────────────────────────────────────────────────────────────
+    output_file: str = "./output/book.md"
     figures_dir: str = "./output/figures"
     resume: bool     = True
 
-    # ── Post-traitement ──────────────────────────────────────────────────────
+    # ── Post-processing ──────────────────────────────────────────────────────
     postprocess: bool                   = True
     mode: str                           = "base"   # "base" | "obsidian"
-    vault_root: str | None               = "C:/path/to/Documents/Classique Obsidian"  # racine du vault
-    vault_path: str | None              = "Documents/OCR"          # sous-dossier de sortie, relatif à vault_root
-    vault_figures_dir: str | None       = "Files/OCR"    # chemin figures relatif à vault_root
+    vault_root: str | None               = "C:/path/to/Documents/Classique Obsidian"  # vault root
+    vault_path: str | None              = "Documents/OCR"          # output subfolder, relative to vault_root
+    vault_figures_dir: str | None       = "Files/OCR"    # figures path relative to vault_root
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
-    # Liste de (regex_début_de_ligne, niveau) pour la détection de headers sur le fichier final.
-    # None = désactivé (prompt au lancement). [] = désactivé sans prompt.
-    # Ex : [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
+    # List of (line_start_regex, level) for header detection on the final file.
+    # None = disabled (prompt at launch). [] = disabled without prompt.
+    # Ex: [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
     header_patterns: list[tuple[str, int]] | None = field(default_factory=list)
 
     # ── Logging ──────────────────────────────────────────────────────────────

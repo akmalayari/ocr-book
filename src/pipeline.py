@@ -1,5 +1,5 @@
 """
-pipeline.py — Orchestration du pipeline OCR complet
+pipeline.py — Orchestration of the complete OCR pipeline
 """
 
 import logging
@@ -59,28 +59,28 @@ def _wait_for_server(url: str, timeout: int) -> bool:
 
 def run_pipeline(cfg: Config) -> Stats:
     """
-    Lance le pipeline complet :
-      1. Collecte les images
-      2. Démarre n_servers llama-server en parallèle
-      3. Instancie n_servers PaddleOCRVL
-      4. Traite les pages en parallèle (une page par serveur)
-      5. Écrit chaque page dans output/parts/<page_id>.part
-      6. Combine les parts dans l'ordre en fin de run
-      7. Retourne les statistiques
+    Runs the complete pipeline:
+      1. Collects images
+      2. Starts n_servers llama-server in parallel
+      3. Instantiates n_servers PaddleOCRVL
+      4. Processes pages in parallel (one page per server)
+      5. Writes each page to output/parts/<page_id>.part
+      6. Combines parts in order at the end of the run
+      7. Returns statistics
     """
     images = collect_images(cfg)
 
     # ── Parts dir ────────────────────────────────────────────────────────────
-    # Toujours dans output/parts, même en mode obsidian où output_path pointe vers le vault
+    # Always in output/parts, even in obsidian mode where output_path points to the vault
     parts_dir = Path(cfg.log_file).parent / "parts"
     parts_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Reprise ──────────────────────────────────────────────────────────────
+    # ── Resume ───────────────────────────────────────────────────────────────
     done_pages: set[str] = set()
     if cfg.resume:
         done_pages = {p.stem for p in parts_dir.glob("*.part")}
         if done_pages:
-            logger.info("Reprise : %d page(s) déjà traitée(s).", len(done_pages))
+            logger.info("Resume: %d page(s) already processed.", len(done_pages))
     else:
         for p in parts_dir.glob("*.part"):
             p.unlink()
@@ -88,11 +88,11 @@ def run_pipeline(cfg: Config) -> Stats:
     stats = Stats(total=len(images))
     stats.skipped = sum(1 for img in images if img.stem in done_pages)
 
-    # ── Démarrage des serveurs ────────────────────────────────────────────────
+    # ── Server startup ───────────────────────────────────────────────────────
     ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
     urls  = [f"http://127.0.0.1:{port}" for port in ports]
 
-    logger.info("Démarrage de %d llama-server...", cfg.n_servers)
+    logger.info("Starting %d llama-server...", cfg.n_servers)
     t_load0 = time.time()
     procs = [_start_server(cfg, port) for port in ports]
 
@@ -101,13 +101,13 @@ def run_pipeline(cfg: Config) -> Stats:
             for proc in procs:
                 proc.kill()
             raise RuntimeError(
-                f"llama-server ({url}) n'a pas démarré dans les délais ({cfg.server_timeout}s)."
+                f"llama-server ({url}) did not start within the time limit ({cfg.server_timeout}s)."
             )
 
     stats.model_load_time = time.time() - t_load0
-    logger.info("Serveurs prêts en %.1fs.", stats.model_load_time)
+    logger.info("Servers ready in %.1fs.", stats.model_load_time)
 
-    # ── Instanciation des pipelines ───────────────────────────────────────────
+    # ── Pipeline instantiation ────────────────────────────────────────────────
     _vlm_kwargs_base = dict(
         vl_rec_backend="llama-cpp-server",
         vl_rec_api_model_name="paddleocr",
@@ -123,7 +123,7 @@ def run_pipeline(cfg: Config) -> Stats:
     for pl in pipelines:
         pipeline_queue.put(pl)
 
-    # ── Redémarrage serveur ───────────────────────────────────────────────────
+    # ── Server restart ────────────────────────────────────────────────────────
     restart_lock = threading.Lock()
     _fallback_pipeline: list = [None]
     fallback_init_lock = threading.Lock()
@@ -132,7 +132,7 @@ def run_pipeline(cfg: Config) -> Stats:
         if _fallback_pipeline[0] is None:
             with fallback_init_lock:
                 if _fallback_pipeline[0] is None:
-                    logger.info("Instanciation du pipeline fallback (sans layout)...")
+                    logger.info("Instantiating fallback pipeline (without layout)...")
                     _fallback_pipeline[0] = PaddleOCRVL(
                         vl_rec_server_url=f"{urls[0]}/v1",
                         **{**_vlm_kwargs_base, "use_layout_detection": False},
@@ -140,7 +140,7 @@ def run_pipeline(cfg: Config) -> Stats:
         return _fallback_pipeline[0]
 
     def restart_servers() -> None:
-        logger.warning("Redémarrage des serveurs llama-server...")
+        logger.warning("Restarting llama-server instances...")
         for proc in procs:
             proc.kill()
             proc.wait()
@@ -148,7 +148,7 @@ def run_pipeline(cfg: Config) -> Stats:
         procs[:] = new_procs
         for url in urls:
             if not _wait_for_server(url, cfg.server_timeout):
-                raise RuntimeError(f"Redémarrage échoué : {url} n'a pas répondu.")
+                raise RuntimeError(f"Restart failed: {url} did not respond.")
         while not pipeline_queue.empty():
             try:
                 pipeline_queue.get_nowait()
@@ -157,9 +157,9 @@ def run_pipeline(cfg: Config) -> Stats:
         for pl in [PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base) for url in urls]:
             pipeline_queue.put(pl)
         _fallback_pipeline[0] = None
-        logger.info("Serveurs redémarrés avec succès.")
+        logger.info("Servers restarted successfully.")
 
-    # ── Traitement parallèle ──────────────────────────────────────────────────
+    # ── Parallel processing ───────────────────────────────────────────────────
     cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
     figures_rel = os.path.relpath(cfg.figures_path, cfg.output_path.parent)
     to_process = [(idx, img) for idx, img in enumerate(images, 1)
@@ -191,7 +191,7 @@ def run_pipeline(cfg: Config) -> Stats:
             }
 
         def _write_error(e, elapsed) -> dict:
-            logger.error("[%d/%d] %s — ERREUR (%.1fs) : %s",
+            logger.error("[%d/%d] %s — ERROR (%.1fs): %s",
                          idx, len(images), img_path.name, elapsed, e)
             part_path = parts_dir / f"{page_id}.part"
             with part_path.open("a", encoding="utf-8") as f:
@@ -205,7 +205,7 @@ def run_pipeline(cfg: Config) -> Stats:
             return _postprocess_and_write(raw_text, metrics, t0)
         except OCRTimeout as e:
             elapsed = time.time() - t0
-            logger.warning("[%d/%d] %s — timeout (%.1fs). Redémarrage serveur...",
+            logger.warning("[%d/%d] %s — timeout (%.1fs). Restarting server...",
                            idx, len(images), img_path.name, elapsed)
             pipeline_queue.put(pl)
             pl = None
@@ -218,7 +218,7 @@ def run_pipeline(cfg: Config) -> Stats:
                 restart_lock.acquire()
                 restart_lock.release()
             pl_fallback = get_fallback_pipeline()
-            logger.info("[%d/%d] %s — retry sans layout detection.",
+            logger.info("[%d/%d] %s — retry without layout detection.",
                         idx, len(images), img_path.name)
             t0 = time.time()
             try:
@@ -254,12 +254,12 @@ def run_pipeline(cfg: Config) -> Stats:
         for proc in procs:
             proc.kill()
             proc.wait()
-        logger.info("%d serveur(s) arrêté(s).", cfg.n_servers)
+        logger.info("%d server(s) stopped.", cfg.n_servers)
 
-    # ── Combinaison dans l'ordre d'entrée ─────────────────────────────────────
+    # ── Combine in input order ────────────────────────────────────────────────
     with cfg.output_path.open("w", encoding="utf-8", newline="\n") as out:
-        out.write("# Livre OCR\n\n")
-        out.write("<!-- Généré avec PaddleOCR-VL-1.5 via llama-server -->\n")
+        out.write("# OCR Book\n\n")
+        out.write("<!-- Generated with PaddleOCR-VL-1.5 via llama-server -->\n")
         for img_path in images:
             part = parts_dir / f"{img_path.stem}.part"
             if part.exists():
@@ -271,7 +271,7 @@ def run_pipeline(cfg: Config) -> Stats:
             apply_header_detection(text, cfg.header_patterns),
             encoding="utf-8", newline="\n",
         )
-        logger.info("Détection de headers appliquée.")
+        logger.info("Header detection applied.")
 
     stats.log_summary()
     stats.write_report(Path(cfg.report_file), cfg)
@@ -282,8 +282,8 @@ def run_pipeline(cfg: Config) -> Stats:
 
     if stats.done == 0 and stats.skipped == 0 and cfg.output_path.exists():
         cfg.output_path.unlink()
-        logger.warning("Aucune page traitée avec succès — fichier de sortie supprimé.")
+        logger.warning("No pages processed successfully — output file deleted.")
     else:
-        logger.info("Fichier de sortie : %s", cfg.output_path.resolve())
+        logger.info("Output file: %s", cfg.output_path.resolve())
 
     return stats

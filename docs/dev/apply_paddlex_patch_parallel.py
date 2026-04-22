@@ -1,27 +1,27 @@
 """
-apply_paddlex_patch_parallel.py — Parallélise les appels VLM intra-page (pool global).
+apply_paddlex_patch_parallel.py — Parallelizes VLM intra-page calls (global pool).
 
-Prérequis : apply_paddlex_patch_otsl.py (patch OTSL) doit avoir été appliqué en premier.
+Prerequisite: apply_paddlex_patch_otsl.py (OTSL patch) must have been applied first.
 
-Principe :
-    PaddleOCR collecte les blocs par pixel_key puis les traite séquentiellement.
-    Ce patch remplace la boucle entière for pixel_key par un pool global unique :
-    tous les blocs de toutes les pixel_keys sont soumis simultanément, les workers
-    pickent en continu sans restart entre pixel_keys, et les résultats sont redistribués.
+Principle:
+    PaddleOCR collects blocks by pixel_key then processes them sequentially.
+    This patch replaces the entire for pixel_key loop with a single global pool:
+    all blocks from all pixel_keys are submitted simultaneously, workers
+    pick continuously without restart between pixel_keys, and results are redistributed.
 
-    Avantage vs pool par pixel_key :
-    - Pas de redémarrage de pool entre pixel_keys
-    - Les blocs rapides (petits textes) libèrent immédiatement un worker
-    - Meilleur équilibrage de charge global
+    Advantage vs per-pixel_key pool:
+    - No pool restart between pixel_keys
+    - Fast blocks (small texts) immediately free a worker
+    - Better global load balancing
 
-    L'architecture PaddleX (asyncio.run_coroutine_threadsafe sur event loop global)
-    est thread-safe : plusieurs threads peuvent appeler predict() simultanément.
-    llama-server doit être lancé avec -np N >= VLM_PARALLEL.
+    PaddleX architecture (asyncio.run_coroutine_threadsafe on global event loop)
+    is thread-safe: multiple threads can call predict() simultaneously.
+    llama-server must be launched with -np N >= VLM_PARALLEL.
 
 Usage :
-    python docs/dev/apply_paddlex_patch_parallel.py           # applique
-    python docs/dev/apply_paddlex_patch_parallel.py --check   # vérifie
-    python docs/dev/apply_paddlex_patch_parallel.py --revert  # retire (retour patch OTSL)
+    python docs/dev/apply_paddlex_patch_parallel.py           # apply
+    python docs/dev/apply_paddlex_patch_parallel.py --check   # check
+    python docs/dev/apply_paddlex_patch_parallel.py --revert  # remove (back to OTSL patch)
 """
 
 import argparse
@@ -33,7 +33,7 @@ TARGET = (
     / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
 )
 
-# État attendu : résultat de apply_paddlex_patch_otsl.py (boucle séquentielle avec OTSL)
+# Expected state: result of apply_paddlex_patch_otsl.py (sequential loop with OTSL)
 ORIGINAL = """\
         for pixel_key in batch_dict_by_pixel:
             min_pixels, max_pixels = pixel_key
@@ -67,10 +67,10 @@ ORIGINAL = """\
             del images, queries
             batch_dict_by_pixel[pixel_key]["vlm_results"] = batch_results"""
 
-# Pool global : tous les blocs de toutes les pixel_keys soumis en une seule passe.
-# VLM_PARALLEL doit correspondre à -np dans llama-server (src/pipeline.py).
+# Global pool: all blocks from all pixel_keys submitted in a single pass.
+# VLM_PARALLEL must match -np in llama-server (src/pipeline.py).
 PATCHED = """\
-        _VLM_PARALLEL = 3  # doit correspondre à -np dans llama-server
+        _VLM_PARALLEL = 3  # must match -np in llama-server
 
         def _infer_block(args):
             _img, _qry, _kw = args
@@ -90,7 +90,7 @@ PATCHED = """\
                     return {"result": _err_msg[_otsl:]}
                 return {"result": ""}
 
-        # Collecter tous les blocs dans l'ordre des pixel_keys
+        # Collect all blocks in pixel_key order
         _all_tasks = []
         _key_counts = []
         for pixel_key in batch_dict_by_pixel:
@@ -111,7 +111,7 @@ PATCHED = """\
         with _cf.ThreadPoolExecutor(max_workers=_VLM_PARALLEL) as _pool:
             _all_results = list(_pool.map(_infer_block, _all_tasks))
 
-        # Redistribuer les résultats par pixel_key
+        # Redistribute results by pixel_key
         _idx = 0
         for pixel_key, _n in _key_counts:
             batch_dict_by_pixel[pixel_key]["vlm_results"] = _all_results[_idx:_idx + _n]
@@ -128,42 +128,42 @@ def status(text: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check",  action="store_true", help="Vérifie sans modifier.")
-    parser.add_argument("--revert", action="store_true", help="Retire le patch parallèle (retour patch OTSL).")
+    parser.add_argument("--check",  action="store_true", help="Check without modifying.")
+    parser.add_argument("--revert", action="store_true", help="Remove parallel patch (back to OTSL patch).")
     args = parser.parse_args()
 
     if not TARGET.exists():
-        print(f"[ERREUR] Fichier introuvable : {TARGET}")
+        print(f"[ERROR] File not found: {TARGET}")
         sys.exit(1)
 
     text = TARGET.read_text(encoding="utf-8")
     state = status(text)
-    print(f"Fichier  : {TARGET}")
-    print(f"État     : {state}")
+    print(f"File  : {TARGET}")
+    print(f"State : {state}")
 
     if args.check:
         sys.exit(0 if state == "patched" else 1)
 
     if args.revert:
         if state == "original":
-            print("Déjà à l'état original (patch OTSL seul), rien à faire.")
+            print("Already at original state (OTSL patch only), nothing to do.")
             return
         if state != "patched":
-            print("[ERREUR] État inconnu, modification manuelle requise.")
+            print("[ERROR] Unknown state, manual modification required.")
             sys.exit(1)
         TARGET.write_text(text.replace(PATCHED, ORIGINAL), encoding="utf-8")
-        print("Patch parallèle retiré — retour au patch OTSL seul.")
+        print("Parallel patch removed — back to OTSL patch only.")
         return
 
     if state == "patched":
-        print("Déjà patché, rien à faire.")
+        print("Already patched, nothing to do.")
         return
     if state != "original":
-        print("[ERREUR] État inconnu. Vérifier que apply_paddlex_patch_otsl.py a été appliqué en premier.")
+        print("[ERROR] Unknown state. Verify that apply_paddlex_patch_otsl.py was applied first.")
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
-    print("Patch parallèle (pool global) appliqué.")
-    print("Assure-toi que llama-server tourne avec -np 3 (VLM_PARALLEL dans le patch).")
+    print("Parallel patch (global pool) applied.")
+    print("Make sure llama-server runs with -np 3 (VLM_PARALLEL in patch).")
 
 
 if __name__ == "__main__":

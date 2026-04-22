@@ -1,61 +1,61 @@
-# PaddleOCR-VL — Architecture interne du pipeline
+# PaddleOCR-VL — Internal Pipeline Architecture
 
-## Séquence d'exécution par image
+## Per-image Execution Sequence
 
 ```
 image
-  └─► [Doc Preprocessor]  ← désactivé par défaut (use_doc_preprocessor: False)
+  └─► [Doc Preprocessor]  ← disabled by default (use_doc_preprocessor: False)
         ├─ orientation classify (PP-LCNet_x1_0_doc_ori)
         └─ unwarping (UVDoc)
   └─► [Layout Detection]  ← PP-DocLayoutV3 (local, PaddlePaddle CPU)
-        └─ détecte les blocs et leur type (text, table, image, ...)
-  └─► pour chaque bloc détecté :
+        └─ detects blocks and their type (text, table, image, ...)
+  └─► for each detected block:
         └─► [VLM Recognition]  ← PaddleOCR-VL-1.5-0.9B via llama-server (HTTP)
-              └─ génère le contenu du bloc en markdown/HTML
-  └─► assemblage des blocs en markdown final
+              └─ generates block content in markdown/HTML
+  └─► assembly of blocks into final markdown
 ```
 
-**Conséquence clé :** chaque bloc = un appel HTTP séparé à llama-server. Une page avec 6 blocs (titre, 2 textes, tableau, légende, figure) génère 6 appels VLM séquentiels. Les pages avec plus de blocs sont proportionnellement plus lentes.
+**Key consequence:** each block = separate HTTP call to llama-server. A page with 6 blocks (title, 2 texts, table, caption, figure) generates 6 sequential VLM calls. Pages with more blocks are proportionally slower.
 
-## Comportement GPU
+## GPU Behavior
 
-GPU en pics, pas en continu :
-1. Layout detection → pic GPU (PaddlePaddle local)
-2. Encodage image + appel HTTP llama-server → pic GPU (Vulkan)
-3. Idle entre blocs (préparation, HTTP)
+GPU in bursts, not continuous:
+1. Layout detection → GPU burst (local PaddlePaddle)
+2. Image encoding + llama-server HTTP call → GPU burst (Vulkan)
+3. Idle between blocks (preparation, HTTP)
 
-## Traitement spécial des tableaux
+## Special Table Processing
 
-PaddleOCR utilise un pipeline OTSL pour les tableaux complexes :
-1. `ppdoclayout` détecte et extrait les cellules via OCR traditionnel
-2. Encode le contenu en format OTSL (`<fcel>col<fcel>col<nl>...`)
-3. Envoie l'OTSL au VLM pour reconstruction en HTML
+PaddleOCR uses an OTSL pipeline for complex tables:
+1. `ppdoclayout` detects and extracts cells via traditional OCR
+2. Encodes content in OTSL format (`<fcel>col<fcel>col<nl>...`)
+3. Sends OTSL to the VLM for HTML reconstruction
 
-**Problème avec llama-cpp-server :** llama-server ne sait pas parser l'OTSL comme image → erreur 500. Contournement : patch paddlex qui intercepte l'erreur, extrait l'OTSL du message d'erreur, et le convertit directement via `convert_otsl_to_html()`. Voir `docs/dev/paddlex_patch_otsl.md`.
+**Problem with llama-cpp-server:** llama-server cannot parse OTSL as image → 500 error. Workaround: paddlex patch that intercepts the error, extracts OTSL from the error message, and converts it directly via `convert_otsl_to_html()`. See `docs/dev/paddlex_patch_otsl.md`.
 
-## Modèles impliqués
+## Involved Models
 
-| Composant | Modèle | Backend |
+| Component | Model | Backend |
 |---|---|---|
 | Layout detection | PP-DocLayoutV3 | PaddlePaddle CPU |
 | VLM recognition | PaddleOCR-VL-1.5-0.9B (GGUF F16) | llama-server Vulkan |
-| Orientation classify | PP-LCNet_x1_0_doc_ori | PaddlePaddle (désactivé) |
-| Unwarping | UVDoc | PaddlePaddle (désactivé) |
+| Orientation classify | PP-LCNet_x1_0_doc_ori | PaddlePaddle (disabled) |
+| Unwarping | UVDoc | PaddlePaddle (disabled) |
 
-## Labels de blocs (PP-DocLayoutV3)
+## Block Labels (PP-DocLayoutV3)
 
-Labels reconnus et traitement dans le markdown :
+Recognized labels and processing in markdown:
 
-| Label | Description | Dans markdown |
+| Label | Description | In markdown |
 |---|---|---|
-| `text` | Bloc de texte courant | texte brut |
-| `paragraph_title` | Titre de section | header markdown |
-| `doc_title` | Titre du document | header markdown |
-| `figure_title` / `table_caption` | Légende figure/tableau | `<div style="text-align: center;">` |
-| `table` | Tableau | `<table>...</table>` HTML |
-| `image` / `chart` | Figure / graphique | `<img src="...">` |
-| `formula` / `display_formula` | Formule mathématique | contenu brut |
-| `abstract` | Résumé | texte brut |
+| `text` | Regular text block | plain text |
+| `paragraph_title` | Section title | markdown header |
+| `doc_title` | Document title | markdown header |
+| `figure_title` / `table_caption` | Figure/table caption | `<div style="text-align: center;">` |
+| `table` | Table | `<table>...</table>` HTML |
+| `image` / `chart` | Figure / chart | `<img src="...">` |
+| `formula` / `display_formula` | Mathematical formula | raw content |
+| `abstract` | Abstract | plain text |
 
-Labels ignorés par défaut (via `markdown_ignore_labels`) :
+Labels ignored by default (via `markdown_ignore_labels`):
 `number`, `footnote`, `header`, `header_image`, `footer`, `footer_image`, `aside_text`
