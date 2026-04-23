@@ -7,7 +7,15 @@ import os
 import time
 from pathlib import Path
 
-import fitz
+try:
+    import fitz
+except ModuleNotFoundError as e:
+    if "frontend" in str(e):
+        raise ImportError(
+            "The installed 'fitz' package is the old unrelated library, "
+            "not PyMuPDF. Run: pip uninstall fitz -y && pip install pymupdf"
+        ) from e
+    raise
 
 from config import Config
 from postprocess import extract_page_number, format_page_block, format_error_block
