@@ -38,6 +38,12 @@ class Config:
     extensions: tuple           = (".jpg", ".jpeg", ".png", ".webp")
     image_files: list | None    = None   # if provided, bypasses images_dir
 
+    # ── PDF ────────────────────────────────────────────────────────────────────
+    pdf_dpi: int = 200
+    pdf_text_density_threshold: float = 0.001
+    pdf_force_ocr: bool = False
+    temp_dir: Path = field(default_factory=lambda: Path("output/temp"))
+
     # ── Output ───────────────────────────────────────────────────────────────
     output_file: str = "./output/book.md"
     figures_dir: str = "./output/figures"

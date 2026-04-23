@@ -18,8 +18,9 @@ from config import Config
 from ocr_client import ocr_image, OCRError, OCRTimeout
 from postprocess import clean_page, strip_table_styles, format_page_block, format_error_block, fix_image_paths, extract_page_number, apply_header_detection
 from obsidian import fix_image_paths_obsidian
-from images import collect_images
+from images import _collect_sources
 from progress import Stats
+import pdf
 
 logger = logging.getLogger(__name__)
 
@@ -60,16 +61,15 @@ def _wait_for_server(url: str, timeout: int) -> bool:
 def run_pipeline(cfg: Config) -> Stats:
     """
     Runs the complete pipeline:
-      1. Collects images
-      2. Starts n_servers llama-server in parallel
-      3. Instantiates n_servers PaddleOCRVL
-      4. Processes pages in parallel (one page per server)
-      5. Writes each page to output/parts/<page_id>.part
-      6. Combines parts in order at the end of the run
-      7. Returns statistics
+      1. Collects images and PDFs
+      2. Processes PDFs (text extraction or rendering)
+      3. Starts n_servers llama-server in parallel (if needed)
+      4. Instantiates n_servers PaddleOCRVL
+      5. Processes pages in parallel (one page per server)
+      6. Writes each page to output/parts/<page_id>.part
+      7. Combines parts in order at the end of the run
+      8. Returns statistics
     """
-    images = collect_images(cfg)
-
     # ── Parts dir ────────────────────────────────────────────────────────────
     # Always in output/parts, even in obsidian mode where output_path points to the vault
     parts_dir = Path(cfg.log_file).parent / "parts"
@@ -85,183 +85,207 @@ def run_pipeline(cfg: Config) -> Stats:
         for p in parts_dir.glob("*.part"):
             p.unlink()
 
-    stats = Stats(total=len(images))
-    stats.skipped = sum(1 for img in images if img.stem in done_pages)
+    # ── Discover all sources ─────────────────────────────────────────────────
+    sources = _collect_sources(cfg)
 
-    # ── Server startup ───────────────────────────────────────────────────────
-    ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
-    urls  = [f"http://127.0.0.1:{port}" for port in ports]
+    # ── PDF preprocessing (before servers) ───────────────────────────────────
+    all_page_ids: list[str] = []
+    ocr_queue: list[tuple[int, str, Path]] = []
 
-    logger.info("Starting %d llama-server...", cfg.n_servers)
-    t_load0 = time.time()
-    procs = [_start_server(cfg, port) for port in ports]
+    stats = Stats()
 
-    for url in urls:
-        if not _wait_for_server(url, cfg.server_timeout):
-            for proc in procs:
-                proc.kill()
-            raise RuntimeError(
-                f"llama-server ({url}) did not start within the time limit ({cfg.server_timeout}s)."
-            )
+    for src in sources:
+        if src.suffix.lower() == ".pdf":
+            pdf_pages = pdf.process_pdf(src, cfg, done_pages, parts_dir, stats=stats)
+            for page_id, temp_img in pdf_pages:
+                all_page_ids.append(page_id)
+                if temp_img:
+                    ocr_queue.append((len(all_page_ids), page_id, temp_img))
+        else:
+            page_id = src.stem
+            all_page_ids.append(page_id)
+            if page_id not in done_pages:
+                ocr_queue.append((len(all_page_ids), page_id, src))
 
-    stats.model_load_time = time.time() - t_load0
-    logger.info("Servers ready in %.1fs.", stats.model_load_time)
+    stats.total = len(all_page_ids)
+    stats.skipped = sum(1 for pid in all_page_ids if pid in done_pages)
 
-    # ── Pipeline instantiation ────────────────────────────────────────────────
-    _vlm_kwargs_base = dict(
-        vl_rec_backend="llama-cpp-server",
-        vl_rec_api_model_name="paddleocr",
-        use_layout_detection=cfg.use_layout_detection,
-        markdown_ignore_labels=["header_image", "footer", "footer_image"],
-    )
-    pipelines = [
-        PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base)
-        for url in urls
-    ]
+    # ── Server startup (conditional) ─────────────────────────────────────────
+    procs: list[subprocess.Popen] = []
 
-    pipeline_queue: queue.Queue = queue.Queue()
-    for pl in pipelines:
-        pipeline_queue.put(pl)
+    if ocr_queue:
+        ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
+        urls  = [f"http://127.0.0.1:{port}" for port in ports]
 
-    # ── Server restart ────────────────────────────────────────────────────────
-    restart_lock = threading.Lock()
-    _fallback_pipeline: list = [None]
-    fallback_init_lock = threading.Lock()
+        logger.info("Starting %d llama-server...", cfg.n_servers)
+        t_load0 = time.time()
+        procs = [_start_server(cfg, port) for port in ports]
 
-    def get_fallback_pipeline():
-        if _fallback_pipeline[0] is None:
-            with fallback_init_lock:
-                if _fallback_pipeline[0] is None:
-                    logger.info("Instantiating fallback pipeline (without layout)...")
-                    _fallback_pipeline[0] = PaddleOCRVL(
-                        vl_rec_server_url=f"{urls[0]}/v1",
-                        **{**_vlm_kwargs_base, "use_layout_detection": False},
-                    )
-        return _fallback_pipeline[0]
-
-    def restart_servers() -> None:
-        logger.warning("Restarting llama-server instances...")
-        for proc in procs:
-            proc.kill()
-            proc.wait()
-        new_procs = [_start_server(cfg, port) for port in ports]
-        procs[:] = new_procs
         for url in urls:
             if not _wait_for_server(url, cfg.server_timeout):
-                raise RuntimeError(f"Restart failed: {url} did not respond.")
-        while not pipeline_queue.empty():
-            try:
-                pipeline_queue.get_nowait()
-            except queue.Empty:
-                break
-        for pl in [PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base) for url in urls]:
+                for proc in procs:
+                    proc.kill()
+                raise RuntimeError(
+                    f"llama-server ({url}) did not start within the time limit ({cfg.server_timeout}s)."
+                )
+
+        stats.model_load_time = time.time() - t_load0
+        logger.info("Servers ready in %.1fs.", stats.model_load_time)
+
+        # ── Pipeline instantiation ────────────────────────────────────────────
+        _vlm_kwargs_base = dict(
+            vl_rec_backend="llama-cpp-server",
+            vl_rec_api_model_name="paddleocr",
+            use_layout_detection=cfg.use_layout_detection,
+            markdown_ignore_labels=["header_image", "footer", "footer_image"],
+        )
+        pipelines = [
+            PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base)
+            for url in urls
+        ]
+
+        pipeline_queue: queue.Queue = queue.Queue()
+        for pl in pipelines:
             pipeline_queue.put(pl)
-        _fallback_pipeline[0] = None
-        logger.info("Servers restarted successfully.")
 
-    # ── Parallel processing ───────────────────────────────────────────────────
-    cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
-    figures_rel = os.path.relpath(cfg.figures_path, cfg.output_path.parent)
-    to_process = [(idx, img) for idx, img in enumerate(images, 1)
-                  if img.stem not in done_pages]
+        # ── Server restart ────────────────────────────────────────────────────
+        restart_lock = threading.Lock()
+        _fallback_pipeline: list = [None]
+        fallback_init_lock = threading.Lock()
 
-    def process_page(idx: int, img_path: Path) -> dict:
-        page_id = img_path.stem
+        def get_fallback_pipeline():
+            if _fallback_pipeline[0] is None:
+                with fallback_init_lock:
+                    if _fallback_pipeline[0] is None:
+                        logger.info("Instantiating fallback pipeline (without layout)...")
+                        _fallback_pipeline[0] = PaddleOCRVL(
+                            vl_rec_server_url=f"{urls[0]}/v1",
+                            **{**_vlm_kwargs_base, "use_layout_detection": False},
+                        )
+            return _fallback_pipeline[0]
 
-        def _postprocess_and_write(raw_text, metrics, t0, no_layout: bool = False) -> dict:
-            t_ocr = metrics["total_latency"]
-            t_post0 = time.time()
-            page_number, text = extract_page_number(raw_text)
-            clean_text = clean_page(text, cfg, no_layout=no_layout) if cfg.postprocess else text
-            clean_text = strip_table_styles(clean_text)
-            if cfg.mode == "obsidian":
-                clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
-            else:
-                clean_text = fix_image_paths(clean_text, page_id, figures_rel)
-            t_post = time.time() - t_post0
-            elapsed = time.time() - t0
-            part_path = parts_dir / f"{page_id}.part"
-            with part_path.open("a", encoding="utf-8") as f:
-                f.write(format_page_block(page_id, clean_text, page_number))
-            return {
-                "idx": idx, "page_name": img_path.name,
-                "elapsed": elapsed, "chars": len(clean_text),
-                "t_ocr": t_ocr, "t_post": t_post, "error": False,
-                "no_layout": no_layout,
-            }
-
-        def _write_error(e, elapsed) -> dict:
-            logger.error("[%d/%d] %s — ERROR (%.1fs): %s",
-                         idx, len(images), img_path.name, elapsed, e)
-            part_path = parts_dir / f"{page_id}.part"
-            with part_path.open("a", encoding="utf-8") as f:
-                f.write(format_error_block(page_id, str(e)))
-            return {"idx": idx, "page_name": img_path.name, "error": True}
-
-        pl = pipeline_queue.get()
-        t0 = time.time()
-        try:
-            raw_text, metrics = ocr_image(img_path, pl, cfg)
-            return _postprocess_and_write(raw_text, metrics, t0)
-        except OCRTimeout as e:
-            elapsed = time.time() - t0
-            logger.warning("[%d/%d] %s — timeout (%.1fs). Restarting server...",
-                           idx, len(images), img_path.name, elapsed)
-            pipeline_queue.put(pl)
-            pl = None
-            if restart_lock.acquire(blocking=False):
+        def restart_servers() -> None:
+            logger.warning("Restarting llama-server instances...")
+            for proc in procs:
+                proc.kill()
+                proc.wait()
+            new_procs = [_start_server(cfg, port) for port in ports]
+            procs[:] = new_procs
+            for url in urls:
+                if not _wait_for_server(url, cfg.server_timeout):
+                    raise RuntimeError(f"Restart failed: {url} did not respond.")
+            while not pipeline_queue.empty():
                 try:
-                    restart_servers()
-                finally:
-                    restart_lock.release()
-            else:
-                restart_lock.acquire()
-                restart_lock.release()
-            pl_fallback = get_fallback_pipeline()
-            logger.info("[%d/%d] %s — retry without layout detection.",
-                        idx, len(images), img_path.name)
+                    pipeline_queue.get_nowait()
+                except queue.Empty:
+                    break
+            for pl in [PaddleOCRVL(vl_rec_server_url=f"{url}/v1", **_vlm_kwargs_base) for url in urls]:
+                pipeline_queue.put(pl)
+            _fallback_pipeline[0] = None
+            logger.info("Servers restarted successfully.")
+
+        # ── Parallel processing ───────────────────────────────────────────────
+        cfg.output_path.parent.mkdir(parents=True, exist_ok=True)
+        figures_rel = os.path.relpath(cfg.figures_path, cfg.output_path.parent)
+
+        def process_page(idx: int, page_id: str, img_path: Path) -> dict:
+            def _postprocess_and_write(raw_text, metrics, t0, no_layout: bool = False) -> dict:
+                t_ocr = metrics["total_latency"]
+                t_post0 = time.time()
+                page_number, text = extract_page_number(raw_text)
+                clean_text = clean_page(text, cfg, no_layout=no_layout) if cfg.postprocess else text
+                clean_text = strip_table_styles(clean_text)
+                if cfg.mode == "obsidian":
+                    clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
+                else:
+                    clean_text = fix_image_paths(clean_text, page_id, figures_rel)
+                t_post = time.time() - t_post0
+                elapsed = time.time() - t0
+                part_path = parts_dir / f"{page_id}.part"
+                with part_path.open("a", encoding="utf-8") as f:
+                    f.write(format_page_block(page_id, clean_text, page_number))
+                return {
+                    "idx": idx, "page_name": img_path.name,
+                    "elapsed": elapsed, "chars": len(clean_text),
+                    "t_ocr": t_ocr, "t_post": t_post, "error": False,
+                    "no_layout": no_layout,
+                }
+
+            def _write_error(e, elapsed) -> dict:
+                logger.error("[%d/%d] %s — ERROR (%.1fs): %s",
+                             idx, stats.total, img_path.name, elapsed, e)
+                part_path = parts_dir / f"{page_id}.part"
+                with part_path.open("a", encoding="utf-8") as f:
+                    f.write(format_error_block(page_id, str(e)))
+                return {"idx": idx, "page_name": img_path.name, "error": True}
+
+            pl = pipeline_queue.get()
             t0 = time.time()
             try:
-                raw_text, metrics = ocr_image(img_path, pl_fallback, cfg)
-                return _postprocess_and_write(raw_text, metrics, t0, no_layout=True)
-            except OCRError as e2:
-                return _write_error(e2, time.time() - t0)
-        except OCRError as e:
-            return _write_error(e, time.time() - t0)
-        finally:
-            if pl is not None:
+                raw_text, metrics = ocr_image(img_path, pl, cfg)
+                return _postprocess_and_write(raw_text, metrics, t0)
+            except OCRTimeout as e:
+                elapsed = time.time() - t0
+                logger.warning("[%d/%d] %s — timeout (%.1fs). Restarting server...",
+                               idx, stats.total, img_path.name, elapsed)
                 pipeline_queue.put(pl)
-
-    try:
-        with ThreadPoolExecutor(max_workers=cfg.n_servers) as executor:
-            futures = [executor.submit(process_page, idx, img) for idx, img in to_process]
-            for future in as_completed(futures):
-                result = future.result()
-                if result["error"]:
-                    stats.record_error(page_name=result["page_name"])
+                pl = None
+                if restart_lock.acquire(blocking=False):
+                    try:
+                        restart_servers()
+                    finally:
+                        restart_lock.release()
                 else:
-                    stats.record_success(
-                        result["elapsed"], result["chars"],
-                        t_ocr=result["t_ocr"], t_post=result["t_post"],
-                        page_name=result["page_name"],
-                        no_layout=result.get("no_layout", False),
-                    )
-                    stats.log_page(
-                        result["idx"], result["page_name"],
-                        result["elapsed"], result["chars"],
-                    )
-    finally:
-        for proc in procs:
-            proc.kill()
-            proc.wait()
-        logger.info("%d server(s) stopped.", cfg.n_servers)
+                    restart_lock.acquire()
+                    restart_lock.release()
+                pl_fallback = get_fallback_pipeline()
+                logger.info("[%d/%d] %s — retry without layout detection.",
+                            idx, stats.total, img_path.name)
+                t0 = time.time()
+                try:
+                    raw_text, metrics = ocr_image(img_path, pl_fallback, cfg)
+                    return _postprocess_and_write(raw_text, metrics, t0, no_layout=True)
+                except OCRError as e2:
+                    return _write_error(e2, time.time() - t0)
+            except OCRError as e:
+                return _write_error(e, time.time() - t0)
+            finally:
+                if pl is not None:
+                    pipeline_queue.put(pl)
 
-    # ── Combine in input order ────────────────────────────────────────────────
+        try:
+            with ThreadPoolExecutor(max_workers=cfg.n_servers) as executor:
+                futures = [executor.submit(process_page, idx, page_id, img_path) for idx, page_id, img_path in ocr_queue]
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result["error"]:
+                        stats.record_error(page_name=result["page_name"])
+                    else:
+                        stats.record_success(
+                            result["elapsed"], result["chars"],
+                            t_ocr=result["t_ocr"], t_post=result["t_post"],
+                            page_name=result["page_name"],
+                            no_layout=result.get("no_layout", False),
+                        )
+                        stats.log_page(
+                            result["idx"], result["page_name"],
+                            result["elapsed"], result["chars"],
+                        )
+        finally:
+            for proc in procs:
+                proc.kill()
+                proc.wait()
+            logger.info("%d server(s) stopped.", cfg.n_servers)
+
+    else:
+        logger.info("No pages require OCR — skipping server startup.")
+
+    # ── Combine in all_page_ids order ────────────────────────────────────────
     with cfg.output_path.open("w", encoding="utf-8", newline="\n") as out:
         out.write("# OCR Book\n\n")
         out.write("<!-- Generated with PaddleOCR-VL-1.5 via llama-server -->\n")
-        for img_path in images:
-            part = parts_dir / f"{img_path.stem}.part"
+        for page_id in all_page_ids:
+            part = parts_dir / f"{page_id}.part"
             if part.exists():
                 out.write(part.read_text(encoding="utf-8"))
 
@@ -278,7 +302,12 @@ def run_pipeline(cfg: Config) -> Stats:
 
     if cfg.mode == "obsidian":
         from obsidian import migrate_figures
-        migrate_figures(cfg, page_ids=[img.stem for img in images])
+        migrate_figures(cfg, page_ids=all_page_ids)
+
+    # ── Cleanup ──────────────────────────────────────────────────────────────
+    if not cfg.verbose:
+        for p in cfg.temp_dir.glob("*.png"):
+            p.unlink(missing_ok=True)
 
     if stats.done == 0 and stats.skipped == 0 and cfg.output_path.exists():
         cfg.output_path.unlink()

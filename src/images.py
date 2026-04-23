@@ -66,6 +66,31 @@ def collect_images(cfg: Config) -> list[Path]:
     return images
 
 
+def _collect_sources(cfg: Config) -> list[Path]:
+    """
+    Returns all processable files in cfg.images_path:
+    images (by extension) + .pdf files, naturally sorted.
+    """
+    if cfg.image_files is not None:
+        files = [Path(p) for p in cfg.image_files]
+        logger.info("%d explicit file(s).", len(files))
+        return files
+
+    path = cfg.images_path
+    if not path.exists():
+        raise ImageCollectionError(f"Path not found: {path}")
+
+    if path.is_file():
+        return [path]
+
+    extensions = cfg.extensions + (".pdf",)
+    files = [
+        p for p in path.iterdir()
+        if p.is_file() and p.suffix.lower() in extensions
+    ]
+    return natsorted(files, key=lambda p: p.name)
+
+
 def rename_images(
         folder: str | Path,
         extensions: tuple,

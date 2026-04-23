@@ -12,3 +12,4 @@ dependencies:
     - openai==2.30.0
     - paddlepaddle==3.3.1
     - paddlex[ocr]==3.4.3
+    - pymupdf==1.25.3

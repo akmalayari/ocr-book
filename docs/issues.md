@@ -2,9 +2,7 @@
 
 ## PDF version (current)
 
-### Feature 1 — Multi-page PDF Support
-
-Split a PDF into images (one per page) before sending to the pipeline, via `pdf2image` or `pymupdf`. To integrate into `collect_images` or upstream.
+OK
 
 ---
 
