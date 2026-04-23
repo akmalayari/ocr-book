@@ -40,7 +40,6 @@ class Config:
 
     # ── PDF ────────────────────────────────────────────────────────────────────
     pdf_dpi: int = 200
-    pdf_text_density_threshold: float = 0.001
     pdf_force_ocr: bool = False
     temp_dir: Path = field(default_factory=lambda: Path("output/temp"))
 

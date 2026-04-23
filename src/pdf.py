@@ -43,18 +43,26 @@ def _get_layout_model():
     return _layout_model
 
 
-def classify_pdf(doc: fitz.Document, threshold: float = 0.001) -> str:
-    """Classify PDF as text-based or image-based."""
-    text_pages = 0
-    for page in doc[:3]:
-        text = page.get_text()
-        area = page.rect.width * page.rect.height
-        if area == 0:
-            continue
-        density = len(text.strip()) / area
-        if density > threshold:
-            text_pages += 1
-    return "text" if text_pages >= 2 else "image"
+def classify_pdf(doc: fitz.Document, min_words: int = 20) -> str:
+    """Classify PDF as text-based or image-based using stratified word sampling."""
+    page_count = len(doc)
+    if page_count == 0:
+        return "image"
+
+    # Sample up to 5 pages spread across the document
+    if page_count <= 5:
+        indices = list(range(page_count))
+    else:
+        step = (page_count - 1) / 4
+        indices = [int(i * step) for i in range(5)]
+
+    total_words = 0
+    for idx in indices:
+        text = doc[idx].get_text()
+        total_words += len(text.strip().split())
+
+    avg_words = total_words / len(indices)
+    return "text" if avg_words >= min_words else "image"
 
 
 def _render_page(page: fitz.Page, page_id: str, temp_dir: Path, dpi: int = 200) -> Path:
@@ -116,7 +124,7 @@ def process_pdf(
         logger.error("Failed to open PDF '%s': %s", pdf_path.name, e)
         return []
 
-    pdf_type = "image" if cfg.pdf_force_ocr else classify_pdf(doc, threshold=cfg.pdf_text_density_threshold)
+    pdf_type = "image" if cfg.pdf_force_ocr else classify_pdf(doc)
     logger.info("PDF '%s' classified as %s-based (%d pages).", pdf_path.name, pdf_type, len(doc))
 
     results: list[tuple[str, Path | None]] = []
