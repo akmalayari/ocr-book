@@ -11,6 +11,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+# Bypass paddlex online model-source check early (before any paddlex import)
+os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
+
 import requests
 from paddleocr import PaddleOCRVL
 

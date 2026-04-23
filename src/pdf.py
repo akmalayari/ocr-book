@@ -14,7 +14,7 @@ from postprocess import extract_page_number, format_page_block, format_error_blo
 from progress import Stats
 
 # Bypass paddlex online model-source check (avoids spurious import errors)
-os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
+os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,11 @@ def _get_layout_model():
     if _layout_model is None:
         from paddlex import create_model
         logger.info("Loading PP-DocLayoutV3 layout model...")
-        _layout_model = create_model(model_name="PP-DocLayoutV3")
+        try:
+            _layout_model = create_model(model_name="PP-DocLayoutV3")
+        except Exception as e:
+            logger.warning("Failed to load layout model (%s). Figure detection disabled.", e)
+            _layout_model = False  # sentinel: tried and failed
     return _layout_model
 
 
@@ -54,6 +58,8 @@ def _render_page(page: fitz.Page, page_id: str, temp_dir: Path, dpi: int = 200) 
 
 def _detect_figures(image_path: Path) -> list[dict]:
     model = _get_layout_model()
+    if model is False:
+        return []
     figures = []
     result = model.predict(str(image_path))
     if not isinstance(result, (list, tuple)):
