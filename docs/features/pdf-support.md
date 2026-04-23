@@ -67,7 +67,7 @@ Responsibilities:
 ```python
 def _collect_sources(cfg: Config) -> list[Path]:
     """
-    Returns all processable files in cfg.images_dir:
+    Returns all processable files in cfg.images_path:
     images (by extension) + .pdf files, naturally sorted.
     """
     path = cfg.images_path
@@ -159,12 +159,19 @@ Rendered once per page for `PP-DocLayoutV3`. The render file may be deleted afte
 ```python
 from paddlex import create_model
 
-layout_model = create_model(model_name="PP-DocLayoutV3")
 FIGURE_LABELS = {"image", "chart", "header_image", "footer_image", "table"}
+_layout_model = None  # lazy singleton — loaded on first text-based page
 
-def detect_figures(image_path: Path, layout_model) -> list[dict]:
+def _get_layout_model():
+    global _layout_model
+    if _layout_model is None:
+        _layout_model = create_model(model_name="PP-DocLayoutV3")
+    return _layout_model
+
+def detect_figures(image_path: Path) -> list[dict]:
+    model = _get_layout_model()
     figures = []
-    for result in layout_model.predict(str(image_path)):
+    for result in model.predict(str(image_path)):
         for box in result.json["res"]["boxes"]:
             if box["label"] in FIGURE_LABELS and box["score"] > 0.5:
                 figures.append(box)
@@ -175,11 +182,17 @@ Tables are included in `FIGURE_LABELS` and rasterized as images (Option B).
 
 #### 4d. Figure cropping
 
+PP-DocLayoutV3 returns bboxes in **pixel coordinates** at the DPI used for rendering (default 200). `fitz.Rect` expects **PDF points** (72 DPI). Convert before cropping:
+
 ```python
-def crop_figure(page: fitz.Page, bbox: list[float], dpi: int) -> fitz.Pixmap:
-    """Crop figure from PDF page at full quality."""
-    rect = fitz.Rect(bbox)
-    return page.get_pixmap(clip=rect, dpi=dpi)
+def crop_figure(page: fitz.Page, bbox: list[float], render_dpi: int, crop_dpi: int) -> fitz.Pixmap:
+    """Crop figure from PDF page. bbox is in pixels at render_dpi."""
+    scale = 72.0 / render_dpi
+    rect = fitz.Rect(
+        bbox[0] * scale, bbox[1] * scale,
+        bbox[2] * scale, bbox[3] * scale,
+    )
+    return page.get_pixmap(clip=rect, dpi=crop_dpi)
 ```
 
 Cropped figures are saved to `output/figures/{page_id}/imgs/figure_{n}.png`.
@@ -210,6 +223,8 @@ def write_text_based_part(page_id: str, text: str, cfg: Config, parts_dir: Path)
 ```
 
 The printed page number is detected from the extracted text using the same `extract_page_number()` logic used for OCR output. If no printed number is found, the fallback is the PDF's sequential page number (`p001` -> `1`).
+
+**Risk:** `extract_page_number()` was written for VLM OCR output and may not match pymupdf's text formatting (different whitespace, line endings). Verify on a real text-based PDF before relying on this; the sequential fallback covers the failure case.
 
 ### 5. Image-Based PDF Path
 
@@ -254,7 +269,7 @@ def run_pipeline(cfg: Config) -> Stats:
             pdf_pages = pdf.process_pdf(src, cfg, done_pages, parts_dir)
             for page_id, temp_img in pdf_pages:
                 all_page_ids.append(page_id)
-                if temp_img and page_id not in done_pages:
+                if temp_img:  # None for text-based or already-done image-based pages
                     ocr_queue.append((page_id, temp_img))
         else:
             page_id = src.stem
@@ -266,6 +281,10 @@ def run_pipeline(cfg: Config) -> Stats:
     stats.skipped = sum(1 for pid in all_page_ids if pid in done_pages)
 
     # -- Server startup (conditional) --
+    # NOTE: this requires extracting the server startup block (currently inline)
+    # into a helper or moving it inside this branch. Non-trivial refactor —
+    # the thread pool, server list, and process_page closure all reference
+    # each other. Plan this carefully before touching pipeline.py.
     if ocr_queue:
         # ... existing server startup code ...
         # process_page now receives (idx, page_id, img_path)
@@ -366,6 +385,7 @@ Figures from text-based PDFs are saved to `output/figures/{page_id}/imgs/`, exac
 | `src/config.py` | Add `pdf_dpi`, `pdf_text_density_threshold`, `pdf_force_ocr`, `temp_dir` |
 | `src/images.py` | Add `_collect_sources()`; no changes to `collect_images()` |
 | `src/pipeline.py` | Use `_collect_sources()`; call `pdf.process_pdf()` before server startup; build `all_page_ids` + `ocr_queue`; conditional server startup; assembly over `all_page_ids`; pass `page_ids=all_page_ids` to `migrate_figures`; temp cleanup |
+| `src/obsidian.py` | Add `page_ids` parameter to `migrate_figures()` so it can iterate `all_page_ids` instead of re-deriving from image files |
 | `environment.yml` | Add `pymupdf` explicitly |
 | `docs/features/pdf-support.md` | **This document** |
 
@@ -389,6 +409,7 @@ Figures from text-based PDFs are saved to `output/figures/{page_id}/imgs/`, exac
 | Text-only input | 100% text-based PDF | No llama-server startup, finishes quickly |
 | Figure quality comparison | Same page as photo vs PDF render | Vector figures from PDF should be sharper than photo OCR crops |
 | Obsidian export | Text-based PDF with figures | Figures migrated correctly, wikilinks resolve |
+| No figures | Text-based PDF with 0 detected figures | Clean `.part` file, no broken `<img>` tags in output |
 
 ---
 
