@@ -168,6 +168,9 @@ def main() -> int:
         stats = run_pipeline(cfg)
     except Exception as e:
         logger.error("Fatal error: %s", e)
+        if cfg.verbose:
+            import traceback
+            traceback.print_exc()
         return 1
 
     return 0 if stats.errors == 0 else 2

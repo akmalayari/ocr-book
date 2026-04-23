@@ -3,6 +3,7 @@ pdf.py — PDF processing: classification, text extraction, rendering, figure de
 """
 
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -11,6 +12,9 @@ import fitz
 from config import Config
 from postprocess import extract_page_number, format_page_block, format_error_block
 from progress import Stats
+
+# Bypass paddlex online model-source check (avoids spurious import errors)
+os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
 logger = logging.getLogger(__name__)
 
