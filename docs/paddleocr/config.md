@@ -70,6 +70,34 @@ SubModules:
 | `pretty` | `True` | Adds inline HTML styles. `False` = raw HTML without styles. See `output.md` |
 | `show_formula_number` | `False` | Shows formula numbers |
 
+## Standalone Layout Detection
+
+`PaddleOCRVL` uses `PP-DocLayoutV3` (or V2) internally via the `PaddleOCR-VL-1.5` paddlex pipeline. You can use the same model **standalone** without launching llama-server or running VLM OCR:
+
+```python
+from paddlex import create_model
+
+model = create_model(model_name="PP-DocLayoutV2")
+# or PP-DocLayoutV3
+
+for result in model.predict("page.png"):
+    for box in result.json["res"]["boxes"]:
+        print(box["label"], box["coordinate"], box["score"])
+```
+
+**Use case:** figure extraction from text-based PDFs. Render the PDF page to an image, run layout detection, and crop `image`/`chart` regions.
+
+### Model name confusion — what works and what doesn't
+
+| Model | Works standalone? | Used by `PaddleOCRVL`? | Notes |
+|---|---|---|---|
+| `PP-DocLayoutV2` | ✅ Yes | ✅ Yes (v1.5 pipeline) | Correct model |
+| `PP-DocLayoutV3` | ✅ Yes | ✅ Yes (v1.5 pipeline, default) | Correct model |
+| `PP-DocLayout-L` | ❌ No (oneDNN error) | ❌ No | Different model entirely |
+| `RT-DETR-H_layout_17cls` | ❌ No (oneDNN error) | ❌ No | Used by `layout_parsing` pipeline only |
+
+The `layout_parsing` pipeline (from `paddlex.create_pipeline(pipeline="layout_parsing")`) loads a **different** layout model (`RT-DETR-H_layout_17cls`) plus OCR, table, seal, and formula sub-pipelines. It is overkill if you only need bounding boxes.
+
 ## Our Configuration (project)
 
 Defined in `src/config.py` and applied in `src/pipeline.py`:

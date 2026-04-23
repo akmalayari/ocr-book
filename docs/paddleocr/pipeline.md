@@ -1,5 +1,12 @@
 # PaddleOCR-VL — Internal Pipeline Architecture
 
+## Pipeline Name
+
+`PaddleOCRVL` is a wrapper around the **paddlex** `PaddleOCR-VL-1.5` pipeline (not the `layout_parsing` pipeline). It is instantiated in `paddleocr._pipelines.paddleocr_vl` and delegates to `paddlex.inference.pipelines.paddleocr_vl`.
+
+- `_paddlex_pipeline_name` returns `"PaddleOCR-VL-1.5"` (v1.5 default)
+- This is **different** from `paddlex.create_pipeline(pipeline="layout_parsing")` which loads `RT-DETR-H_layout_17cls` + full OCR/table/seal/formula sub-pipelines
+
 ## Per-image Execution Sequence
 
 ```
@@ -42,9 +49,9 @@ PaddleOCR uses an OTSL pipeline for complex tables:
 | Orientation classify | PP-LCNet_x1_0_doc_ori | PaddlePaddle (disabled) |
 | Unwarping | UVDoc | PaddlePaddle (disabled) |
 
-## Block Labels (PP-DocLayoutV3)
+## Block Labels (PP-DocLayoutV2 / V3)
 
-Recognized labels and processing in markdown:
+Full label list from `PP-DocLayoutV2` config (`~/.paddlex/official_models/PP-DocLayoutV2/config.json`):
 
 | Label | Description | In markdown |
 |---|---|---|
@@ -56,6 +63,23 @@ Recognized labels and processing in markdown:
 | `image` / `chart` | Figure / chart | `<img src="...">` |
 | `formula` / `display_formula` | Mathematical formula | raw content |
 | `abstract` | Abstract | plain text |
+| `header` / `footer` | Running header/footer | ignored by default |
+| `header_image` / `footer_image` | Decorative images | ignored by default |
+| `number` | Printed page number | ignored by default |
+| `footnote` / `vision_footnote` | Footnotes | ignored by default |
+| `aside_text` | Marginal text | ignored by default |
+| `content` | Table of contents block | plain text |
+| `reference` / `reference_content` | Bibliography entry | plain text |
+| `seal` | Stamp / seal | raw content |
+| `inline_formula` | Inline math | raw content |
+| `algorithm` | Algorithm block | plain text |
+| `vertical_text` | Vertical text (CJK) | plain text |
+
+**Internal `IMAGE_LABELS` constant** (from `paddleocr._pipelines.paddleocr_vl`):
+```python
+IMAGE_LABELS = ["image", "header_image", "footer_image"]
+```
+These are the labels treated as visual blocks that trigger figure cropping.
 
 Labels ignored by default (via `markdown_ignore_labels`):
 `number`, `footnote`, `header`, `header_image`, `footer`, `footer_image`, `aside_text`
