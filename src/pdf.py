@@ -102,6 +102,73 @@ def _crop_figure(page: fitz.Page, bbox: list[float], render_dpi: int, crop_dpi: 
     return page.get_pixmap(clip=rect, dpi=crop_dpi)
 
 
+def _extract_figures_for_page(page: fitz.Page, page_id: str, cfg: Config) -> str:
+    """
+    Detect figures on a PDF page, crop and save them,
+    and return HTML <img> tags referencing them.
+    """
+    render_dpi = cfg.pdf_dpi
+    cfg.temp_dir.mkdir(parents=True, exist_ok=True)
+    layout_image = _render_page(page, page_id, cfg.temp_dir, dpi=render_dpi)
+
+    try:
+        figures = _detect_figures(layout_image)
+    except Exception as e:
+        logger.warning("Layout detection failed for %s: %s", page_id, e)
+        figures = []
+    finally:
+        layout_image.unlink(missing_ok=True)
+
+    if not figures:
+        return ""
+
+    figure_dir = cfg.figures_path / page_id / "imgs"
+    figure_dir.mkdir(parents=True, exist_ok=True)
+
+    for i, fig in enumerate(figures):
+        try:
+            bbox = fig.get("bbox")
+            if bbox is None:
+                continue
+            pix = _crop_figure(page, bbox, render_dpi, render_dpi)
+            fig_path = figure_dir / f"figure_{i}.png"
+            pix.save(str(fig_path))
+        except Exception as e:
+            logger.warning("Failed to crop figure %d for %s: %s", i, page_id, e)
+
+    return "\n".join(
+        f'<img src="imgs/figure_{i}.png" />'
+        for i in range(len(figures))
+    )
+
+
+def _write_text_part(
+    page_id: str,
+    text: str,
+    page_num: int,
+    parts_dir: Path,
+    stats: Stats | None,
+    t0: float,
+) -> None:
+    """Write a text-extracted page to its .part file and record stats."""
+    page_number, cleaned_text = extract_page_number(text)
+    if not page_number:
+        page_number = str(page_num + 1)
+    formatted = format_page_block(page_id, cleaned_text, page_number)
+    part_path = parts_dir / f"{page_id}.part"
+    part_path.write_text(formatted, encoding="utf-8")
+
+    if stats is not None:
+        elapsed = time.time() - t0
+        stats.record_success(
+            elapsed=elapsed,
+            chars=len(cleaned_text),
+            t_ocr=0.0,
+            t_post=elapsed,
+            page_name=page_id,
+        )
+
+
 def process_pdf(
     pdf_path: Path,
     cfg: Config,
@@ -110,11 +177,11 @@ def process_pdf(
     stats: Stats | None = None,
 ) -> list[tuple[str, Path | None]]:
     """
-    Processes a single PDF.
+    Processes a single PDF using the configured extraction_method.
 
     Returns a list of (page_id, temp_image_path) in page order.
-    - text-based page  -> (page_id, None)
-    - image-based page -> (page_id, temp_image_path)
+    - text/docling page -> (page_id, None)
+    - paddleocrvl page  -> (page_id, temp_image_path)
 
     Already-done pages are skipped.
     """
@@ -124,11 +191,37 @@ def process_pdf(
         logger.error("Failed to open PDF '%s': %s", pdf_path.name, e)
         return []
 
-    pdf_type = "image" if cfg.pdf_force_ocr else classify_pdf(doc)
-    logger.info("PDF '%s' classified as %s-based (%d pages).", pdf_path.name, pdf_type, len(doc))
+    pdf_type = classify_pdf(doc)
+
+    # Determine effective extraction method
+    if cfg.pdf_force_ocr or cfg.extraction_method == "paddleocrvl":
+        method = "paddleocrvl"
+    elif pdf_type == "image" and cfg.extraction_method in ("text", "docling"):
+        logger.warning(
+            "PDF '%s' is image-based but method is '%s'. Falling back to paddleocrvl.",
+            pdf_path.name, cfg.extraction_method,
+        )
+        method = "paddleocrvl"
+    else:
+        method = cfg.extraction_method
+
+    logger.info(
+        "PDF '%s': %s-based, using method='%s' (%d pages).",
+        pdf_path.name, pdf_type, method, len(doc),
+    )
+
+    # Initialise Docling converter once if needed
+    docling_converter = None
+    if method == "docling":
+        try:
+            from docling.document_converter import DocumentConverter
+            docling_converter = DocumentConverter()
+        except ImportError:
+            logger.error("Docling not installed. Run: pip install docling")
+            logger.warning("Falling back to basic text extraction for '%s'.", pdf_path.name)
+            method = "text"
 
     results: list[tuple[str, Path | None]] = []
-    render_dpi = cfg.pdf_dpi
 
     for page_num in range(len(doc)):
         page_id = f"{pdf_path.stem}_p{page_num + 1:03d}"
@@ -141,76 +234,44 @@ def process_pdf(
         t0 = time.time()
 
         try:
-            if pdf_type == "text":
-                # Text extraction
-                text = page.get_text("text")
-
-                # Render for layout detection
-                cfg.temp_dir.mkdir(parents=True, exist_ok=True)
-                layout_image = _render_page(page, page_id, cfg.temp_dir, dpi=render_dpi)
-
-                # Detect figures
-                try:
-                    figures = _detect_figures(layout_image)
-                except Exception as e:
-                    logger.warning("Layout detection failed for %s: %s", page_id, e)
-                    figures = []
-
-                # Clean up layout render
-                layout_image.unlink(missing_ok=True)
-
-                # Crop and save figures
-                if figures:
-                    figure_dir = cfg.figures_path / page_id / "imgs"
-                    figure_dir.mkdir(parents=True, exist_ok=True)
-
-                    for i, fig in enumerate(figures):
-                        try:
-                            bbox = fig.get("bbox")
-                            if bbox is None:
-                                continue
-                            pix = _crop_figure(page, bbox, render_dpi, render_dpi)
-                            fig_path = figure_dir / f"figure_{i}.png"
-                            pix.save(str(fig_path))
-                        except Exception as e:
-                            logger.warning("Failed to crop figure %d for %s: %s", i, page_id, e)
-
-                # Build figure tags
-                figure_tags = "\n".join(
-                    f'<img src="imgs/figure_{i}.png" />'
-                    for i in range(len(figures))
-                )
-
-                if figure_tags:
-                    text = text + "\n\n" + figure_tags
-
-                # Detect page number and write part
-                page_number, cleaned_text = extract_page_number(text)
-                if not page_number:
-                    page_number = str(page_num + 1)
-                formatted = format_page_block(page_id, cleaned_text, page_number)
-                part_path = parts_dir / f"{page_id}.part"
-                part_path.write_text(formatted, encoding="utf-8")
-
-                if stats is not None:
-                    elapsed = time.time() - t0
-                    stats.record_success(
-                        elapsed=elapsed,
-                        chars=len(cleaned_text),
-                        t_ocr=0.0,
-                        t_post=elapsed,
-                        page_name=page_id,
-                    )
-
-                results.append((page_id, None))
-
-            else:
-                # Image-based: render to temp image
+            if method == "paddleocrvl":
+                # Render page to temp image for VLM OCR
                 cfg.temp_dir.mkdir(parents=True, exist_ok=True)
                 pix = page.get_pixmap(dpi=cfg.pdf_dpi)
                 temp_path = cfg.temp_dir / f"{page_id}.png"
                 pix.save(str(temp_path))
                 results.append((page_id, temp_path))
+
+            elif method == "docling":
+                # Create a single-page temp PDF for Docling
+                temp_pdf = cfg.temp_dir / f"{page_id}_docling.pdf"
+                new_doc = fitz.open()
+                new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+                new_doc.save(str(temp_pdf))
+                new_doc.close()
+
+                try:
+                    result = docling_converter.convert(str(temp_pdf))
+                    text = result.document.export_to_markdown()
+                finally:
+                    temp_pdf.unlink(missing_ok=True)
+
+                figure_tags = _extract_figures_for_page(page, page_id, cfg)
+                if figure_tags:
+                    text = text + "\n\n" + figure_tags
+
+                _write_text_part(page_id, text, page_num, parts_dir, stats, t0)
+                results.append((page_id, None))
+
+            else:  # method == "text"
+                text = page.get_text("text")
+
+                figure_tags = _extract_figures_for_page(page, page_id, cfg)
+                if figure_tags:
+                    text = text + "\n\n" + figure_tags
+
+                _write_text_part(page_id, text, page_num, parts_dir, stats, t0)
+                results.append((page_id, None))
 
         except Exception as e:
             logger.error("Failed to process %s: %s", page_id, e)

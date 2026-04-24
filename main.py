@@ -2,29 +2,33 @@
 main.py — CLI entry point for the book OCR pipeline
 
 Usage :
-    python src/main.py                                # default config (base mode)
-    python src/main.py --images ./photos --out output/book.md
-    python src/main.py --no-resume                    # restart from the beginning
-    python src/main.py --no-layout                    # disable layout detection
-    python src/main.py --no-postprocess               # raw output
-    python src/main.py --mode obsidian                # OCR + Obsidian postprocess (prompts vault if not configured)
-    python src/main.py --mode obsidian --postprocess-only  # Obsidian postprocess without re-running OCR
-    python src/main.py --rename                       # rename images then OCR
-    python src/main.py --rename-only                  # rename images without running OCR
-    python src/main.py --rename-only 15               # rename starting at page_015
-    python src/main.py --rename --dry-run             # print renames without doing them or OCR
-    python src/main.py --rename-only --chapters "Lesson 1" "Lesson 3"  # selected subfolders
-    python src/main.py --rename-only --dir-level      # order: folders alpha > subfolders alpha > images by date
-    python src/main.py --verbose                      # detailed logs
+    python main.py                                # default config (base mode)
+    python main.py --images ./photos --out output/book.md
+    python main.py --no-resume                    # restart from the beginning
+    python main.py --no-layout                    # disable layout detection
+    python main.py --no-postprocess               # raw output
+    python main.py --mode obsidian                # OCR + Obsidian postprocess (prompts vault if not configured)
+    python main.py --mode obsidian --postprocess-only  # Obsidian postprocess without re-running OCR
+    python main.py --rename                       # rename images then OCR
+    python main.py --rename-only                  # rename images without running OCR
+    python main.py --rename-only 15               # rename starting at page_015
+    python main.py --rename --dry-run             # print renames without doing them or OCR
+    python main.py --rename-only --chapters "Lesson 1" "Lesson 3"  # selected subfolders
+    python main.py --rename-only --dir-level      # order: folders alpha > subfolders alpha > images by date
+    python main.py --verbose                      # detailed logs
 """
 
 import argparse
 import logging
 import sys
+from pathlib import Path
 
-from config import Config
-from images import rename_images, copy_from_subdirs, has_image_subdirs
-from progress import setup_logging
+# Allow absolute imports from src/ when running main.py from the project root
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from src.config import Config
+from src.images import rename_images, copy_from_subdirs, has_image_subdirs
+from src.progress import setup_logging
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
                    help="Disable layout detection")
+    p.add_argument("--method", choices=["text", "docling", "paddleocrvl"], default=_cfg.extraction_method,
+                   help="Extraction method for PDFs: text (fast/basic), docling (structured), paddleocrvl (default, best quality)")
 
     # Behavior
     p.add_argument("--no-resume", action="store_true",
@@ -88,6 +94,7 @@ def main() -> int:
         postprocess=not args.no_postprocess,
         mode=args.mode,
         verbose=args.verbose,
+        extraction_method=args.method,
     )
 
     setup_logging(cfg)
@@ -96,7 +103,7 @@ def main() -> int:
     # ── Obsidian setup (common to all obsidian modes) ────────────────────────
     if cfg.mode == "obsidian" or args.migrate:
         from pathlib import Path as _Path
-        from obsidian import prompt_if_needed
+        from src.obsidian import prompt_if_needed
         prompt_if_needed(cfg)
         if not cfg.vault_root or not cfg.vault_figures_dir or not cfg.vault_path:
             logger.error("vault_root, vault_path and vault_figures_dir must be configured.")
@@ -106,7 +113,7 @@ def main() -> int:
 
     # ── Figure migration to vault ────────────────────────────────────────────
     if args.migrate:
-        from obsidian import migrate_figures
+        from src.obsidian import migrate_figures
         migrate_figures(cfg, dry_run=args.dry_run)
         return 0
 
@@ -115,7 +122,7 @@ def main() -> int:
         if cfg.mode != "obsidian":
             logger.error("--postprocess-only requires --mode obsidian")
             return 1
-        from obsidian import postprocess_file, migrate_figures
+        from src.obsidian import postprocess_file, migrate_figures
         postprocess_file(cfg)
         migrate_figures(cfg)
         logger.info("Obsidian postprocess applied: %s", cfg.output_path.resolve())
@@ -156,7 +163,7 @@ def main() -> int:
 
     # ── OCR Pipeline ─────────────────────────────────────────────────────────
     logger.info("═" * 60)
-    logger.info("OCR Pipeline — PaddleOCR-VL-1.5")
+    logger.info("OCR Pipeline — method=%s", cfg.extraction_method)
     logger.info("  Images  : %s", cfg.images_path.resolve())
     logger.info("  Output  : %s", cfg.output_path.resolve())
     logger.info("  Layout  : %s", cfg.use_layout_detection)
@@ -164,7 +171,7 @@ def main() -> int:
     logger.info("═" * 60)
 
     try:
-        from pipeline import run_pipeline
+        from src.pipeline import run_pipeline
         stats = run_pipeline(cfg)
     except Exception as e:
         logger.error("Fatal error: %s", e)

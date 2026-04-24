@@ -41,6 +41,7 @@ class Config:
     # ── PDF ────────────────────────────────────────────────────────────────────
     pdf_dpi: int = 200
     pdf_force_ocr: bool = False
+    extraction_method: str = "paddleocrvl"   # "text" | "docling" | "paddleocrvl"
     temp_dir: Path = field(default_factory=lambda: Path("output/temp"))
 
     # ── Output ───────────────────────────────────────────────────────────────

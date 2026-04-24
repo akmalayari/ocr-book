@@ -80,7 +80,7 @@ def main() -> None:
         print("✅ Setup complete!")
         print("\nNext steps:")
         print("  1. conda activate ocr-livre (if not already active)")
-        print("  2. python src/main.py --help")
+        print("  2. python main.py --help")
         print("="*60)
 
 

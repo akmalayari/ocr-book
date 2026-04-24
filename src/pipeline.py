@@ -284,9 +284,10 @@ def run_pipeline(cfg: Config) -> Stats:
         logger.info("No pages require OCR — skipping server startup.")
 
     # ── Combine in all_page_ids order ────────────────────────────────────────
+    method_label = cfg.extraction_method
     with cfg.output_path.open("w", encoding="utf-8", newline="\n") as out:
         out.write("# OCR Book\n\n")
-        out.write("<!-- Generated with PaddleOCR-VL-1.5 via llama-server -->\n")
+        out.write(f"<!-- Generated with {method_label} -->\n")
         for page_id in all_page_ids:
             part = parts_dir / f"{page_id}.part"
             if part.exists():
