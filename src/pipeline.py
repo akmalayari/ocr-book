@@ -117,6 +117,23 @@ def run_pipeline(cfg: Config) -> Stats:
     procs: list[subprocess.Popen] = []
 
     if ocr_queue:
+        missing = []
+        for name, val in [
+            ("llama_server_path", cfg.llama_server_path),
+            ("model_path", cfg.model_path),
+            ("mmproj_path", cfg.mmproj_path),
+        ]:
+            if not val:
+                missing.append(name)
+        if missing:
+            raise ValueError(
+                f"Missing required configuration: {', '.join(missing)}.\n"
+                "Set them via:\n"
+                "  CLI: --llama-server PATH --model PATH --mmproj PATH\n"
+                "  Env: LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH\n"
+                "  Or edit src/config.py directly."
+            )
+
         ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
         urls  = [f"http://127.0.0.1:{port}" for port in ports]
 

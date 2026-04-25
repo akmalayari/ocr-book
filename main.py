@@ -48,7 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Folder containing page photos, or path to a single file (PDF, EPUB, image)")
     p.add_argument("--out", default=_cfg.output_file,
                    help="Output Markdown file")
-
+    p.add_argument("--llama-server", default=_cfg.llama_server_path,
+                   help="Path to llama-server executable (env: LLAMA_SERVER_PATH)")
+    p.add_argument("--model", default=_cfg.model_path,
+                   help="Path to model .gguf file (env: MODEL_PATH)")
+    p.add_argument("--mmproj", default=_cfg.mmproj_path,
+                   help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
@@ -94,6 +99,9 @@ def main() -> int:
     cfg = Config(
         images_dir=args.images,
         output_file=args.out,
+        llama_server_path=args.llama_server,
+        model_path=args.model,
+        mmproj_path=args.mmproj,
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,

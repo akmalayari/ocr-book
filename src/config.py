@@ -2,6 +2,7 @@
 config.py — Central configuration for the OCR pipeline
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -9,9 +10,10 @@ from pathlib import Path
 @dataclass
 class Config:
     # ── llama-server ─────────────────────────────────────────────────────────
-    llama_server_path: str = r"C:\path\to\llama.cpp\llama-b8683-bin-win-vulkan-x64\llama-server.exe"
-    model_path: str        = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5.gguf"
-    mmproj_path: str       = r"C:\path\to\models\PaddlePaddle-PaddleOCR-VL-1.5-GGUF\PaddleOCR-VL-1.5-mmproj.gguf"
+    # Set via environment variables, CLI arguments, or edit this file directly.
+    llama_server_path: str | None = os.environ.get("LLAMA_SERVER_PATH")
+    model_path: str | None        = os.environ.get("MODEL_PATH")
+    mmproj_path: str | None       = os.environ.get("MMPROJ_PATH")
     server_base_port: int  = 8080   # ports 8080, 8081, … (one per server)
     server_timeout: int    = 60     # seconds to wait before declaring the server dead
     n_servers: int         = 1      # number of parallel llama-server instances
@@ -55,9 +57,9 @@ class Config:
     # ── Post-processing ──────────────────────────────────────────────────────
     postprocess: bool                   = True
     mode: str                           = "base"   # "base" | "obsidian"
-    vault_root: str | None               = "C:/path/to/Documents/Classique Obsidian"  # vault root
-    vault_path: str | None              = "Documents/OCR"          # output subfolder, relative to vault_root
-    vault_figures_dir: str | None       = "Files/OCR"    # figures path relative to vault_root
+    vault_root: str | None               = os.environ.get("OBSIDIAN_VAULT_ROOT")
+    vault_path: str | None              = os.environ.get("OBSIDIAN_VAULT_PATH", "Documents/OCR")
+    vault_figures_dir: str | None       = os.environ.get("OBSIDIAN_VAULT_FIGURES_DIR", "Files/OCR")
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
