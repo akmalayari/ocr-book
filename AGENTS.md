@@ -227,6 +227,18 @@ Important tuning parameters:
 - Do not generate docstrings or comments on unmodified code.
 - Do not explore `output/`, `photos/`, `__pycache__`, `.pytest_cache` (large and irrelevant content).
 
+### Interaction Rules
+When the user asks for an opinion, proposal, or point of view using phrases such as (in any language):
+- "What do you think?"
+- "What do you propose?"
+- "What is your opinion?"
+- "Que proposes-tu?"
+- "Qu'en penses-tu?"
+- "Quel est ton point de vue?"
+- or any similar phrasing,
+
+**respond with text only. Do not write or modify code.** Wait for explicit user approval (e.g., "Go ahead", "Do it", "Yes", "OK", "Implémente", etc.) before making any code changes.
+
 ### Dependency Management
 - No `pyproject.toml`, `requirements.txt`, or `poetry.lock`.
 - Dependencies are declared in `environment.yml` (conda + pip).

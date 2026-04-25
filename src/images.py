@@ -83,7 +83,7 @@ def _collect_sources(cfg: Config) -> list[Path]:
     if path.is_file():
         return [path]
 
-    extensions = cfg.extensions + (".pdf",)
+    extensions = cfg.extensions + (".pdf", ".epub")
     files = [
         p for p in path.iterdir()
         if p.is_file() and p.suffix.lower() in extensions

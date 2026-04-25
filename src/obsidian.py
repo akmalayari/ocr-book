@@ -41,10 +41,29 @@ def fix_image_paths_obsidian(text: str, vault_figures_dir: str) -> str:
     return text
 
 
-def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: bool = False) -> int:
+def fix_markdown_image_paths_obsidian(text: str, vault_figures_dir: str) -> str:
     """
-    Copies figures from output/figures/*/imgs/* to vault_root/vault_figures_dir/.
-    Flat structure: page_001/imgs/fig.jpg → vault_figures_dir/fig.jpg.
+    Converts Markdown image links ![alt](figures/...) into Obsidian wikilinks ![[...]].
+    Skips external URLs (http/https).
+    """
+    if not vault_figures_dir:
+        raise ValueError("vault_figures_dir not configured")
+    prefix = vault_figures_dir.replace("\\", "/").rstrip("/")
+
+    def _replace(m: re.Match) -> str:
+        filename = m.group(1)
+        return f'![[{prefix}/{filename}]]'
+
+    text = re.sub(r'!\[.*?\]\((?!https?://)(?:[^)]*/)?([^/)]+)\)', _replace, text)
+    return text
+
+
+def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: bool = False, flat: bool = False) -> int:
+    """
+    Copies figures to vault_root/vault_figures_dir/.
+
+    Default (flat=False): copies from output/figures/*/imgs/* (OCR pipeline structure).
+    Flat mode (flat=True): copies from output/figures/* (EPUB pipeline structure).
     Skips files already present. Returns the number of files copied.
 
     page_ids : if provided, limits copying to the corresponding subfolders (pages of the current run).
@@ -57,7 +76,9 @@ def migrate_figures(cfg: Config, page_ids: list[str] | None = None, dry_run: boo
     if not dry_run:
         dest.mkdir(parents=True, exist_ok=True)
 
-    if page_ids is not None:
+    if flat:
+        sources = sorted(p for p in cfg.figures_path.glob("*") if p.is_file())
+    elif page_ids is not None:
         sources = sorted(
             src
             for page_id in page_ids

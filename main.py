@@ -1,9 +1,13 @@
 """
 main.py — CLI entry point for the book OCR pipeline
 
+Supports images, PDFs and EPUBs (auto-detected from --images).
+
 Usage :
     python main.py                                # default config (base mode)
     python main.py --images ./photos --out output/book.md
+    python main.py --images book.epub --out output/book.md     # EPUB auto-detected
+    python main.py --images book.pdf --out output/book.md      # PDF auto-detected
     python main.py --no-resume                    # restart from the beginning
     python main.py --no-layout                    # disable layout detection
     python main.py --no-postprocess               # raw output
@@ -34,16 +38,17 @@ from src.progress import setup_logging
 def build_parser() -> argparse.ArgumentParser:
     _cfg = Config()
     p = argparse.ArgumentParser(
-        description="Book OCR pipeline → Markdown via PaddleOCR-VL-1.5",
+        description="Book OCR / EPUB extraction pipeline → Markdown",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
     # Paths
     p.add_argument("--images", default=_cfg.images_dir,
-                   help="Folder containing page photos")
+                   help="Folder containing page photos, or path to a single file (PDF, EPUB, image)")
     p.add_argument("--out", default=_cfg.output_file,
                    help="Output Markdown file")
+
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
@@ -147,6 +152,97 @@ def main() -> int:
             rename_images(cfg.images_dir, cfg.extensions, prefix=args.rename_prefix, dry_run=args.dry_run, start=start)
         if args.dry_run or args.rename_only is not None:
             return 0
+
+    # ── Detect input format and reject mixed folders ─────────────────────────
+    from src.images import _collect_sources, ImageCollectionError
+    try:
+        sources = _collect_sources(cfg)
+    except ImageCollectionError as e:
+        logger.error(str(e))
+        return 1
+
+    # Categorize sources
+    images = [s for s in sources if s.suffix.lower() in cfg.extensions]
+    pdfs   = [s for s in sources if s.suffix.lower() == ".pdf"]
+    epubs  = [s for s in sources if s.suffix.lower() == ".epub"]
+    active_types = {t for t, lst in [("image", images), ("pdf", pdfs), ("epub", epubs)] if lst}
+
+    # Single file shortcuts (bypass folder logic)
+    if len(sources) == 1:
+        src = sources[0]
+        if src.suffix.lower() == ".epub":
+            from src.epub import extract_epub
+            logger.info("═" * 60)
+            logger.info("EPUB Extraction — %s", src)
+            logger.info("  Output  : %s", cfg.output_path.resolve())
+            logger.info("  Figures : %s", cfg.figures_path.resolve())
+            logger.info("═" * 60)
+            try:
+                extract_epub(epub_path=src, output_md=cfg.output_path, figures_dir=cfg.figures_path)
+            except Exception as e:
+                logger.error("Fatal error during EPUB extraction: %s", e)
+                import traceback
+                traceback.print_exc()
+                return 1
+            if cfg.mode == "obsidian":
+                from src.obsidian import fix_markdown_image_paths_obsidian, migrate_figures
+                text = cfg.output_path.read_text(encoding="utf-8")
+                text = fix_markdown_image_paths_obsidian(text, cfg.vault_figures_dir)
+                cfg.output_path.write_text(text, encoding="utf-8", newline="\n")
+                logger.info("Obsidian image links applied.")
+                migrate_figures(cfg, flat=True)
+            logger.info("Output file: %s", cfg.output_path.resolve())
+            return 0
+        # PDFs and images fall through to the pipeline below
+
+    # Reject multiple PDFs
+    if len(pdfs) > 1:
+        logger.error("Multiple PDFs detected in %s:", cfg.images_dir)
+        logger.error("  %s", ", ".join(f.name for f in pdfs[:5]))
+        logger.error("Please place only one PDF per folder.")
+        return 1
+
+    # Reject mixed-type folders
+    if len(active_types) > 1:
+        logger.error("Mixed file types detected in %s:", cfg.images_dir)
+        for t, lst in [("image", images), ("pdf", pdfs), ("epub", epubs)]:
+            if lst:
+                logger.error("  %s: %s", t.upper(), ", ".join(f.name for f in lst[:5]))
+        logger.error("Please use a folder containing only one type of file (images, a single PDF, or a single EPUB).")
+        return 1
+
+    # Reject multiple EPUBs
+    if len(epubs) > 1:
+        logger.error("Multiple EPUBs detected in %s:", cfg.images_dir)
+        logger.error("  %s", ", ".join(f.name for f in epubs[:5]))
+        logger.error("Please place only one EPUB per folder.")
+        return 1
+
+    # Single EPUB in folder (not passed as direct file)
+    if epubs:
+        epub_path = epubs[0]
+        from src.epub import extract_epub
+        logger.info("═" * 60)
+        logger.info("EPUB Extraction — %s", epub_path)
+        logger.info("  Output  : %s", cfg.output_path.resolve())
+        logger.info("  Figures : %s", cfg.figures_path.resolve())
+        logger.info("═" * 60)
+        try:
+            extract_epub(epub_path=epub_path, output_md=cfg.output_path, figures_dir=cfg.figures_path)
+        except Exception as e:
+            logger.error("Fatal error during EPUB extraction: %s", e)
+            import traceback
+            traceback.print_exc()
+            return 1
+        if cfg.mode == "obsidian":
+            from src.obsidian import fix_markdown_image_paths_obsidian, migrate_figures
+            text = cfg.output_path.read_text(encoding="utf-8")
+            text = fix_markdown_image_paths_obsidian(text, cfg.vault_figures_dir)
+            cfg.output_path.write_text(text, encoding="utf-8", newline="\n")
+            logger.info("Obsidian image links applied.")
+            migrate_figures(cfg, flat=True)
+        logger.info("Output file: %s", cfg.output_path.resolve())
+        return 0
 
     # ── Header detection (prompt if not configured) ──────────────────────────
     if cfg.header_patterns is None:

@@ -44,6 +44,9 @@ class Config:
     extraction_method: str = "paddleocrvl"   # "text" | "docling" | "paddleocrvl"
     temp_dir: Path = field(default_factory=lambda: Path("output/temp"))
 
+    # ── EPUB ───────────────────────────────────────────────────────────────────
+    epub_file: str | None = None
+
     # ── Output ───────────────────────────────────────────────────────────────
     output_file: str = "./output/book.md"
     figures_dir: str = "./output/figures"
