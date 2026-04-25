@@ -1,8 +1,9 @@
 # Issues — Work in Progress
 
-## PDF version (current)
+## Multi documents version (current)
 
-OK
+Multi documents support. See [the implementation plan](docs/features/multi-document-pipeline.md).
+
 
 ---
 
