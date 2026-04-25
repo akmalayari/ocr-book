@@ -1,6 +1,6 @@
 # ocr-book — Book OCR Pipeline → Markdown
 
-Digitizes an entire book into Markdown from page photos,
+Digitizes an entire book into Markdown from page photos, PDFs, or EPUBs,
 using **PaddleOCR-VL-1.5** via **llama-server** (local inference).
 
 ---
@@ -36,7 +36,9 @@ ocr-livre/
 │   ├── obsidian.py      # Obsidian export (wikilinks, migration)
 │   ├── images.py        # Image collection and renaming
 │   ├── pipeline.py      # Full orchestration
-│   └── progress.py      # Logging and statistics
+│   ├── progress.py      # Logging and statistics
+│   ├── pdf.py           # PDF processing (text extraction or render → OCR)
+│   └── epub.py          # EPUB extraction (Pandoc-based)
 ├── docs/
 │   ├── architecture/    # Architecture documentation
 │   ├── dev/             # Patches and development notes
@@ -53,7 +55,7 @@ ocr-livre/
 
 ## Usage
 
-Run from `src/`:
+Run from the project root:
 
 ```bash
 # Default pipeline (photos in ./photos, output output/book.md)
@@ -61,6 +63,12 @@ python main.py
 
 # Specify folders
 python main.py --images ./my_photos --out output/my_book.md
+
+# PDF input
+python main.py --images ./book.pdf --out output/book.md
+
+# EPUB input
+python main.py --images ./book.epub --out output/book.md
 
 # Without layout detection
 python main.py --no-layout
@@ -70,6 +78,33 @@ python main.py --no-resume
 
 # Detailed logs
 python main.py --verbose
+```
+
+---
+
+## PDF Processing
+
+PDFs are automatically classified as **text-based** (native text layer) or **image-based** (scanned).
+
+- **Text-based**: extracts text natively with `pymupdf`, detects figures with layout model, no VLM OCR.
+- **Image-based**: renders pages to images, then runs the normal OCR pipeline.
+
+Choose the extraction method explicitly:
+
+```bash
+python main.py --images ./book.pdf --method text         # fast, native text only
+python main.py --images ./book.pdf --method docling      # structured extraction
+python main.py --images ./book.pdf --method paddleocrvl  # best quality, slowest
+```
+
+---
+
+## EPUB Extraction
+
+EPUBs are converted to Markdown via Pandoc, with embedded figures extracted automatically.
+
+```bash
+python main.py --images ./book.epub --out output/book.md
 ```
 
 ---
@@ -129,19 +164,23 @@ Already processed pages are automatically skipped.
 ## Full Options
 
 ```
---images PATH              Photo folder                (default: ./photos)
---out FILE                 Output Markdown file        (default: output/book.md)
---mode {base,obsidian}     Output mode                 (default: base)
+--images PATH              Photo folder, PDF, or EPUB       (default: ./photos)
+--out FILE                 Output Markdown file             (default: output/book.md)
+--llama-server PATH        Path to llama-server executable  (env: LLAMA_SERVER_PATH)
+--model PATH               Path to model .gguf              (env: MODEL_PATH)
+--mmproj PATH              Path to mmproj .gguf             (env: MMPROJ_PATH)
+--mode {base,obsidian}     Output mode                      (default: base)
+--method {text,docling,paddleocrvl}  PDF extraction method  (default: paddleocrvl)
 --no-layout                Disable layout detection
 --no-resume                Restart from the beginning
 --no-postprocess           Raw output without cleanup
 --postprocess-only         Obsidian postprocess without OCR  (requires --mode obsidian)
---migrate                  Copy figures to the vault  (requires vault_path configured)
+--migrate                  Copy figures to the vault        (requires vault_path configured)
 --dry-run                  Simulate without modifying
 --verbose                  DEBUG logs
 --rename                   Rename images before OCR
---rename-only [N]          Rename without running OCR (N = starting number)
---rename-prefix P          Rename prefix                 (default: page)
+--rename-only [N]          Rename without running OCR       (N = starting number)
+--rename-prefix P          Rename prefix                    (default: page)
 --chapters NAME…           Subfolders to process (in order)
 --dir-level                Folder-level order for --rename
 ```

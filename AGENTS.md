@@ -32,7 +32,7 @@ Reference file for AI coding agents. This project is a Python CLI pipeline that 
 
 ```
 ocr-livre/
-├── src/                          # Main source code (8 modules)
+├── src/                          # Main source code (10 modules)
 │   ├── main.py                   # CLI entry point (argparse)
 │   ├── config.py                 # Config dataclass (all default values)
 │   ├── pipeline.py               # Full orchestration (servers, parallelism, parts, fallback)
@@ -40,7 +40,9 @@ ocr-livre/
 │   ├── postprocess.py            # Text cleanup, page number extraction, headers
 │   ├── images.py                 # Collection, renaming, copying from subfolders
 │   ├── obsidian.py               # Obsidian export (wikilinks, figure migration)
-│   └── progress.py               # Configured logging + statistics (Stats dataclass)
+│   ├── progress.py               # Configured logging + statistics (Stats dataclass)
+│   ├── pdf.py                    # PDF processing (text extraction or render → OCR)
+│   └── epub.py                   # EPUB extraction (Pandoc-based)
 │
 ├── docs/                         # Project documentation
 │   ├── architecture/overview.md  # Detailed pipeline architecture
@@ -72,7 +74,7 @@ ocr-livre/
 ### System Prerequisites
 - Windows (developed and tested on Windows)
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
-- [llama-server](https://github.com/ggerganov/llama.cpp) compiled with Vulkan (`llama-b8683-bin-win-vulkan-x64`)
+- [llama-server](https://github.com/ggerganov/llama.cpp) compiled with Vulkan (or another GPU backend)
 - GGUF model: [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5) (`.gguf` + `.mmproj.gguf`)
 
 ### Installation Commands
@@ -110,11 +112,15 @@ These patches modify the installed file at `sys.prefix/Lib/site-packages/paddlex
 All commands are run from `src/` with the `ocr-livre` environment activated.
 
 ```bash
-# Default pipeline
+# Default pipeline (images)
 python src/main.py
-
-# Specify paths
 python src/main.py --images ./photos --out output/book.md
+
+# PDF input
+python src/main.py --images ./book.pdf --out output/book.md
+
+# EPUB input
+python src/main.py --images ./book.epub --out output/book.md
 
 # Main options
 python src/main.py --no-layout          # Disable layout detection
@@ -147,12 +153,13 @@ python src/main.py --rename-only        # Rename without running OCR
 ```
 photos/  →  main.py  →  pipeline.run_pipeline(cfg)
                               │
-                              ├── images.collect_images(cfg)        # sorted list
-                              ├── _start_server(cfg, port) × n_servers
+                              ├── images._collect_sources(cfg)       # images + PDFs + EPUBs
+                              ├── pdf.process_pdf(...)  (if needed)  # text extract or render
+                              ├── _start_server(cfg, port) × n_servers  (if OCR needed)
                               ├── PaddleOCRVL(...) × n_servers
                               │
                               └── ThreadPoolExecutor(max_workers=n_servers)
-                                    for each image:
+                                    for each image/PDF page:
                                     ├── ocr_client.ocr_image(img, pl, cfg)
                                     │     ├── pipeline.predict(image)       # layout + OCR VLM
                                     │     ├── save_to_markdown(save_path)   # figures/page/page.md
@@ -192,10 +199,12 @@ photos/  →  main.py  →  pipeline.run_pipeline(cfg)
 | `images.py` | Image discovery and sorting (`collect_images`), sequential renaming (`rename_images`), copying from subfolders (`copy_from_subdirs`) |
 | `obsidian.py` | `<img>` → wikilinks `![[...]]`, figure migration to vault, postprocess on existing `.md` |
 | `progress.py` | Logging configuration (console INFO + file DEBUG), `Stats` dataclass with final Markdown report |
+| `pdf.py` | PDF classification (text vs image-based), text extraction with `pymupdf`, figure detection, page rendering for OCR |
+| `epub.py` | EPUB extraction to Markdown via Pandoc, with figure extraction and path rewriting |
 
 ### Key Configuration (`config.py`)
 
-Paths to llama-server and models are **hardcoded with absolute Windows paths** (ex: `C:\path\to\...`). They must be adapted to the target machine.
+Paths to llama-server and models are read from **environment variables** by default (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`). They can also be passed via CLI (`--llama-server`, `--model`, `--mmproj`) or edited directly in `src/config.py`.
 
 Important tuning parameters:
 - `n_servers`: number of parallel llama-servers (1 default, useless on single APU/GPU)
@@ -223,7 +232,7 @@ Important tuning parameters:
   - Delete resolved subsections (`###`) and items.
   - Avoid leaving an empty section (`##`): write "OK".
 - Group modified files in a single commit when relevant.
-- Do not add a "Co-Authored-By: Claude..." message in commits.
+- Avoid adding "Co-Authored-By: AI..." attribution tags in commits unless the project conventions require them.
 - Do not generate docstrings or comments on unmodified code.
 - Do not explore `output/`, `photos/`, `__pycache__`, `.pytest_cache` (large and irrelevant content).
 
@@ -232,12 +241,9 @@ When the user asks for an opinion, proposal, or point of view using phrases such
 - "What do you think?"
 - "What do you propose?"
 - "What is your opinion?"
-- "Que proposes-tu?"
-- "Qu'en penses-tu?"
-- "Quel est ton point de vue?"
 - or any similar phrasing,
 
-**respond with text only. Do not write or modify code.** Wait for explicit user approval (e.g., "Go ahead", "Do it", "Yes", "OK", "Implémente", etc.) before making any code changes.
+**respond with text only. Do not write or modify code.** Wait for explicit user approval (e.g., "Go ahead", "Do it", "Yes", "OK", etc.) before making any code changes.
 
 ### Dependency Management
 - No `pyproject.toml`, `requirements.txt`, or `poetry.lock`.
@@ -272,7 +278,7 @@ python src/main.py --images photos/page_1.jpg --no-resume
 
 ## Security and Operational Considerations
 
-- **Absolute Windows paths** in `config.py`: the project is configured for a specific Windows machine (`C:\path\to\...`). These paths must be updated for any other machine.
+- **Path configuration**: llama-server and model paths are no longer hardcoded. They are read from environment variables (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
 - **Patches on installed libraries**: patches directly modify files in `sys.prefix/Lib/site-packages/paddlex/`. They must be reapplied after each environment reinstallation.
 - **GPU resources**: the pipeline launches `n_servers` llama-server processes. Each process loads the model into GPU memory. On an APU (shared CPU/GPU memory), `n_servers > 1` generally brings no gain due to Vulkan command queue serialization.
 - **Timeout and resume**: the parts mechanism makes the pipeline robust to crashes. However, a hard kill may leave orphan llama-server processes or unreleased resources (see `docs/issues.md`).
@@ -289,7 +295,7 @@ python src/main.py --images photos/page_1.jpg --no-resume
 | Incomplete / truncated text | `n_ctx` too small for `n_parallel` | Verify `n_ctx >= 2048 × n_parallel` |
 | Vision encoder crash | `-np` too large (≥4) | Lower to `-np 3` |
 | No pages processed | `photos/` empty or wrong path | Check `--images` and extensions |
-| Timeout on all pages | llama-server not started or model not found | Check paths in `config.py` |
+| Timeout on all pages | llama-server not started or model not found | Check `--llama-server`, `--model`, `--mmproj` or the corresponding env vars |
 
 ---
 
