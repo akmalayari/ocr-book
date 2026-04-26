@@ -296,6 +296,7 @@ python src/main.py --images photos/page_1.jpg --no-resume
 | Vision encoder crash | `-np` too large (≥4) | Lower to `-np 3` |
 | No pages processed | `photos/` empty or wrong path | Check `--images` and extensions |
 | Timeout on all pages | llama-server not started or model not found | Check `--llama-server`, `--model`, `--mmproj` or the corresponding env vars |
+| llama-server hangs on startup | GPU memory held by other apps (Obsidian embedder, games, etc.) | Close GPU-heavy apps, verify free VRAM in Task Manager |
 
 ---
 
