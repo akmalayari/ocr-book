@@ -50,7 +50,7 @@ def main() -> None:
     if not args.env_only:
         conda_run = ["conda", "run", "-n", "ocr-livre", "--no-capture-output"]
         steps.extend([
-            (conda_run + ["pip", "install", "git+https://github.com/PaddlePaddle/PaddleOCR.git"],
+            (conda_run + ["pip", "install", "git+https://github.com/PaddlePaddle/PaddleOCR.git@740a04dc4"],
              "Install PaddleOCR from repo (with llama-server compatibility)", False),
             (conda_run + ["python", str(root / "docs" / "dev" / "apply_paddlex_patch_otsl.py")],
              "Apply paddlex patch (per-region VLM error recovery)", False),

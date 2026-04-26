@@ -21,7 +21,7 @@ conda env create -f environment.yml
 conda activate ocr-livre
 
 # Install PaddleOCR from git repo (dev version with llama-server compatibility)
-pip install git+https://github.com/PaddlePaddle/PaddleOCR.git
+pip install "git+https://github.com/PaddlePaddle/PaddleOCR.git@740a04dc4"
 
 # Apply required paddlex patch
 python docs/dev/apply_paddlex_patch_otsl.py
