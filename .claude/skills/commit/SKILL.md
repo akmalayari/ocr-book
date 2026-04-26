@@ -52,8 +52,3 @@ unnecessary embedding requests after modals/views are closed.
 Also extract `COMPONENT_ID` constants for consistent component
 identification.
 ```
-
-# Safety guideline
-
-See the
-["Git operations" section in CLAUDE.md](../../../CLAUDE.md#git-operations).
