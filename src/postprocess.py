@@ -54,6 +54,7 @@ def strip_table_styles(text: str) -> str:
 
 
 _CODE_SPAN_RE = re.compile(r'`[^`]*`')
+_BLOCK_TAG_RE = re.compile(r'<(?:div|p|table|h[1-6]|ul|ol|li|blockquote|pre)[\s>]', re.IGNORECASE)
 
 
 def _protect_code_spans(text: str) -> tuple[str, list[str]]:
@@ -91,6 +92,25 @@ def html_to_markdown(text: str) -> str:
     Unknown tags are unwrapped (children kept).
     """
     protected, placeholders = _protect_code_spans(text)
+
+    # markdownify's process_text() collapses \n\n → \n in every bare text node
+    # (it normalizes whitespace). To preserve paragraph breaks, we split on \n\n
+    # and wrap each bare paragraph (no block-level HTML) in <p> tags.
+    segments = protected.split('\n\n')
+    wrapped: list[str] = []
+    for seg in segments:
+        seg = seg.strip()
+        if not seg:
+            continue
+        if _BLOCK_TAG_RE.search(seg):
+            # Already contains block-level HTML — leave as-is
+            wrapped.append(seg)
+        else:
+            # Bare text: normalize internal whitespace, then wrap in <p>
+            seg = ' '.join(seg.split())
+            wrapped.append(f'<p>{seg}</p>')
+    protected = '\n\n'.join(wrapped)
+
     converter = _PureMarkdownConverter(
         strip=['style'],
         escape_asterisks=False,
