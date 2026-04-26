@@ -82,6 +82,16 @@ python main.py --verbose
 
 ---
 
+## Example
+
+A phone photo of a textbook page — charts, tables, and dense text — converted to clean Markdown in one command.
+
+![OCR before/after](docs/assets/ocr.png)
+
+*Left: original page photo. Right: extracted Markdown rendered.*
+
+---
+
 ## PDF Processing
 
 PDFs are automatically classified as **text-based** (native text layer) or **image-based** (scanned).
