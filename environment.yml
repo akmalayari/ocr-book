@@ -18,3 +18,4 @@ dependencies:
     - pillow
     - pandoc
     - markdownify
+    - python-dotenv
