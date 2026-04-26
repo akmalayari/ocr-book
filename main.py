@@ -66,6 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Restart from the beginning (ignore existing file)")
     p.add_argument("--no-postprocess", action="store_true",
                    help="Disable post-processing")
+    p.add_argument("--keep-html", action="store_true",
+                   help="Keep HTML tables, figures and formatting (default: convert to pure Markdown)")
     p.add_argument("--mode", choices=["base", "obsidian"], default=_cfg.mode,
                    help="Output mode: base (HTML img) or obsidian (wikilinks ![[]])")
     p.add_argument("--postprocess-only", action="store_true",
@@ -105,6 +107,7 @@ def main() -> int:
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,
+        keep_html=args.keep_html,
         mode=args.mode,
         verbose=args.verbose,
         extraction_method=args.method,

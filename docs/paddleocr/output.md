@@ -80,6 +80,31 @@ These two parameters are independent and often confused:
 
 `format_block_content=True` applies the same type of formatting but in the JSON representation of blocks (used for serving/API), not for the markdown file.
 
+## HTML vs Pure Markdown Output
+
+By default the pipeline converts HTML tags to pure Markdown (tables as pipe tables, figures as `![]()`, etc.). To keep the original HTML tags instead, use the CLI flag:
+
+```bash
+python main.py --keep-html
+```
+
+**What changes (default behaviour without `--keep-html`):**
+
+| HTML | Pure Markdown |
+|---|---|
+| `<table>...</table>` | Markdown pipe table |
+| `<img src="..." alt="..." />` | `![alt](...)` |
+| `<div style="...">caption</div>` | plain text (unwrapped) |
+| `<sup>er</sup>` | `^er^` |
+| `<sub>2</sub>` | `~2~` |
+| `<b>bold</b>` | `**bold**` |
+| `<i>italic</i>` | `*italic*` |
+
+**Notes:**
+- Conversion runs **after** image path fixing, so relative paths are preserved.
+- In Obsidian mode, wikilinks `![[...]]` are passed through untouched.
+- A second pass of `clean_page()` runs after conversion to collapse any extra blank lines introduced by unwrapping `<div>` blocks.
+
 ## Figure Crops
 
 PaddleOCR saves image region crops in an `imgs/` subfolder relative to the `save_path` passed to `save_to_markdown()`. The markdown references these crops by relative path.

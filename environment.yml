@@ -17,3 +17,4 @@ dependencies:
     - ebooklib
     - pillow
     - pandoc
+    - markdownify

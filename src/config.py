@@ -56,6 +56,7 @@ class Config:
 
     # ── Post-processing ──────────────────────────────────────────────────────
     postprocess: bool                   = True
+    keep_html: bool                     = False  # keep HTML tables/figures instead of converting to Markdown
     mode: str                           = "base"   # "base" | "obsidian"
     vault_root: str | None               = os.environ.get("OBSIDIAN_VAULT_ROOT")
     vault_path: str | None              = os.environ.get("OBSIDIAN_VAULT_PATH", "Documents/OCR")
