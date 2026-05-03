@@ -472,5 +472,12 @@ Labels always ignored: `header_image`, `footer`, `footer_image`.
 
 | Parameter | Tested Value | Effect |
 |---|---|---|
-| `max_tokens` | 4096 | current value — 2048 cut some long pages |
+| `max_tokens` | 4096 | Wired to llama-server (`-n`) and `pipeline.predict(max_new_tokens)`. Previously unused. |
+| `n_ctx` | 6144 | KV cache size. With `n_parallel=3`, each slot gets 2048 tokens total (input + output). |
+| `n_parallel` | 3 | Intra-page parallel slots. Lower = more context per slot, higher = faster. |
 | `temperature` | 0.0 | deterministic, retained |
+
+**Dense table truncation:**
+With `n_ctx=6144` and `n_parallel=3`, each slot has 2048 tokens. Dense tables can exceed this,
+causing only the first rows to appear. Fix: increase `--n-ctx` (e.g., 12288) or decrease
+`--n-parallel` (e.g., 1). Both are now exposed as CLI flags.
