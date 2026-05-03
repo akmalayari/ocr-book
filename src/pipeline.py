@@ -44,6 +44,7 @@ def _start_server(cfg: Config, port: int) -> subprocess.Popen:
         "--prio",   str(cfg.prio),
         "--temp",   str(cfg.temperature),
         "-np",      str(cfg.n_parallel),
+        "-n",       str(cfg.max_tokens),
     ]
     if cfg.kv_offload:
         cmd += ["-kvo"]

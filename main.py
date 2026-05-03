@@ -54,6 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Path to model .gguf file (env: MODEL_PATH)")
     p.add_argument("--mmproj", default=_cfg.mmproj_path,
                    help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
+    p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
+                   help="Max tokens generated per page (default: 4096)")
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
@@ -104,6 +106,7 @@ def main() -> int:
         llama_server_path=args.llama_server,
         model_path=args.model,
         mmproj_path=args.mmproj,
+        max_tokens=args.max_tokens,
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,

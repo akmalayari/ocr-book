@@ -97,10 +97,6 @@ The pipeline always opens the output file (`book.md`) with `"w"` (truncate), ove
 
 PaddleOCR 3.5 is now available. Evaluate whether it improves layout detection accuracy or VLM output quality compared to the current pinned commit. Check if the OTSL and parallel patches still apply cleanly.
 
-### Cleanup 1 — Unused sampling parameter
-
-`max_tokens: 4096` in `Config` is never passed to llama-server. Either wire it through to the server launch arguments or remove it from the config to avoid confusion.
-
 ### Testing 1 — Smoke test
 
 Add at least one automated smoke test that runs the pipeline on a single reference image. Currently there is no test suite — validation is entirely manual.

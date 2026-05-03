@@ -20,13 +20,13 @@ class OCRTimeout(OCRError):
     pass
 
 
-def _predict_with_timeout(pipeline, image_path_str: str, timeout: int, name: str) -> list:
+def _predict_with_timeout(pipeline, image_path_str: str, timeout: int, name: str, **kwargs) -> list:
     result: list = []
     exc: list = []
 
     def _run():
         try:
-            result.extend(list(pipeline.predict(image_path_str)))
+            result.extend(list(pipeline.predict(image_path_str, **kwargs)))
         except Exception as e:
             exc.append(e)
 
@@ -67,7 +67,10 @@ def ocr_image(image_path: Path | str, pipeline, cfg: Config) -> tuple[str, dict]
     for attempt in range(2):
         t0 = time.perf_counter()
         try:
-            output = _predict_with_timeout(pipeline, str(image_path), cfg.page_timeout, image_path.name)
+            output = _predict_with_timeout(
+                pipeline, str(image_path), cfg.page_timeout, image_path.name,
+                max_new_tokens=cfg.max_tokens,
+            )
         except OCRError:
             raise
         except Exception as e:
