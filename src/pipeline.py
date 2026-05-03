@@ -5,6 +5,7 @@ pipeline.py — Orchestration of the complete OCR pipeline
 import logging
 import os
 import queue
+import socket
 import subprocess
 import threading
 import time
@@ -59,6 +60,11 @@ def _wait_for_server(url: str, timeout: int) -> bool:
             pass
         time.sleep(1)
     return False
+
+
+def _is_port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
 
 
 def run_pipeline(cfg: Config) -> Stats:
@@ -134,18 +140,28 @@ def run_pipeline(cfg: Config) -> Stats:
                 "  Or edit src/config.py directly."
             )
 
-        ports = [cfg.server_base_port + i for i in range(cfg.n_servers)]
-        urls  = [f"http://127.0.0.1:{port}" for port in ports]
+        ports = []
+        for i in range(cfg.n_servers):
+            port = cfg.server_base_port + i
+            while _is_port_in_use(port):
+                logger.warning("Port %d is already in use, trying next...", port)
+                port += 1
+            ports.append(port)
+        urls = [f"http://127.0.0.1:{port}" for port in ports]
 
         logger.info("Starting %d llama-server...", cfg.n_servers)
         t_load0 = time.time()
         procs = [_start_server(cfg, port) for port in ports]
 
         try:
-            for url in urls:
+            for proc, url in zip(procs, urls):
                 if not _wait_for_server(url, cfg.server_timeout):
                     raise RuntimeError(
                         f"llama-server ({url}) did not start within the time limit ({cfg.server_timeout}s)."
+                    )
+                if proc.poll() is not None:
+                    raise RuntimeError(
+                        f"llama-server ({url}) exited unexpectedly — port may already be in use."
                     )
 
             stats.model_load_time = time.time() - t_load0
