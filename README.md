@@ -78,6 +78,9 @@ python main.py --no-resume
 
 # Detailed logs
 python main.py --verbose
+
+# Dense tables — increase context if tables are truncated
+python main.py --n-ctx 12288 --n-parallel 3
 ```
 
 ---
@@ -193,6 +196,9 @@ Already processed pages are automatically skipped.
 --rename-prefix P          Rename prefix                    (default: page)
 --chapters NAME…           Subfolders to process (in order)
 --dir-level                Folder-level order for --rename
+--max-tokens N             Max tokens generated per page    (default: 4096)
+--n-ctx N                  KV cache size (context window)   (default: 6144)
+--n-parallel N             Intra-page parallel slots        (default: 3)
 ```
 
 ---

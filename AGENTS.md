@@ -292,7 +292,7 @@ python src/main.py --images photos/page_1.jpg --no-resume
 |----------|---------------|----------|
 | `paddlex file not found` | Conda env not activated | `conda activate ocr-livre` |
 | VLM 500 error on tables | OTSL patch not applied | `python docs/dev/apply_paddlex_patch_otsl.py` |
-| Incomplete / truncated text | `n_ctx` too small for `n_parallel` | Verify `n_ctx >= 2048 × n_parallel` |
+| Dense tables cut off (first rows only) | Context slot too small (`n_ctx / n_parallel`) | Increase `--n-ctx` or decrease `--n-parallel` (e.g., `--n-ctx 12288 --n-parallel 3`) |
 | Vision encoder crash | `-np` too large (≥4) | Lower to `-np 3` |
 | No pages processed | `photos/` empty or wrong path | Check `--images` and extensions |
 | Timeout on all pages | llama-server not started or model not found | Check `--llama-server`, `--model`, `--mmproj` or the corresponding env vars |
