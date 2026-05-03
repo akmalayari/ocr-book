@@ -56,6 +56,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
                    help="Max tokens generated per page (default: 4096)")
+    p.add_argument("--n-ctx", type=int, default=_cfg.n_ctx,
+                   help="KV cache size (default: 6144)")
+    p.add_argument("--n-parallel", type=int, default=_cfg.n_parallel,
+                   help="Intra-page parallel slots (default: 3)")
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
@@ -107,6 +111,8 @@ def main() -> int:
         model_path=args.model,
         mmproj_path=args.mmproj,
         max_tokens=args.max_tokens,
+        n_ctx=args.n_ctx,
+        n_parallel=args.n_parallel,
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,
