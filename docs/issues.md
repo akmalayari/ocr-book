@@ -90,18 +90,6 @@ The pipeline always opens the output file (`book.md`) with `"w"` (truncate), ove
 - Clear `output/parts/` at the start of each run when `--no-resume` is used.
 - Or hash the input folder/file name into a run-specific subfolder (`output/parts/<run_id>/`).
 
-### Postprocess 1 — LaTeX formula spacing breaks Obsidian tables
-
-Inline math with leading/trailing spaces inside `$` delimiters is not recognised by Obsidian's table renderer (and many other Markdown parsers).
-
-Example of broken output:
-```markdown
-| MHA | $ = 2 \times n_{heads} \times n_{layers} \times dim_{head} $ |
-```
-The spaces after the opening `$` and before the closing `$` prevent the expression from being rendered as math. This is particularly visible inside Markdown tables.
-
-**Fix:** strip spaces immediately inside `$...$` pairs during post-processing.
-
 
 ## Stabilisation (for release)
 

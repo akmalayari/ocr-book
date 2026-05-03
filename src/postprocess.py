@@ -53,6 +53,24 @@ def strip_table_styles(text: str) -> str:
     return text
 
 
+def strip_math_spacing(text: str) -> str:
+    """
+    Strips leading/trailing spaces inside inline math $...$ delimiters.
+    Spaces inside $$...$$ (display math) are left untouched.
+    Fixes Obsidian and other Markdown parsers that reject math with
+    leading/trailing spaces inside the delimiters.
+
+    Example:  "$ = 2 \\times x $"  →  "$= 2 \\times x$"
+    """
+    def _repl(m: re.Match) -> str:
+        inner = m.group(1)
+        return f'${inner.strip()}$'
+
+    # Match single $...$ but not $$...$$ using negative lookbehind/ahead.
+    # DOTALL allows formulas that span lines (rare but possible in raw OCR).
+    return re.sub(r'(?<!\$)\$(?!\$)\s*(.*?)\s*(?<!\$)\$(?!\$)', _repl, text, flags=re.DOTALL)
+
+
 _CODE_SPAN_RE = re.compile(r'`[^`]*`')
 _BLOCK_TAG_RE = re.compile(r'<(?:div|p|table|h[1-6]|ul|ol|li|blockquote|pre)[\s>]', re.IGNORECASE)
 

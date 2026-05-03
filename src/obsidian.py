@@ -113,7 +113,7 @@ def postprocess_file(cfg: Config) -> None:
       - conversion of <img> tags to wikilinks ![[ ]]
       - header detection (if cfg.header_patterns)
     """
-    from postprocess import clean_page, strip_table_styles, apply_header_detection
+    from postprocess import clean_page, strip_table_styles, strip_math_spacing, apply_header_detection
 
     if not cfg.vault_figures_dir:
         raise ValueError("vault_figures_dir not configured")
@@ -128,6 +128,7 @@ def postprocess_file(cfg: Config) -> None:
     if cfg.postprocess:
         text = clean_page(text, cfg)
         text = strip_table_styles(text)
+        text = strip_math_spacing(text)
 
     text = re.sub(r'<img\b[^>]*\bsrc="[^"]*/imgs/([^"]+)"[^>]*/?\s*>', _replace, text)
     text = re.sub(r'<div\b[^>]*>\s*(!\[\[[^\]]+\]\])\s*</div>', r'\1', text)
