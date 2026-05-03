@@ -255,38 +255,42 @@ def main() -> int:
         logger.info("Output file: %s", cfg.output_path.resolve())
         return 0
 
-    # ── Header detection (prompt if not configured) ──────────────────────────
-    if cfg.header_patterns is None:
-        print("Header detection on the final file (leave empty to disable):")
-        patterns = []
-        for level, label, example in [
-            (2,  "sections    (##) ", r"^[IVX]+\."),
-            (3,  "sub-sections (###)", r"^[A-Z]\."),
-        ]:
-            val = input(f"  Pattern {label} [ex: {example}] : ").strip()
-            if val:
-                patterns.append((val, level))
-        cfg.header_patterns = patterns or []
-
-    # ── OCR Pipeline ─────────────────────────────────────────────────────────
-    logger.info("═" * 60)
-    logger.info("OCR Pipeline — method=%s", cfg.extraction_method)
-    logger.info("  Images  : %s", cfg.images_path.resolve())
-    logger.info("  Output  : %s", cfg.output_path.resolve())
-    logger.info("  Layout  : %s", cfg.use_layout_detection)
-    logger.info("  Resume  : %s", cfg.resume)
-    logger.info("═" * 60)
-
     try:
-        from src.pipeline import run_pipeline
-        stats = run_pipeline(cfg)
-    except Exception as e:
-        logger.error("Fatal error: %s", e)
-        import traceback
-        traceback.print_exc()
-        return 1
+        # ── Header detection (prompt if not configured) ──────────────────────────
+        if cfg.header_patterns is None:
+            print("Header detection on the final file (leave empty to disable):")
+            patterns = []
+            for level, label, example in [
+                (2,  "sections    (##) ", r"^[IVX]+\."),
+                (3,  "sub-sections (###)", r"^[A-Z]\."),
+            ]:
+                val = input(f"  Pattern {label} [ex: {example}] : ").strip()
+                if val:
+                    patterns.append((val, level))
+            cfg.header_patterns = patterns or []
 
-    return 0 if stats.errors == 0 else 2
+        # ── OCR Pipeline ─────────────────────────────────────────────────────────
+        logger.info("═" * 60)
+        logger.info("OCR Pipeline — method=%s", cfg.extraction_method)
+        logger.info("  Images  : %s", cfg.images_path.resolve())
+        logger.info("  Output  : %s", cfg.output_path.resolve())
+        logger.info("  Layout  : %s", cfg.use_layout_detection)
+        logger.info("  Resume  : %s", cfg.resume)
+        logger.info("═" * 60)
+
+        try:
+            from src.pipeline import run_pipeline
+            stats = run_pipeline(cfg)
+        except Exception as e:
+            logger.error("Fatal error: %s", e)
+            import traceback
+            traceback.print_exc()
+            return 1
+
+        return 0 if stats.errors == 0 else 2
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user.")
+        return 130
 
 
 if __name__ == "__main__":
