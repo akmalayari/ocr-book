@@ -36,7 +36,23 @@ python docs/dev/apply_paddlex_patch_parallel.py
 
 Before running OCR, you must tell the pipeline where `llama-server` and the models are located.
 
-### Option A: Environment Variables (recommended)
+### Option A: `.env` file (recommended)
+
+Copy the example file and edit it:
+
+```bash
+cp .env.example .env
+```
+
+Fill in the three required paths in `.env`:
+
+```bash
+LLAMA_SERVER_PATH=C:/path/to/llama-server.exe
+MODEL_PATH=C:/path/to/PaddleOCR-VL-1.5.gguf
+MMPROJ_PATH=C:/path/to/PaddleOCR-VL-1.5-mmproj.gguf
+```
+
+### Option B: Environment Variables
 
 ```bash
 # Windows (PowerShell)
@@ -50,7 +66,7 @@ export MODEL_PATH=/path/to/PaddleOCR-VL-1.5.gguf
 export MMPROJ_PATH=/path/to/PaddleOCR-VL-1.5-mmproj.gguf
 ```
 
-### Option B: CLI Arguments
+### Option C: CLI Arguments
 
 ```bash
 python main.py \
@@ -60,7 +76,7 @@ python main.py \
   --images ./photos
 ```
 
-### Option C: Edit config.py
+### Option D: Edit config.py
 
 Edit `src/config.py` directly and set the absolute paths in the `Config` dataclass.
 
@@ -70,16 +86,16 @@ Edit `src/config.py` directly and set the absolute paths in the `Config` datacla
 
 ```bash
 # Default (photos in ./photos)
-python src/main.py
+python main.py
 
 # With explicit paths
-python src/main.py --images ./photos --out output/book.md
+python main.py --images ./photos --out output/book.md
 
 # PDF input
-python src/main.py --images ./book.pdf --out output/book.md
+python main.py --images ./book.pdf --out output/book.md
 
 # EPUB input
-python src/main.py --images ./book.epub --out output/book.md
+python main.py --images ./book.epub --out output/book.md
 ```
 
 ---

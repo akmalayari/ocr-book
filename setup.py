@@ -80,7 +80,11 @@ def main() -> None:
         print("✅ Setup complete!")
         print("\nNext steps:")
         print("  1. conda activate ocr-livre (if not already active)")
-        print("  2. python main.py --help")
+        print("  2. Configure llama-server and model paths (pick one):")
+        print("       a) cp .env.example .env  → edit the file")
+        print("       b) Export env vars LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH")
+        print("       c) Pass --llama-server, --model, --mmproj to main.py")
+        print("  3. python main.py --help")
         print("="*60)
 
 

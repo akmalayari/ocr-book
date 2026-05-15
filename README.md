@@ -20,7 +20,12 @@ python setup.py
 conda activate ocr-livre
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for details.
+Then configure the paths to `llama-server` and the models. The easiest way is to copy `.env.example` to `.env` and edit it, but you can also use environment variables or CLI arguments — see [docs/SETUP.md](docs/SETUP.md) for all options.
+
+```bash
+cp .env.example .env
+# Edit .env and set LLAMA_SERVER_PATH, MODEL_PATH and MMPROJ_PATH
+```
 
 ---
 

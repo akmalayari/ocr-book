@@ -109,33 +109,33 @@ These patches modify the installed file at `sys.prefix/Lib/site-packages/paddlex
 
 ## Execution
 
-All commands are run from `src/` with the `ocr-livre` environment activated.
+All commands are run from the **project root** with the `ocr-livre` environment activated.
 
 ```bash
 # Default pipeline (images)
-python src/main.py
-python src/main.py --images ./photos --out output/book.md
+python main.py
+python main.py --images ./photos --out output/book.md
 
 # PDF input
-python src/main.py --images ./book.pdf --out output/book.md
+python main.py --images ./book.pdf --out output/book.md
 
 # EPUB input
-python src/main.py --images ./book.epub --out output/book.md
+python main.py --images ./book.epub --out output/book.md
 
 # Main options
-python src/main.py --no-layout          # Disable layout detection
-python src/main.py --no-resume          # Restart from the beginning
-python src/main.py --no-postprocess     # Raw output without cleanup
-python src/main.py --verbose            # DEBUG logs
+python main.py --no-layout          # Disable layout detection
+python main.py --no-resume          # Restart from the beginning
+python main.py --no-postprocess     # Raw output without cleanup
+python main.py --verbose            # DEBUG logs
 
 # Obsidian mode
-python src/main.py --mode obsidian
-python src/main.py --mode obsidian --postprocess-only   # Without re-running OCR
+python main.py --mode obsidian
+python main.py --mode obsidian --postprocess-only   # Without re-running OCR
 
 # Image renaming
-python src/main.py --rename --dry-run   # Preview
-python src/main.py --rename             # Rename to page_001.jpg, page_002.jpg...
-python src/main.py --rename-only        # Rename without running OCR
+python main.py --rename --dry-run   # Preview
+python main.py --rename             # Rename to page_001.jpg, page_002.jpg...
+python main.py --rename-only        # Rename without running OCR
 ```
 
 ### Exit Codes
@@ -270,7 +270,7 @@ python docs/dev/apply_paddlex_patch_otsl.py --check
 python docs/dev/apply_paddlex_patch_parallel.py --check
 
 # Quick diagnostic
-python src/main.py --images photos/page_1.jpg --no-resume
+python main.py --images photos/page_1.jpg --no-resume
 # Then check output/ocr_run.log
 ```
 
