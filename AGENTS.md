@@ -32,8 +32,8 @@ Reference file for AI coding agents. This project is a Python CLI pipeline that 
 
 ```
 ocr-livre/
-├── src/                          # Main source code (10 modules)
-│   ├── main.py                   # CLI entry point (argparse)
+├── main.py                       # CLI entry point (argparse)
+├── src/                          # Main source code (9 modules)
 │   ├── config.py                 # Config dataclass (all default values)
 │   ├── pipeline.py               # Full orchestration (servers, parallelism, parts, fallback)
 │   ├── ocr_client.py             # OCR of an image via PaddleOCRVL + retry/timeout
@@ -254,13 +254,16 @@ When the user asks for an opinion, proposal, or point of view using phrases such
 
 ## Tests
 
-**There is no automated test suite** (pytest, unittest, etc.).
+A minimal automated smoke-test suite lives in `tests/test_smoke.py`. It validates imports, config defaults, and CLI argument parsing without requiring llama-server or the model stack.
 
-The test strategy is **experimental and manual**:
+```bash
+python -m pytest tests/ -v
+```
+
+The primary test strategy remains **experimental and manual**:
 - Test and comparison scripts are in `draft/` (gitignored).
 - Experiment results are documented in `docs/tested.md`.
 - Reference pages used: `page_1` to `page_9` (described in `docs/tested.md`).
-- Last resort: `python -m pytest tests/ -v` (the reference exists in `CLAUDE.md` but no `tests/` folder is visible in the repo).
 
 ### Useful development scripts in `docs/dev/`
 
