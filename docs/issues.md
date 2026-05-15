@@ -6,10 +6,6 @@
 
 See [the implementation plan](features/multi-document-pipeline.md).
 
-### Feature 2 — LaTeX Postprocess
-
-Make OCR of academic documents with many LaTeX equations more robust.
-
 ### Feature 3 — Multi-model support (GLM-OCR)
 
 Add GLM-OCR as an optional VLM alongside PaddleOCR-VL-1.5. GLM-OCR reuses `ppdoclayout` and `paddlex`, so the layout and table sub-pipelines stay identical — only the vision backbone changes.
@@ -92,10 +88,6 @@ The pipeline always opens the output file (`book.md`) with `"w"` (truncate), ove
 
 
 ## Stabilisation (for release)
-
-### Dependency update — PaddleOCR 3.5 released
-
-PaddleOCR 3.5 is now available. Evaluate whether it improves layout detection accuracy or VLM output quality compared to the current pinned commit. Check if the OTSL and parallel patches still apply cleanly.
 
 ### Testing 1 — Smoke test
 
