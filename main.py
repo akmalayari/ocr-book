@@ -267,13 +267,15 @@ def main() -> int:
     try:
         # ── Header detection (prompt if not configured) ──────────────────────────
         if cfg.header_patterns is None:
-            print("Header detection on the final file (leave empty to disable):")
+            print("Header detection: promote matching lines to Markdown headers.")
+            print("  Patterns are Python regex, matched from the start of each line.")
+            print("  The entire line becomes the heading text. Leave empty to disable.")
             patterns = []
             for level, label, example in [
-                (2,  "sections    (##) ", r"^[IVX]+\."),
+                (2,  "sections     (##) ", r"^[IVX]+\."),
                 (3,  "sub-sections (###)", r"^[A-Z]\."),
             ]:
-                val = input(f"  Pattern {label} [ex: {example}] : ").strip()
+                val = input(f"  Regex for {label} [ex: {example}] : ").strip()
                 if val:
                     patterns.append((val, level))
             cfg.header_patterns = patterns or []

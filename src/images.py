@@ -152,9 +152,14 @@ def has_image_subdirs(folder: str | Path, extensions: tuple) -> bool:
 
 def _collect_per_dir(folder: Path, extensions: tuple) -> list[Path]:
     """
-    Collects images recursively:
-    - current folder images first, sorted by creation date
-    - then subfolders in alphabetical order, recursively
+    Collects images recursively, preserving directory hierarchy in the order.
+
+    Within each directory:
+      1. Local images first, sorted by creation date (birthtime, fallback mtime)
+      2. Then subdirectories in alphabetical order, processed recursively
+
+    This means all images from one folder come before any image from its
+    subfolders, and subfolders are visited alphabetically.
     """
     result = []
     local = sorted(
@@ -186,6 +191,11 @@ def copy_from_subdirs(
         prefix   : prefix for copied file names
         start    : starting number
         dry_run  : if True, prints operations without performing them
+        dir_level: If False, all images under each subdir are collected
+                   recursively and flattened into a single date-sorted list.
+                   If True, images are grouped by directory depth:
+                   current folder first (by date), then subfolders
+                   alphabetically, recursively.
 
     Returns:
         List of copied paths.
