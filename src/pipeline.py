@@ -20,7 +20,7 @@ from paddleocr import PaddleOCRVL
 
 from config import Config
 from ocr_client import ocr_image, OCRError, OCRTimeout
-from postprocess import clean_page, strip_table_styles, strip_math_spacing, format_page_block, format_error_block, fix_image_paths, extract_page_number, apply_header_detection, html_to_markdown
+from postprocess import clean_page, strip_table_styles, strip_math_spacing, fix_double_scripts, format_page_block, format_error_block, fix_image_paths, extract_page_number, apply_header_detection, html_to_markdown
 from obsidian import fix_image_paths_obsidian
 from images import _collect_sources
 from progress import Stats
@@ -231,7 +231,9 @@ def run_pipeline(cfg: Config) -> Stats:
                     page_number, text = extract_page_number(raw_text)
                     clean_text = clean_page(text, cfg, no_layout=no_layout) if cfg.postprocess else text
                     clean_text = strip_table_styles(clean_text)
-                    clean_text = strip_math_spacing(clean_text)
+                    if cfg.postprocess:
+                        clean_text = strip_math_spacing(clean_text)
+                        clean_text = fix_double_scripts(clean_text)
                     if cfg.mode == "obsidian":
                         clean_text = fix_image_paths_obsidian(clean_text, cfg.vault_figures_dir)
                     else:
@@ -241,6 +243,7 @@ def run_pipeline(cfg: Config) -> Stats:
                         if cfg.postprocess:
                             clean_text = clean_page(clean_text, cfg, no_layout=no_layout)
                             clean_text = strip_math_spacing(clean_text)
+                            clean_text = fix_double_scripts(clean_text)
                     t_post = time.time() - t_post0
                     elapsed = time.time() - t0
                     part_path = parts_dir / f"{page_id}.part"

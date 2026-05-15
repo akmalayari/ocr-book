@@ -71,6 +71,68 @@ def strip_math_spacing(text: str) -> str:
     return re.sub(r'(?<!\$)\$(?!\$)\s*(.*?)\s*(?<!\$)\$(?!\$)', _repl, text, flags=re.DOTALL)
 
 
+def fix_double_scripts(text: str) -> str:
+    """
+    Fixes consecutive unbraced superscripts/subscripts inside math mode.
+
+    LaTeX does not allow double scripts like ``X^p^n`` or ``X_p_n``;
+    they must be grouped: ``X^{p^n}`` or ``X_{p_n}``.
+
+    Handles common OCR patterns including partially braced forms
+    (``^{p}^n``, ``^p^{n}``, ``^{p}^{n}``) both in inline ``$...$``
+    and display ``$$...$$`` math.
+
+    Chained scripts (e.g. ``x^a^b^c``) are resolved iteratively,
+    although deeply nested mixed braced/unbraced chains may require
+    manual correction.
+    """
+    _script_body = r'(?:[a-zA-Z0-9]+|\\[a-zA-Z]+|\{[^{}]*\})'
+
+    def _sup_repl(m: re.Match) -> str:
+        a, b = m.group(1), m.group(2)
+        if a.startswith('{') and a.endswith('}'):
+            a = a[1:-1]
+        if b.startswith('{') and b.endswith('}'):
+            b = b[1:-1]
+        return '^{' + a + '^' + b + '}'
+
+    def _sub_repl(m: re.Match) -> str:
+        a, b = m.group(1), m.group(2)
+        if a.startswith('{') and a.endswith('}'):
+            a = a[1:-1]
+        if b.startswith('{') and b.endswith('}'):
+            b = b[1:-1]
+        return '_{' + a + '_' + b + '}'
+
+    def _fix_in_math(math_text: str) -> str:
+        sup_pattern = rf'\^({_script_body})\^({_script_body})'
+        for _ in range(10):
+            new_text = re.sub(sup_pattern, _sup_repl, math_text)
+            if new_text == math_text:
+                break
+            math_text = new_text
+
+        sub_pattern = rf'_({_script_body})_({_script_body})'
+        for _ in range(10):
+            new_text = re.sub(sub_pattern, _sub_repl, math_text)
+            if new_text == math_text:
+                break
+            math_text = new_text
+
+        return math_text
+
+    def _repl_display(m: re.Match) -> str:
+        return f'$${_fix_in_math(m.group(1))}$$'
+
+    def _repl_inline(m: re.Match) -> str:
+        return f'${_fix_in_math(m.group(1))}$'
+
+    # Display math first so $$...$$ doesn't interfere with $...$
+    text = re.sub(r'\$\$(.*?)\$\$', _repl_display, text, flags=re.DOTALL)
+    text = re.sub(r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)', _repl_inline, text, flags=re.DOTALL)
+    return text
+
+
 _CODE_SPAN_RE = re.compile(r'`[^`]*`')
 _BLOCK_TAG_RE = re.compile(r'<(?:div|p|table|h[1-6]|ul|ol|li|blockquote|pre)[\s>]', re.IGNORECASE)
 
