@@ -38,7 +38,7 @@ from src.progress import setup_logging
 def build_parser() -> argparse.ArgumentParser:
     _cfg = Config()
     p = argparse.ArgumentParser(
-        description="Book OCR / EPUB extraction pipeline → Markdown",
+        description="Book OCR / EPUB extraction pipeline -> Markdown",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

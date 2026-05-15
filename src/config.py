@@ -63,15 +63,15 @@ class Config:
     keep_html: bool                     = False  # keep HTML tables/figures instead of converting to Markdown
     mode: str                           = "base"   # "base" | "obsidian"
     vault_root: str | None               = os.environ.get("OBSIDIAN_VAULT_ROOT")
-    vault_path: str | None              = os.environ.get("OBSIDIAN_VAULT_PATH", "Documents/OCR")
-    vault_figures_dir: str | None       = os.environ.get("OBSIDIAN_VAULT_FIGURES_DIR", "Files/OCR")
+    vault_path: str                     = os.environ.get("OBSIDIAN_VAULT_PATH", "Documents/OCR")
+    vault_figures_dir: str              = os.environ.get("OBSIDIAN_VAULT_FIGURES_DIR", "Files/OCR")
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
     # List of (line_start_regex, level) for header detection on the final file.
     # None = disabled (prompt at launch). [] = disabled without prompt.
     # Ex: [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
-    header_patterns: list[tuple[str, int]] | None = field(default_factory=list)
+    header_patterns: list[tuple[str, int]] | None = None
 
     # ── Logging ──────────────────────────────────────────────────────────────
     log_file: str    = "output/ocr_run.log"
