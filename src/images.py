@@ -53,6 +53,11 @@ def collect_images(cfg: Config) -> list[Path]:
     )
 
     if not images:
+        if has_image_subdirs(path, cfg.extensions):
+            raise ImageCollectionError(
+                f"No image directly in {path} — images are in subfolders.\n"
+                "Run `python main.py --rename-only` first to copy and number them into this folder."
+            )
         raise ImageCollectionError(
             f"No image ({', '.join(cfg.extensions)}) in: {path}"
         )
@@ -88,6 +93,11 @@ def _collect_sources(cfg: Config) -> list[Path]:
         p for p in path.iterdir()
         if p.is_file() and p.suffix.lower() in extensions
     ]
+    if not files and has_image_subdirs(path, cfg.extensions):
+        raise ImageCollectionError(
+            f"No image directly in {path} — images are in subfolders.\n"
+            "Run `python main.py --rename-only` first to copy and number them into this folder."
+        )
     return natsorted(files, key=lambda p: p.name)
 
 
