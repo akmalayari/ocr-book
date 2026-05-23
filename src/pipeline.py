@@ -68,6 +68,34 @@ def _is_port_in_use(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def _check_parallel_config(cfg) -> None:
+    """Warn when n_parallel and parallel patch status are mismatched."""
+    import sys as _sys
+    target = (
+        Path(_sys.prefix)
+        / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
+    )
+    if not target.exists():
+        return
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError:
+        return
+    patch_applied = "_VLM_PARALLEL" in text
+    if patch_applied and cfg.n_parallel == 1:
+        logger.warning(
+            "Parallel patch is applied but n_parallel=1 — no concurrency benefit. "
+            "Set --n-parallel 3 (or the VLM_PARALLEL value in the patch) to use it."
+        )
+    elif not patch_applied and cfg.n_parallel > 1:
+        logger.warning(
+            "n_parallel=%d but the parallel patch is not applied — "
+            "%d context slots are allocated but only one is used at a time. "
+            "Apply docs/dev/apply_paddlex_patch_parallel.py or set --n-parallel 1.",
+            cfg.n_parallel, cfg.n_parallel,
+        )
+
+
 def run_pipeline(cfg: Config) -> Stats:
     """
     Runs the complete pipeline:
@@ -140,6 +168,8 @@ def run_pipeline(cfg: Config) -> Stats:
                 "  Env: LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH\n"
                 "  Or edit src/config.py directly."
             )
+
+        _check_parallel_config(cfg)
 
         ports = []
         for i in range(cfg.n_servers):
