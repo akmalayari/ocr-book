@@ -281,7 +281,7 @@ python main.py --images photos/page_1.jpg --no-resume
 
 ## Security and Operational Considerations
 
-- **Path configuration**: llama-server and model paths are no longer hardcoded. They are read from environment variables (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
+- **Path configuration**: llama-server and model paths are read from environment variables (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
 - **Patches on installed libraries**: patches directly modify files in `sys.prefix/Lib/site-packages/paddlex/`. They must be reapplied after each environment reinstallation.
 - **GPU resources**: the pipeline launches `n_servers` llama-server processes. Each process loads the model into GPU memory. On an APU (shared CPU/GPU memory), `n_servers > 1` generally brings no gain due to Vulkan command queue serialization.
 - **Timeout and resume**: the parts mechanism makes the pipeline robust to crashes. However, a hard kill may leave orphan llama-server processes or unreleased resources (see `docs/issues.md`).
