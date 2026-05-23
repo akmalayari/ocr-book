@@ -270,7 +270,11 @@ def extract_epub(epub_path: Path, output_md: Path, figures_dir: Path) -> dict:
     raw_md = output_md.with_suffix(".raw.md")
     if _pandoc_available():
         logger.info("Using Pandoc for EPUB → Markdown")
-        stats = _extract_with_pandoc(epub_path, raw_md)
+        try:
+            stats = _extract_with_pandoc(epub_path, raw_md)
+        except RuntimeError as e:
+            logger.warning("Pandoc failed (%s); falling back to EbookLib", e)
+            stats = _extract_with_ebooklib(epub_path, raw_md)
     else:
         logger.info("Pandoc not found; falling back to EbookLib")
         stats = _extract_with_ebooklib(epub_path, raw_md)
