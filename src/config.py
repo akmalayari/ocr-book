@@ -20,10 +20,11 @@ class Config:
     mmproj_path: str | None       = os.environ.get("MMPROJ_PATH")
     server_base_port: int  = 8080   # ports 8080, 8081, … (one per server)
     server_timeout: int    = 60     # seconds to wait before declaring the server dead
-    n_servers: int         = 1      # number of parallel llama-server instances
 
     # ── llama-server parameters (tuning) ─────────────────────────────────────
-    n_ctx: int            = 6144   # 2048 tokens/slot × np=3
+    # n_ctx: None = auto (n_parallel * 2048). Override for books with large/dense
+    # tables where the default per-slot budget is too small (e.g. n_parallel * 4096).
+    n_ctx: int | None     = None
     n_gpu_layers: int     = 99
     n_batch: int          = 512
     n_ubatch: int         = 512
@@ -32,7 +33,9 @@ class Config:
     kv_offload: bool      = True
     max_tokens: int       = 4096
     temperature: float    = 0.0
-    n_parallel: int       = 3      # intra-page parallelism (apply_paddlex_patch_parallel.py required)
+    # n_parallel > 1 requires apply_paddlex_patch_parallel.py; leave at 1 otherwise.
+    n_parallel: int       = 1
+    n_servers: int        = 1      # number of parallel llama-server instances
     page_timeout: int     = 120    # max seconds per page before giving up (0 = disabled)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
@@ -77,6 +80,10 @@ class Config:
     log_file: str    = "output/ocr_run.log"
     report_file: str = "output/ocr_report.md"
     verbose: bool    = False
+
+    def __post_init__(self):
+        if self.n_ctx is None:
+            self.n_ctx = self.n_parallel * 2048
 
     @property
     def images_path(self) -> Path:
