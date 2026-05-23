@@ -20,6 +20,8 @@ Usage :
     python main.py --rename-only --chapters "Lesson 1" "Lesson 3"  # selected subfolders
     python main.py --rename-only --dir-level      # order: folders alpha > subfolders alpha > images by date
     python main.py --verbose                      # detailed logs
+    python main.py --no-header-detection          # skip header detection prompt (headless)
+    python main.py --header-pattern "^[IVX]+\\." 2 --header-pattern "^[A-Z]\\." 3  # provide patterns directly
 """
 
 import argparse
@@ -103,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--migrate", action="store_true",
                    help="Copy figures to the Obsidian vault (vault_path/vault_figures_dir) without running OCR")
 
+    # Header detection
+    p.add_argument("--header-pattern", nargs=2, action="append", metavar=("REGEX", "LEVEL"),
+                   help="Header pattern: regex and heading level (e.g. --header-pattern '^[IVX]+\\.' 2). Repeatable. Skips interactive prompt.")
+    p.add_argument("--no-header-detection", action="store_true",
+                   help="Disable header detection entirely, skipping the interactive prompt")
+
     return p
 
 
@@ -134,6 +142,11 @@ def main() -> int:
 
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
+
+    if args.no_header_detection:
+        cfg.header_patterns = []
+    elif args.header_pattern:
+        cfg.header_patterns = [(regex, int(level)) for regex, level in args.header_pattern]
 
     # ── Obsidian setup (common to all obsidian modes) ────────────────────────
     if cfg.mode == "obsidian" or args.migrate:
