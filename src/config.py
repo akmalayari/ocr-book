@@ -72,9 +72,9 @@ class Config:
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
     # List of (line_start_regex, level) for header detection on the final file.
-    # None = disabled (prompt at launch). [] = disabled without prompt.
+    # [] = disabled (default). Set via --header-pattern CLI flag to enable.
     # Ex: [("^[IVX]+\\.", 2), ("^[A-Z]\\.", 3)]
-    header_patterns: list[tuple[str, int]] | None = None
+    header_patterns: list[tuple[str, int]] = field(default_factory=list)
 
     # ── Logging ──────────────────────────────────────────────────────────────
     log_file: str    = "output/ocr_run.log"

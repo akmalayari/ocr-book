@@ -20,8 +20,7 @@ Usage :
     python main.py --rename-only --chapters "Lesson 1" "Lesson 3"  # selected subfolders
     python main.py --rename-only --dir-level      # order: folders alpha > subfolders alpha > images by date
     python main.py --verbose                      # detailed logs
-    python main.py --no-header-detection          # skip header detection prompt (headless)
-    python main.py --header-pattern "^[IVX]+\\." 2 --header-pattern "^[A-Z]\\." 3  # provide patterns directly
+    python main.py --header-pattern "^[IVX]+\\." 2 --header-pattern "^[A-Z]\\." 3  # enable header detection
 """
 
 import argparse
@@ -107,9 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Header detection
     p.add_argument("--header-pattern", nargs=2, action="append", metavar=("REGEX", "LEVEL"),
-                   help="Header pattern: regex and heading level (e.g. --header-pattern '^[IVX]+\\.' 2). Repeatable. Skips interactive prompt.")
-    p.add_argument("--no-header-detection", action="store_true",
-                   help="Disable header detection entirely, skipping the interactive prompt")
+                   help="Promote matching lines to Markdown headers. Regex and heading level (e.g. --header-pattern '^[IVX]+\\.' 2). Repeatable.")
 
     return p
 
@@ -143,9 +140,7 @@ def main() -> int:
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
 
-    if args.no_header_detection:
-        cfg.header_patterns = []
-    elif args.header_pattern:
+    if args.header_pattern:
         cfg.header_patterns = [(regex, int(level)) for regex, level in args.header_pattern]
 
     # ── Obsidian setup (common to all obsidian modes) ────────────────────────
@@ -288,21 +283,6 @@ def main() -> int:
         return 0
 
     try:
-        # ── Header detection (prompt if not configured) ──────────────────────────
-        if cfg.header_patterns is None:
-            print("Header detection: promote matching lines to Markdown headers.")
-            print("  Patterns are Python regex, matched from the start of each line.")
-            print("  The entire line becomes the heading text. Leave empty to disable.")
-            patterns = []
-            for level, label, example in [
-                (2,  "sections     (##) ", r"^[IVX]+\."),
-                (3,  "sub-sections (###)", r"^[A-Z]\."),
-            ]:
-                val = input(f"  Regex for {label} [ex: {example}] : ").strip()
-                if val:
-                    patterns.append((val, level))
-            cfg.header_patterns = patterns or []
-
         # ── OCR Pipeline ─────────────────────────────────────────────────────────
         logger.info("═" * 60)
         logger.info("OCR Pipeline — method=%s", cfg.extraction_method)
