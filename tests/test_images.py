@@ -16,6 +16,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 from config import Config
 from images import (
     ImageCollectionError,
+    _collect_per_dir,
     _collect_sources,
     collect_images,
     copy_from_subdirs,
@@ -281,6 +282,66 @@ class TestCopyFromSubdirs(unittest.TestCase):
         (empty / "sub").mkdir()
         result = copy_from_subdirs(empty, (".jpg",), dry_run=True)
         self.assertEqual(result, [])
+
+
+# ---------------------------------------------------------------------------
+# _collect_per_dir — dir-level hierarchical ordering
+# ---------------------------------------------------------------------------
+
+class TestCollectPerDir(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_local_images_come_before_subdir_images(self):
+        local = _touch(self.folder / "local.jpg")
+        sub = self.folder / "sub"
+        sub.mkdir()
+        _touch(sub / "deep.jpg")
+        result = _collect_per_dir(self.folder, (".jpg",))
+        self.assertEqual(result[0], local)
+
+    def test_subdirs_visited_alphabetically(self):
+        (self.folder / "b").mkdir()
+        (self.folder / "a").mkdir()
+        _touch(self.folder / "a" / "img_a.jpg")
+        _touch(self.folder / "b" / "img_b.jpg")
+        result = _collect_per_dir(self.folder, (".jpg",))
+        names = [p.name for p in result]
+        self.assertEqual(names.index("img_a.jpg"), 0)
+        self.assertEqual(names.index("img_b.jpg"), 1)
+
+    def test_non_image_files_excluded(self):
+        _touch(self.folder / "doc.txt")
+        _touch(self.folder / "img.jpg")
+        result = _collect_per_dir(self.folder, (".jpg",))
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].suffix, ".jpg")
+
+    def test_empty_folder_returns_empty(self):
+        result = _collect_per_dir(self.folder, (".jpg",))
+        self.assertEqual(result, [])
+
+    def test_recursion_into_nested_subdirs(self):
+        sub = self.folder / "chapter"
+        subsub = sub / "part"
+        subsub.mkdir(parents=True)
+        _touch(subsub / "deep.jpg")
+        result = _collect_per_dir(self.folder, (".jpg",))
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "deep.jpg")
+
+    def test_local_and_subdir_all_collected(self):
+        _touch(self.folder / "root.jpg")
+        sub = self.folder / "sub"
+        sub.mkdir()
+        _touch(sub / "child.jpg")
+        result = _collect_per_dir(self.folder, (".jpg",))
+        names = {p.name for p in result}
+        self.assertEqual(names, {"root.jpg", "child.jpg"})
 
 
 if __name__ == "__main__":
