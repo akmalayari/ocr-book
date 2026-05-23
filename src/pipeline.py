@@ -329,6 +329,14 @@ def run_pipeline(cfg: Config) -> Stats:
         logger.info("No pages require OCR — skipping server startup.")
 
     # ── Combine in all_page_ids order ────────────────────────────────────────
+    if cfg.output_path.exists():
+        parent, stem, ext = cfg.output_path.parent, cfg.output_path.stem, cfg.output_path.suffix
+        n = 1
+        while (parent / f"{stem}_{n}{ext}").exists():
+            n += 1
+        cfg.output_file = str(parent / f"{stem}_{n}{ext}")
+        logger.info("Output already exists; writing to %s", cfg.output_path.name)
+
     method_label = cfg.extraction_method
     with cfg.output_path.open("w", encoding="utf-8", newline="\n") as out:
         out.write("# OCR Book\n\n")

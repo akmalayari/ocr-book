@@ -62,11 +62,15 @@ PATCHED = """\
             del images, queries
             batch_dict_by_pixel[pixel_key]["vlm_results"] = batch_results"""
 
+# Short signatures used for detection — robust to surrounding restructuring (e.g. parallel patch applied on top)
+PATCHED_SIGNATURE = 'find("<fcel>")'
+ORIGINAL_SIGNATURE = "batch_results = list("
+
 
 def status(text: str) -> str:
-    if PATCHED in text:
+    if PATCHED_SIGNATURE in text:
         return "patched"
-    if ORIGINAL in text:
+    if ORIGINAL_SIGNATURE in text:
         return "original"
     return "unknown"
 

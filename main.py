@@ -20,6 +20,8 @@ Usage :
     python main.py --rename-only --chapters "Lesson 1" "Lesson 3"  # selected subfolders
     python main.py --rename-only --dir-level      # order: folders alpha > subfolders alpha > images by date
     python main.py --verbose                      # detailed logs
+    python main.py --no-header-detection          # skip header detection prompt (headless)
+    python main.py --header-pattern "^[IVX]+\\." 2 --header-pattern "^[A-Z]\\." 3  # provide patterns directly
 """
 
 import argparse
@@ -56,10 +58,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
                    help="Max tokens generated per page (default: 4096)")
-    p.add_argument("--n-ctx", type=int, default=_cfg.n_ctx,
-                   help="KV cache size (default: 6144)")
+    p.add_argument("--n-ctx", type=int, default=None,
+                   help="KV cache size (default: n_parallel * 2048; increase for large tables)")
     p.add_argument("--n-parallel", type=int, default=_cfg.n_parallel,
-                   help="Intra-page parallel slots (default: 3)")
+                   help="Intra-page parallel slots (default: 1; set >1 only with the parallel patch)")
+    p.add_argument("--n-threads", type=int, default=_cfg.n_threads,
+                   help="CPU threads for llama-server (default: 4)")
+    p.add_argument("--n-servers", type=int, default=_cfg.n_servers,
+                   help="Number of parallel llama-server instances (default: 1)")
+    p.add_argument("--no-kv-offload", action="store_true",
+                   help="Disable KV cache GPU offload")
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",
@@ -97,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--migrate", action="store_true",
                    help="Copy figures to the Obsidian vault (vault_path/vault_figures_dir) without running OCR")
 
+    # Header detection
+    p.add_argument("--header-pattern", nargs=2, action="append", metavar=("REGEX", "LEVEL"),
+                   help="Header pattern: regex and heading level (e.g. --header-pattern '^[IVX]+\\.' 2). Repeatable. Skips interactive prompt.")
+    p.add_argument("--no-header-detection", action="store_true",
+                   help="Disable header detection entirely, skipping the interactive prompt")
+
     return p
 
 
@@ -113,6 +127,10 @@ def main() -> int:
         max_tokens=args.max_tokens,
         n_ctx=args.n_ctx,
         n_parallel=args.n_parallel,
+        n_threads=args.n_threads,
+        n_servers=args.n_servers,
+        kv_offload=not args.no_kv_offload,
+        rename_prefix=args.rename_prefix,
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,
         postprocess=not args.no_postprocess,
@@ -124,6 +142,11 @@ def main() -> int:
 
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
+
+    if args.no_header_detection:
+        cfg.header_patterns = []
+    elif args.header_pattern:
+        cfg.header_patterns = [(regex, int(level)) for regex, level in args.header_pattern]
 
     # ── Obsidian setup (common to all obsidian modes) ────────────────────────
     if cfg.mode == "obsidian" or args.migrate:
