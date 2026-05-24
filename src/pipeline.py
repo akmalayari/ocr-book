@@ -152,22 +152,7 @@ def run_pipeline(cfg: Config) -> Stats:
     procs: list[subprocess.Popen] = []
 
     if ocr_queue:
-        missing = []
-        for name, val in [
-            ("llama_server_path", cfg.llama_server_path),
-            ("model_path", cfg.model_path),
-            ("mmproj_path", cfg.mmproj_path),
-        ]:
-            if not val:
-                missing.append(name)
-        if missing:
-            raise ValueError(
-                f"Missing required configuration: {', '.join(missing)}.\n"
-                "Set them via:\n"
-                "  CLI: --llama-server PATH --model PATH --mmproj PATH\n"
-                "  Env: LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH\n"
-                "  Or edit src/config.py directly."
-            )
+        cfg.validate_ocr_paths()
 
         _check_parallel_config(cfg)
 

@@ -102,13 +102,15 @@ class TestCleanPageHyphenation(unittest.TestCase):
         self.assertIn("-\n", result)
 
     def test_repetition_loop_removed_no_layout(self):
-        repeated = "abcdefghijklmnop" * 4  # 16 chars × 4 repetitions
-        result = clean_page(repeated, _cfg(), no_layout=True)
-        self.assertLess(len(result), len(repeated))
+        # 16-char unit repeated 4× → collapsed to single occurrence
+        unit = "abcdefghijklmnop"
+        result = clean_page(unit * 4, _cfg(), no_layout=True)
+        self.assertEqual(result, unit)
 
     def test_repetition_loop_kept_with_layout(self):
         # Without no_layout=True, the dedup regex is not applied
-        repeated = "abcdefghijklmnop" * 4
+        unit = "abcdefghijklmnop"
+        repeated = unit * 4
         result = clean_page(repeated, _cfg(), no_layout=False)
         self.assertEqual(result, repeated)
 

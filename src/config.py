@@ -85,6 +85,25 @@ class Config:
         if self.n_ctx is None:
             self.n_ctx = self.n_parallel * 2048
 
+    def validate_ocr_paths(self) -> None:
+        """Raise ValueError listing any missing required OCR server paths."""
+        missing = [
+            name for name, val in [
+                ("llama_server_path", self.llama_server_path),
+                ("model_path", self.model_path),
+                ("mmproj_path", self.mmproj_path),
+            ]
+            if not val
+        ]
+        if missing:
+            raise ValueError(
+                f"Missing required configuration: {', '.join(missing)}.\n"
+                "Set them via:\n"
+                "  CLI: --llama-server PATH --model PATH --mmproj PATH\n"
+                "  Env: LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH\n"
+                "  Or edit src/config.py directly."
+            )
+
     @property
     def images_path(self) -> Path:
         return Path(self.images_dir)

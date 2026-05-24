@@ -48,22 +48,33 @@ class TestConfig(unittest.TestCase):
             importlib.reload(_config_module)
 
     def test_missing_paths_raises_on_validation(self):
-        """pipeline.py validates required paths before starting servers."""
         cfg = _config_module.Config()
         cfg.llama_server_path = None
         cfg.model_path = None
         cfg.mmproj_path = None
+        with self.assertRaises(ValueError) as ctx:
+            cfg.validate_ocr_paths()
+        msg = str(ctx.exception)
+        self.assertIn("llama_server_path", msg)
+        self.assertIn("model_path", msg)
+        self.assertIn("mmproj_path", msg)
 
-        # Simulate the validation block from pipeline.py
-        missing = []
-        for name, val in [
-            ("llama_server_path", cfg.llama_server_path),
-            ("model_path", cfg.model_path),
-            ("mmproj_path", cfg.mmproj_path),
-        ]:
-            if not val:
-                missing.append(name)
-        self.assertEqual(len(missing), 3)
+    def test_partial_missing_paths_raises_on_validation(self):
+        cfg = _config_module.Config()
+        cfg.llama_server_path = "/fake/llama-server"
+        cfg.model_path = None
+        cfg.mmproj_path = "/fake/mmproj.gguf"
+        with self.assertRaises(ValueError) as ctx:
+            cfg.validate_ocr_paths()
+        self.assertIn("model_path", str(ctx.exception))
+        self.assertNotIn("llama_server_path", str(ctx.exception))
+
+    def test_all_paths_set_does_not_raise(self):
+        cfg = _config_module.Config()
+        cfg.llama_server_path = "/fake/llama-server"
+        cfg.model_path = "/fake/model.gguf"
+        cfg.mmproj_path = "/fake/mmproj.gguf"
+        cfg.validate_ocr_paths()  # must not raise
 
     def test_path_properties(self):
         cfg = _config_module.Config()
@@ -101,6 +112,26 @@ class TestArgumentParser(unittest.TestCase):
 
         args = parser.parse_args(["--images", "book.epub"])
         self.assertEqual(args.images, "book.epub")
+
+    def test_header_pattern_single(self):
+        parser = build_parser()
+        args = parser.parse_args(["--header-pattern", "^[IVX]+\\.", "2"])
+        self.assertEqual(args.header_pattern, [["^[IVX]+\\.", "2"]])
+
+    def test_header_pattern_multiple(self):
+        parser = build_parser()
+        args = parser.parse_args([
+            "--header-pattern", "^Chapter \\d+", "1",
+            "--header-pattern", "^Section \\d+", "2",
+        ])
+        self.assertEqual(len(args.header_pattern), 2)
+        self.assertEqual(args.header_pattern[0], ["^Chapter \\d+", "1"])
+        self.assertEqual(args.header_pattern[1], ["^Section \\d+", "2"])
+
+    def test_header_pattern_absent_is_none(self):
+        parser = build_parser()
+        args = parser.parse_args([])
+        self.assertIsNone(args.header_pattern)
 
 
 if __name__ == "__main__":

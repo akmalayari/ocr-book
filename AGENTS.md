@@ -235,6 +235,7 @@ Important tuning parameters:
 - Avoid adding "Co-Authored-By: AI..." attribution tags in commits unless the project conventions require them.
 - Do not generate docstrings or comments on unmodified code.
 - Do not explore `output/`, `photos/`, `__pycache__`, `.pytest_cache` (large and irrelevant content).
+- Use git worktrees for parallel branches (two features, two fixes, etc.): `git worktree add -b <branch> ../<name> master`. Since `--images` accepts absolute paths, no symlinks are needed. Remove with `git worktree remove ../<name>` when done.
 
 ### Interaction Rules
 When the user asks for an opinion, proposal, or point of view using phrases such as (in any language):
