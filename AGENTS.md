@@ -208,8 +208,8 @@ Paths to llama-server and models are read from **environment variables** by defa
 
 Important tuning parameters:
 - `n_servers`: number of parallel llama-servers (1 default, useless on single APU/GPU)
-- `n_parallel`: intra-page slots (3 default, must match parallel patch)
-- `n_ctx`: 6144 (2048 tokens/slot × np=3)
+- `n_parallel`: intra-page slots (1 default; set >1 only with the parallel patch applied)
+- `n_ctx`: `None` default = auto (`n_parallel × 2048`, i.e. 2048 tokens/slot). Override with `--n-ctx` for large/dense tables.
 - `page_timeout`: 120s before giving up and restarting
 - `use_layout_detection`: True by default
 

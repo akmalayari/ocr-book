@@ -202,8 +202,11 @@ Already processed pages are automatically skipped.
 --chapters NAME…           Subfolders to process (in order)
 --dir-level                Folder-level order for --rename
 --max-tokens N             Max tokens generated per page    (default: 4096)
---n-ctx N                  KV cache size (context window)   (default: 6144)
---n-parallel N             Intra-page parallel slots        (default: 3)
+--n-ctx N                  KV cache size (context window)   (default: n-parallel × 2048)
+--n-parallel N             Intra-page parallel slots        (default: 1, >1 needs the parallel patch)
+--n-threads N              CPU threads for llama-server     (default: 4)
+--n-servers N              Parallel llama-server instances  (default: 1)
+--no-kv-offload            Disable KV cache GPU offload
 ```
 
 ---
