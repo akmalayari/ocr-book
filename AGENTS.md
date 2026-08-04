@@ -206,6 +206,8 @@ photos/  →  main.py  →  pipeline.run_pipeline(cfg)
 
 Paths to llama-server and models are read from **environment variables** by default (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`). They can also be passed via CLI (`--llama-server`, `--model`, `--mmproj`) or edited directly in `src/config.py`.
 
+Every llama-server tuning field also reads an `OCR_*` environment variable (`OCR_N_PARALLEL`, `OCR_N_CTX`, `OCR_N_THREADS`, `OCR_N_SERVERS`, `OCR_N_BATCH`, `OCR_N_UBATCH`, `OCR_N_GPU_LAYERS`, `OCR_MAX_TOKENS`, `OCR_KV_OFFLOAD`, `OCR_PAGE_TIMEOUT`, `OCR_SERVER_TIMEOUT`, `OCR_SERVER_BASE_PORT`, `OCR_PRIO`) via the `_env_int` / `_env_bool` helpers. This keeps machine-specific tuning in the gitignored `.env` instead of a local diff on `config.py`. Precedence: **CLI flag > `.env` > default**. An unparsable value raises `ValueError` naming the variable.
+
 Important tuning parameters:
 - `n_servers`: number of parallel llama-servers (1 default, useless on single APU/GPU)
 - `n_parallel`: intra-page slots (1 default; set >1 only with the parallel patch applied)

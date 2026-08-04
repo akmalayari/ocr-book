@@ -56,17 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mmproj", default=_cfg.mmproj_path,
                    help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
-                   help="Max tokens generated per page (default: 4096)")
+                   help="Max tokens generated per page (default: 4096, env: OCR_MAX_TOKENS)")
     p.add_argument("--n-ctx", type=int, default=None,
-                   help="KV cache size (default: n_parallel * 2048; increase for large tables)")
+                   help="KV cache size (default: n_parallel * 2048; increase for large tables, env: OCR_N_CTX)")
     p.add_argument("--n-parallel", type=int, default=_cfg.n_parallel,
-                   help="Intra-page parallel slots (default: 1; set >1 only with the parallel patch)")
+                   help="Intra-page parallel slots (default: 1; set >1 only with the parallel patch, env: OCR_N_PARALLEL)")
     p.add_argument("--n-threads", type=int, default=_cfg.n_threads,
-                   help="CPU threads for llama-server (default: 4)")
+                   help="CPU threads for llama-server (default: 4, env: OCR_N_THREADS)")
     p.add_argument("--n-servers", type=int, default=_cfg.n_servers,
-                   help="Number of parallel llama-server instances (default: 1)")
-    p.add_argument("--no-kv-offload", action="store_true",
-                   help="Disable KV cache GPU offload")
+                   help="Number of parallel llama-server instances (default: 1, env: OCR_N_SERVERS)")
+    p.add_argument("--no-kv-offload", action="store_true", default=not _cfg.kv_offload,
+                   help="Disable KV cache GPU offload (env: OCR_KV_OFFLOAD=false)")
 
     # PaddleOCR
     p.add_argument("--no-layout", action="store_true",

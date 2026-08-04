@@ -11,6 +11,40 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env_int(name: str, default: int) -> int:
+    """Reads an int from the environment, falling back to `default` if unset."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(f"Invalid integer for {name}: {raw!r}") from None
+
+
+def _env_opt_int(name: str) -> int | None:
+    """Same as `_env_int` but returns None when the variable is unset."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(f"Invalid integer for {name}: {raw!r}") from None
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Reads a bool from the environment (1/true/yes/on vs 0/false/no/off)."""
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    raise ValueError(f"Invalid boolean for {name}: {raw!r}")
+
+
 @dataclass
 class Config:
     # ── llama-server ─────────────────────────────────────────────────────────
@@ -18,25 +52,29 @@ class Config:
     llama_server_path: str | None = os.environ.get("LLAMA_SERVER_PATH")
     model_path: str | None        = os.environ.get("MODEL_PATH")
     mmproj_path: str | None       = os.environ.get("MMPROJ_PATH")
-    server_base_port: int  = 8080   # ports 8080, 8081, … (one per server)
-    server_timeout: int    = 60     # seconds to wait before declaring the server dead
+    server_base_port: int  = _env_int("OCR_SERVER_BASE_PORT", 8080)  # 8080, 8081, … (one per server)
+    server_timeout: int    = _env_int("OCR_SERVER_TIMEOUT", 60)      # seconds before declaring the server dead
 
     # ── llama-server parameters (tuning) ─────────────────────────────────────
-    # n_ctx: None = auto (n_parallel * 2048). Override for books with large/dense
-    # tables where the default per-slot budget is too small (e.g. n_parallel * 4096).
+    # Every value below is a conservative default that runs anywhere. Machine
+    # specific tuning belongs in .env (OCR_* variables, see .env.example), which
+    # is gitignored; CLI flags still take precedence over both.
+    #
+    # n_ctx: None = auto (n_parallel * 2048), resolved in __post_init__. Override
+    # for books with large/dense tables (e.g. n_parallel * 4096).
     n_ctx: int | None     = None
-    n_gpu_layers: int     = 99
-    n_batch: int          = 512
-    n_ubatch: int         = 512
-    n_threads: int        = 4      # P-cores
-    prio: int             = 2
-    kv_offload: bool      = True
-    max_tokens: int       = 4096
+    n_gpu_layers: int     = _env_int("OCR_N_GPU_LAYERS", 99)
+    n_batch: int          = _env_int("OCR_N_BATCH", 512)
+    n_ubatch: int         = _env_int("OCR_N_UBATCH", 512)
+    n_threads: int        = _env_int("OCR_N_THREADS", 4)      # P-cores
+    prio: int             = _env_int("OCR_PRIO", 2)
+    kv_offload: bool      = _env_bool("OCR_KV_OFFLOAD", True)
+    max_tokens: int       = _env_int("OCR_MAX_TOKENS", 4096)
     temperature: float    = 0.0
     # n_parallel > 1 requires apply_paddlex_patch_parallel.py; leave at 1 otherwise.
-    n_parallel: int       = 1
-    n_servers: int        = 1      # number of parallel llama-server instances
-    page_timeout: int     = 120    # max seconds per page before giving up (0 = disabled)
+    n_parallel: int       = _env_int("OCR_N_PARALLEL", 1)
+    n_servers: int        = _env_int("OCR_N_SERVERS", 1)      # parallel llama-server instances
+    page_timeout: int     = _env_int("OCR_PAGE_TIMEOUT", 120) # max seconds per page (0 = disabled)
 
     # ── PaddleOCR ─────────────────────────────────────────────────────────────
     use_layout_detection: bool = True   # False = fallback without layout
@@ -82,8 +120,10 @@ class Config:
     verbose: bool    = False
 
     def __post_init__(self):
+        # Resolved here rather than in the field default so that the CLI passing
+        # n_ctx=None (its default) still falls back to OCR_N_CTX, then to auto.
         if self.n_ctx is None:
-            self.n_ctx = self.n_parallel * 2048
+            self.n_ctx = _env_opt_int("OCR_N_CTX") or self.n_parallel * 2048
 
     def validate_ocr_paths(self) -> None:
         """Raise ValueError listing any missing required OCR server paths."""

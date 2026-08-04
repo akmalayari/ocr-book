@@ -27,6 +27,19 @@ cp .env.example .env
 # Edit .env and set LLAMA_SERVER_PATH, MODEL_PATH and MMPROJ_PATH
 ```
 
+### Hardware tuning (optional)
+
+The defaults in `src/config.py` are conservative so the pipeline runs on any
+machine. To exploit a more capable one without editing tracked files, set the
+`OCR_*` variables in your (gitignored) `.env` — see `.env.example` for the full
+list. Precedence is **CLI flag > `.env` > default**.
+
+```bash
+OCR_N_PARALLEL=3        # intra-page slots; >1 requires the parallel patch
+OCR_N_CTX=12288         # total KV cache (per-slot budget = OCR_N_CTX / OCR_N_PARALLEL)
+OCR_N_THREADS=16        # CPU threads for llama-server
+```
+
 ---
 
 ## Project Structure
