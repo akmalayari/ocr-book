@@ -28,10 +28,10 @@ class TestConfig(unittest.TestCase):
 
     def test_env_vars(self):
         env = {
-            "LLAMA_SERVER_PATH": "/fake/llama-server",
-            "MODEL_PATH": "/fake/model.gguf",
-            "MMPROJ_PATH": "/fake/mmproj.gguf",
-            "OBSIDIAN_VAULT_ROOT": "/fake/vault",
+            "OCR_LLAMA_SERVER_PATH": "/fake/llama-server",
+            "OCR_MODEL_PATH": "/fake/model.gguf",
+            "OCR_MMPROJ_PATH": "/fake/mmproj.gguf",
+            "OCR_OBSIDIAN_VAULT_ROOT": "/fake/vault",
         }
         for k, v in env.items():
             os.environ[k] = v

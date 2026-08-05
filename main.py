@@ -31,9 +31,43 @@ from pathlib import Path
 # Allow absolute imports from src/ when running main.py from the project root
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.config import Config
+from src.config import Config, find_legacy_env, migrate_env_file
 from src.images import rename_images, copy_from_subdirs, has_image_subdirs
 from src.progress import setup_logging
+
+
+def handle_legacy_env(logger: logging.Logger) -> None:
+    """
+    Warns about pre-OCR_ environment variables and offers to rename them.
+
+    The legacy names still work, so nothing breaks either way. When attached to
+    a terminal the user is offered a one-time rename of the affected keys in
+    .env; otherwise (scripts, scheduled runs) the warning is logged and the run
+    continues uninterrupted.
+    """
+    legacy = find_legacy_env()
+    if not legacy:
+        return
+
+    for old, new, shadowed in legacy:
+        if shadowed:
+            logger.warning("Legacy %s is IGNORED because %s is also set.", old, new)
+        else:
+            logger.warning("Legacy %s is deprecated, renamed to %s.", old, new)
+
+    renamable = [(old, new) for old, new, shadowed in legacy if not shadowed]
+    if not renamable or not sys.stdin.isatty():
+        return
+
+    print("\nRename these variables in .env now?")
+    for old, new in renamable:
+        print(f"  {old} -> {new}")   # ASCII: stdout is cp1252 when redirected on Windows
+    if input("[Y/n] ").strip().lower() in ("", "y", "yes"):
+        renamed = migrate_env_file(renamable)
+        if renamed:
+            logger.info("Renamed %d variable(s) in .env.", len(renamed))
+        else:
+            logger.warning("No .env file to update — set the new names manually.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,11 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=_cfg.output_file,
                    help="Output Markdown file")
     p.add_argument("--llama-server", default=_cfg.llama_server_path,
-                   help="Path to llama-server executable (env: LLAMA_SERVER_PATH)")
+                   help="Path to llama-server executable (env: OCR_LLAMA_SERVER_PATH)")
     p.add_argument("--model", default=_cfg.model_path,
-                   help="Path to model .gguf file (env: MODEL_PATH)")
+                   help="Path to model .gguf file (env: OCR_MODEL_PATH)")
     p.add_argument("--mmproj", default=_cfg.mmproj_path,
-                   help="Path to mmproj .gguf file (env: MMPROJ_PATH)")
+                   help="Path to mmproj .gguf file (env: OCR_MMPROJ_PATH)")
     p.add_argument("--max-tokens", type=int, default=_cfg.max_tokens,
                    help="Max tokens generated per page (default: 4096, env: OCR_MAX_TOKENS)")
     p.add_argument("--n-ctx", type=int, default=None,
@@ -139,6 +173,8 @@ def main() -> int:
 
     setup_logging(cfg)
     logger = logging.getLogger(__name__)
+
+    handle_legacy_env(logger)
 
     if args.header_pattern:
         cfg.header_patterns = [(regex, int(level)) for regex, level in args.header_pattern]

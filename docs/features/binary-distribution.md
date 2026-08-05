@@ -12,7 +12,7 @@ The current installation requires:
 - `conda activate ocr-livre`
 - `python setup.py`
 - Manual patch application
-- Manual configuration of `LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`
+- Manual configuration of `OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`
 
 This is acceptable for development and technical users, but it is a barrier for a broader audience and for an "official release."
 
@@ -52,7 +52,7 @@ Use the official Windows **embeddable Python** distribution (`python-3.10.x-embe
 ```batch
 @echo off
 set PATH=%~dp0python;%PATH%
-set LLAMA_SERVER_PATH=%~dp0bin\llama-server.exe
+set OCR_LLAMA_SERVER_PATH=%~dp0bin\llama-server.exe
 python\python.exe src\main.py %*
 ```
 
@@ -85,7 +85,7 @@ Ship a **portable conda prefix** created with `micromamba` or `miniforge`.
 @echo off
 set CONDA_PREFIX=%~dp0env
 set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%\Library\bin;%PATH%
-set LLAMA_SERVER_PATH=%~dp0bin\llama-server.exe
+set OCR_LLAMA_SERVER_PATH=%~dp0bin\llama-server.exe
 python src\main.py %*
 ```
 

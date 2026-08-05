@@ -47,23 +47,23 @@ cp .env.example .env
 Fill in the three required paths in `.env`:
 
 ```bash
-LLAMA_SERVER_PATH=C:/path/to/llama-server.exe
-MODEL_PATH=C:/path/to/PaddleOCR-VL-1.5.gguf
-MMPROJ_PATH=C:/path/to/PaddleOCR-VL-1.5-mmproj.gguf
+OCR_LLAMA_SERVER_PATH=C:/path/to/llama-server.exe
+OCR_MODEL_PATH=C:/path/to/PaddleOCR-VL-1.5.gguf
+OCR_MMPROJ_PATH=C:/path/to/PaddleOCR-VL-1.5-mmproj.gguf
 ```
 
 ### Option B: Environment Variables
 
 ```bash
 # Windows (PowerShell)
-$env:LLAMA_SERVER_PATH = "C:\path\to\llama-server.exe"
-$env:MODEL_PATH        = "C:\path\to\PaddleOCR-VL-1.5.gguf"
-$env:MMPROJ_PATH       = "C:\path\to\PaddleOCR-VL-1.5-mmproj.gguf"
+$env:OCR_LLAMA_SERVER_PATH = "C:\path\to\llama-server.exe"
+$env:OCR_MODEL_PATH        = "C:\path\to\PaddleOCR-VL-1.5.gguf"
+$env:OCR_MMPROJ_PATH       = "C:\path\to\PaddleOCR-VL-1.5-mmproj.gguf"
 
 # Linux / macOS
-export LLAMA_SERVER_PATH=/path/to/llama-server
-export MODEL_PATH=/path/to/PaddleOCR-VL-1.5.gguf
-export MMPROJ_PATH=/path/to/PaddleOCR-VL-1.5-mmproj.gguf
+export OCR_LLAMA_SERVER_PATH=/path/to/llama-server
+export OCR_MODEL_PATH=/path/to/PaddleOCR-VL-1.5.gguf
+export OCR_MMPROJ_PATH=/path/to/PaddleOCR-VL-1.5-mmproj.gguf
 ```
 
 ### Option C: CLI Arguments

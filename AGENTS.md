@@ -204,7 +204,7 @@ photos/  →  main.py  →  pipeline.run_pipeline(cfg)
 
 ### Key Configuration (`config.py`)
 
-Paths to llama-server and models are read from **environment variables** by default (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`). They can also be passed via CLI (`--llama-server`, `--model`, `--mmproj`) or edited directly in `src/config.py`.
+Paths to llama-server and models are read from **environment variables** by default (`OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`). They can also be passed via CLI (`--llama-server`, `--model`, `--mmproj`) or edited directly in `src/config.py`.
 
 Every llama-server tuning field also reads an `OCR_*` environment variable (`OCR_N_PARALLEL`, `OCR_N_CTX`, `OCR_N_THREADS`, `OCR_N_SERVERS`, `OCR_N_BATCH`, `OCR_N_UBATCH`, `OCR_N_GPU_LAYERS`, `OCR_MAX_TOKENS`, `OCR_KV_OFFLOAD`, `OCR_PAGE_TIMEOUT`, `OCR_SERVER_TIMEOUT`, `OCR_SERVER_BASE_PORT`, `OCR_PRIO`) via the `_env_int` / `_env_bool` helpers. This keeps machine-specific tuning in the gitignored `.env` instead of a local diff on `config.py`. Precedence: **CLI flag > `.env` > default**. An unparsable value raises `ValueError` naming the variable.
 
@@ -284,7 +284,7 @@ python main.py --images photos/page_1.jpg --no-resume
 
 ## Security and Operational Considerations
 
-- **Path configuration**: llama-server and model paths are read from environment variables (`LLAMA_SERVER_PATH`, `MODEL_PATH`, `MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
+- **Path configuration**: llama-server and model paths are read from environment variables (`OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
 - **Patches on installed libraries**: patches directly modify files in `sys.prefix/Lib/site-packages/paddlex/`. They must be reapplied after each environment reinstallation.
 - **GPU resources**: the pipeline launches `n_servers` llama-server processes. Each process loads the model into GPU memory. On an APU (shared CPU/GPU memory), `n_servers > 1` generally brings no gain due to Vulkan command queue serialization.
 - **Timeout and resume**: the parts mechanism makes the pipeline robust to crashes. However, a hard kill may leave orphan llama-server processes or unreleased resources (see `docs/issues.md`).

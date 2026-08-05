@@ -24,7 +24,7 @@ Then configure the paths to `llama-server` and the models. The easiest way is to
 
 ```bash
 cp .env.example .env
-# Edit .env and set LLAMA_SERVER_PATH, MODEL_PATH and MMPROJ_PATH
+# Edit .env and set OCR_LLAMA_SERVER_PATH, OCR_MODEL_PATH and OCR_MMPROJ_PATH
 ```
 
 ### Hardware tuning (optional)
@@ -197,9 +197,9 @@ Already processed pages are automatically skipped.
 ```
 --images PATH              Photo folder, PDF, or EPUB       (default: ./photos)
 --out FILE                 Output Markdown file             (default: output/book.md)
---llama-server PATH        Path to llama-server executable  (env: LLAMA_SERVER_PATH)
---model PATH               Path to model .gguf              (env: MODEL_PATH)
---mmproj PATH              Path to mmproj .gguf             (env: MMPROJ_PATH)
+--llama-server PATH        Path to llama-server executable  (env: OCR_LLAMA_SERVER_PATH)
+--model PATH               Path to model .gguf              (env: OCR_MODEL_PATH)
+--mmproj PATH              Path to mmproj .gguf             (env: OCR_MMPROJ_PATH)
 --mode {base,obsidian}     Output mode                      (default: base)
 --method {text,docling,paddleocrvl}  PDF extraction method  (default: paddleocrvl)
 --no-layout                Disable layout detection

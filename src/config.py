@@ -5,10 +5,88 @@ config.py — Central configuration for the OCR pipeline
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import overload
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Variables renamed when the OCR_ namespace was introduced. The old spellings
+# are still honoured so existing .env files keep working; `find_legacy_env()`
+# reports them so main.py can offer to migrate the file.
+LEGACY_ENV_VARS: dict[str, str] = {
+    "OCR_LLAMA_SERVER_PATH":         "LLAMA_SERVER_PATH",
+    "OCR_MODEL_PATH":                "MODEL_PATH",
+    "OCR_MMPROJ_PATH":               "MMPROJ_PATH",
+    "OCR_OBSIDIAN_VAULT_ROOT":       "OBSIDIAN_VAULT_ROOT",
+    "OCR_OBSIDIAN_VAULT_PATH":       "OBSIDIAN_VAULT_PATH",
+    "OCR_OBSIDIAN_VAULT_FIGURES_DIR": "OBSIDIAN_VAULT_FIGURES_DIR",
+}
+
+
+@overload
+def _env_str(name: str) -> str | None: ...
+@overload
+def _env_str(name: str, default: str) -> str: ...
+
+
+def _env_str(name: str, default: str | None = None) -> str | None:
+    """
+    Reads a string from the environment, falling back to the pre-OCR_ name.
+
+    The legacy spelling is only consulted when the new one is unset, so a
+    stale variable can never silently win over an explicit one.
+    """
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        legacy = LEGACY_ENV_VARS.get(name)
+        raw = os.environ.get(legacy, "").strip() if legacy else ""
+    return raw or default
+
+
+def find_legacy_env() -> list[tuple[str, str, bool]]:
+    """
+    Returns the legacy variables currently set in the environment as
+    (legacy_name, new_name, shadowed), where `shadowed` means the new name is
+    also set and therefore the legacy value is being ignored.
+    """
+    found = []
+    for new, legacy in LEGACY_ENV_VARS.items():
+        if os.environ.get(legacy, "").strip():
+            found.append((legacy, new, bool(os.environ.get(new, "").strip())))
+    return found
+
+
+def migrate_env_file(names: list[tuple[str, str]], path: str | Path = ".env") -> list[tuple[str, str]]:
+    """
+    Renames the given (legacy_name, new_name) keys in a .env file, in place.
+
+    Only the assignment lines of those exact keys are rewritten; comments,
+    blank lines, ordering and every other variable are left byte-identical.
+    Returns the pairs actually renamed.
+    """
+    path = Path(path)
+    if not path.exists():
+        return []
+
+    rename = dict(names)
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    renamed: list[tuple[str, str]] = []
+
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, sep, value = stripped.partition("=")
+        new = rename.get(key.strip())
+        if new:
+            indent = line[: len(line) - len(stripped)]
+            lines[i] = f"{indent}{new}{sep}{value}"
+            renamed.append((key.strip(), new))
+
+    if renamed:
+        path.write_text("".join(lines), encoding="utf-8")
+    return renamed
 
 
 def _env_int(name: str, default: int) -> int:
@@ -49,9 +127,9 @@ def _env_bool(name: str, default: bool) -> bool:
 class Config:
     # ── llama-server ─────────────────────────────────────────────────────────
     # Set via environment variables, CLI arguments, or edit this file directly.
-    llama_server_path: str | None = os.environ.get("LLAMA_SERVER_PATH")
-    model_path: str | None        = os.environ.get("MODEL_PATH")
-    mmproj_path: str | None       = os.environ.get("MMPROJ_PATH")
+    llama_server_path: str | None = _env_str("OCR_LLAMA_SERVER_PATH")
+    model_path: str | None        = _env_str("OCR_MODEL_PATH")
+    mmproj_path: str | None       = _env_str("OCR_MMPROJ_PATH")
     server_base_port: int  = _env_int("OCR_SERVER_BASE_PORT", 8080)  # 8080, 8081, … (one per server)
     server_timeout: int    = _env_int("OCR_SERVER_TIMEOUT", 60)      # seconds before declaring the server dead
 
@@ -103,9 +181,9 @@ class Config:
     postprocess: bool                   = True
     keep_html: bool                     = False  # keep HTML tables/figures instead of converting to Markdown
     mode: str                           = "base"   # "base" | "obsidian"
-    vault_root: str | None               = os.environ.get("OBSIDIAN_VAULT_ROOT")
-    vault_path: str                     = os.environ.get("OBSIDIAN_VAULT_PATH", "Documents/OCR")
-    vault_figures_dir: str              = os.environ.get("OBSIDIAN_VAULT_FIGURES_DIR", "Files/OCR")
+    vault_root: str | None               = _env_str("OCR_OBSIDIAN_VAULT_ROOT")
+    vault_path: str                     = _env_str("OCR_OBSIDIAN_VAULT_PATH", "Documents/OCR")
+    vault_figures_dir: str              = _env_str("OCR_OBSIDIAN_VAULT_FIGURES_DIR", "Files/OCR")
     remove_isolated_page_numbers: bool  = True
     rejoin_hyphenated_words: bool       = True
     collapse_blank_lines: bool          = True
@@ -140,7 +218,7 @@ class Config:
                 f"Missing required configuration: {', '.join(missing)}.\n"
                 "Set them via:\n"
                 "  CLI: --llama-server PATH --model PATH --mmproj PATH\n"
-                "  Env: LLAMA_SERVER_PATH, MODEL_PATH, MMPROJ_PATH\n"
+                "  Env: OCR_LLAMA_SERVER_PATH, OCR_MODEL_PATH, OCR_MMPROJ_PATH\n"
                 "  Or edit src/config.py directly."
             )
 
