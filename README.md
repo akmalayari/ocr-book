@@ -29,10 +29,14 @@ cp .env.example .env
 
 ### Hardware tuning (optional)
 
-The defaults in `src/config.py` are conservative so the pipeline runs on any
-machine. To exploit a more capable one without editing tracked files, set the
-`OCR_*` variables in your (gitignored) `.env` — see `.env.example` for the full
-list. Precedence is **CLI flag > `.env` > default**.
+Most llama-server arguments are left unset on purpose: llama-server auto-fits
+them to the available device memory (`--fit on`), which usually beats a
+hardcoded value. Only `-c` (context), `-np` (slots), `-n` (max tokens) and
+`--temp 0` are always passed.
+
+To tune for your own machine without editing tracked files, set the `OCR_*`
+variables in your (gitignored) `.env` — see `.env.example` for the full list.
+Precedence is **CLI flag > `.env` > default**.
 
 ```bash
 OCR_N_PARALLEL=3        # intra-page slots; >1 requires the parallel patch
@@ -217,7 +221,7 @@ Already processed pages are automatically skipped.
 --max-tokens N             Max tokens generated per page    (default: 4096)
 --n-ctx N                  KV cache size (context window)   (default: n-parallel × 2048)
 --n-parallel N             Intra-page parallel slots        (default: 1, >1 needs the parallel patch)
---n-threads N              CPU threads for llama-server     (default: 4)
+--n-threads N              CPU threads for llama-server     (default: llama-server auto)
 --n-servers N              Parallel llama-server instances  (default: 1)
 --no-kv-offload            Disable KV cache GPU offload
 ```

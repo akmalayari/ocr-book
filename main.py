@@ -96,10 +96,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--n-parallel", type=int, default=_cfg.n_parallel,
                    help="Intra-page parallel slots (default: 1; set >1 only with the parallel patch, env: OCR_N_PARALLEL)")
     p.add_argument("--n-threads", type=int, default=_cfg.n_threads,
-                   help="CPU threads for llama-server (default: 4, env: OCR_N_THREADS)")
+                   help="CPU threads for llama-server (default: llama-server's own, env: OCR_N_THREADS)")
     p.add_argument("--n-servers", type=int, default=_cfg.n_servers,
                    help="Number of parallel llama-server instances (default: 1, env: OCR_N_SERVERS)")
-    p.add_argument("--no-kv-offload", action="store_true", default=not _cfg.kv_offload,
+    p.add_argument("--no-kv-offload", action="store_true",
                    help="Disable KV cache GPU offload (env: OCR_KV_OFFLOAD=false)")
 
     # PaddleOCR
@@ -149,6 +149,10 @@ def main() -> int:
     p = build_parser()
     args = p.parse_args()
 
+    # Only forwarded when the flag is actually given, so that omitting it leaves
+    # the value at None ("let llama-server decide") instead of forcing True.
+    kv_offload = {"kv_offload": False} if args.no_kv_offload else {}
+
     cfg = Config(
         images_dir=args.images,
         output_file=args.out,
@@ -160,7 +164,7 @@ def main() -> int:
         n_parallel=args.n_parallel,
         n_threads=args.n_threads,
         n_servers=args.n_servers,
-        kv_offload=not args.no_kv_offload,
+        **kv_offload,
         rename_prefix=args.rename_prefix,
         use_layout_detection=not args.no_layout,
         resume=not args.no_resume,

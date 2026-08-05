@@ -37,17 +37,27 @@ def _start_server(cfg: Config, port: int) -> subprocess.Popen:
         "--port",   str(port),
         "--host",   "127.0.0.1",
         "-c",       str(cfg.n_ctx),
-        "-ngl",     str(cfg.n_gpu_layers),
-        "-b",       str(cfg.n_batch),
-        "-ub",      str(cfg.n_ubatch),
-        "-t",       str(cfg.n_threads),
-        "--prio",   str(cfg.prio),
         "--temp",   str(cfg.temperature),
         "-np",      str(cfg.n_parallel),
         "-n",       str(cfg.max_tokens),
     ]
-    if cfg.kv_offload:
-        cmd += ["-kvo"]
+
+    # Only passed when explicitly configured: llama-server auto-fits every
+    # unset argument to the available device memory (--fit on), which beats a
+    # hardcoded value on hardware we know nothing about.
+    for flag, value in (
+        ("-ngl",   cfg.n_gpu_layers),
+        ("-b",     cfg.n_batch),
+        ("-ub",    cfg.n_ubatch),
+        ("-t",     cfg.n_threads),
+        ("--prio", cfg.prio),
+    ):
+        if value is not None:
+            cmd += [flag, str(value)]
+    if cfg.kv_offload is not None:
+        cmd += ["-kvo"] if cfg.kv_offload else ["-nkvo"]
+
+    logger.debug("llama-server command: %s", " ".join(cmd))
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

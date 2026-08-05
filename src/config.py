@@ -111,11 +111,16 @@ def _env_opt_int(name: str) -> int | None:
         raise ValueError(f"Invalid integer for {name}: {raw!r}") from None
 
 
-def _env_bool(name: str, default: bool) -> bool:
-    """Reads a bool from the environment (1/true/yes/on vs 0/false/no/off)."""
+def _env_opt_bool(name: str) -> bool | None:
+    """
+    Reads a bool from the environment (1/true/yes/on vs 0/false/no/off).
+
+    Returns None when unset, which callers treat as "leave the decision to
+    llama-server" rather than as False.
+    """
     raw = os.environ.get(name, "").strip().lower()
     if not raw:
-        return default
+        return None
     if raw in ("1", "true", "yes", "on"):
         return True
     if raw in ("0", "false", "no", "off"):
@@ -134,21 +139,24 @@ class Config:
     server_timeout: int    = _env_int("OCR_SERVER_TIMEOUT", 60)      # seconds before declaring the server dead
 
     # ── llama-server parameters (tuning) ─────────────────────────────────────
-    # Every value below is a conservative default that runs anywhere. Machine
-    # specific tuning belongs in .env (OCR_* variables, see .env.example), which
-    # is gitignored; CLI flags still take precedence over both.
-    #
-    # n_ctx: None = auto (n_parallel * 2048), resolved in __post_init__. Override
-    # for books with large/dense tables (e.g. n_parallel * 4096).
+    # None = flag not passed, letting llama-server apply its own default. Since
+    # b6xxx it auto-fits unset arguments to device memory (`--fit on`), so
+    # hardcoding these would opt out of that fitting and usually make things
+    # worse. Set them in .env (OCR_* variables, see .env.example) only when
+    # tuning for a specific machine; CLI flags still win over both.
+    n_gpu_layers: int | None = _env_opt_int("OCR_N_GPU_LAYERS")   # llama.cpp: auto
+    n_batch: int | None      = _env_opt_int("OCR_N_BATCH")        # llama.cpp: 2048
+    n_ubatch: int | None     = _env_opt_int("OCR_N_UBATCH")       # llama.cpp: 512
+    n_threads: int | None    = _env_opt_int("OCR_N_THREADS")      # llama.cpp: -1 (auto)
+    prio: int | None         = _env_opt_int("OCR_PRIO")           # llama.cpp: 0 (normal)
+    kv_offload: bool | None  = _env_opt_bool("OCR_KV_OFFLOAD")    # llama.cpp: enabled
+
+    # Always passed: these are deliberate, not hardware tuning.
+    # n_ctx caps VRAM use and per-slot budget on weaker hardware, so it stays
+    # explicit; None = auto (n_parallel * 2048), resolved in __post_init__.
     n_ctx: int | None     = None
-    n_gpu_layers: int     = _env_int("OCR_N_GPU_LAYERS", 99)
-    n_batch: int          = _env_int("OCR_N_BATCH", 512)
-    n_ubatch: int         = _env_int("OCR_N_UBATCH", 512)
-    n_threads: int        = _env_int("OCR_N_THREADS", 4)      # P-cores
-    prio: int             = _env_int("OCR_PRIO", 2)
-    kv_offload: bool      = _env_bool("OCR_KV_OFFLOAD", True)
     max_tokens: int       = _env_int("OCR_MAX_TOKENS", 4096)
-    temperature: float    = 0.0
+    temperature: float    = 0.0    # 0 = deterministic; llama.cpp defaults to 0.8
     # n_parallel > 1 requires apply_paddlex_patch_parallel.py; leave at 1 otherwise.
     n_parallel: int       = _env_int("OCR_N_PARALLEL", 1)
     n_servers: int        = _env_int("OCR_N_SERVERS", 1)      # parallel llama-server instances
