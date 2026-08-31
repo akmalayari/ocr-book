@@ -72,7 +72,7 @@ ocr-livre/
 ## Installation and Build
 
 ### System Prerequisites
-- Windows (developed and tested on Windows)
+- Windows or Linux (initially developed on Windows; Linux setup is supported)
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
 - [llama-server](https://github.com/ggerganov/llama.cpp) compiled with Vulkan (or another GPU backend)
 - GGUF model: [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5) (`.gguf` + `.mmproj.gguf`)
@@ -103,7 +103,7 @@ The `setup.py` script:
 | **OTSL** (`apply_paddlex_patch_otsl.py`) | **Required** | `python docs/dev/apply_paddlex_patch_otsl.py` |
 | **Parallel** (`apply_paddlex_patch_parallel.py`) | Optional (~30% gain) | `python docs/dev/apply_paddlex_patch_parallel.py` |
 
-These patches modify the installed file at `sys.prefix/Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py`. They accept `--check` and `--revert` arguments.
+These patches discover the installed PaddleX package and modify its `inference/pipelines/paddleocr_vl/pipeline.py` on both Windows and Linux. They accept `--check` and `--revert` arguments.
 
 ---
 
@@ -287,7 +287,7 @@ python main.py --images photos/page_1.jpg --no-resume
 ## Security and Operational Considerations
 
 - **Path configuration**: llama-server and model paths are read from environment variables (`OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
-- **Patches on installed libraries**: patches directly modify files in `sys.prefix/Lib/site-packages/paddlex/`. They must be reapplied after each environment reinstallation.
+- **Patches on installed libraries**: patch scripts discover the active `paddlex` package and modify its installed pipeline file. They must be reapplied after each environment reinstallation.
 - **GPU resources**: the pipeline launches `n_servers` llama-server processes. Each process loads the model into GPU memory. On an APU (shared CPU/GPU memory), `n_servers > 1` generally brings no gain due to Vulkan command queue serialization.
 - **Timeout and resume**: the parts mechanism makes the pipeline robust to crashes. However, a hard kill may leave orphan llama-server processes or unreleased resources (see `docs/issues.md`).
 - **No secrets / API keys**: everything is local (llama-server). No data is sent over the network.

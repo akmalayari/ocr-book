@@ -10,13 +10,24 @@ Usage :
 """
 
 import argparse
+import importlib.util
 import sys
+import sysconfig
 from pathlib import Path
 
-TARGET = (
-    Path(sys.prefix)
-    / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
-)
+
+def _paddlex_pipeline_path() -> Path:
+    """Locate PaddleX in the active environment on Windows, Linux, or macOS."""
+    spec = importlib.util.find_spec("paddlex")
+    if spec and spec.submodule_search_locations:
+        package_dir = Path(next(iter(spec.submodule_search_locations)))
+    else:
+        # Keep --help and the missing-package error useful before PaddleX exists.
+        package_dir = Path(sysconfig.get_paths()["purelib"]) / "paddlex"
+    return package_dir / "inference/pipelines/paddleocr_vl/pipeline.py"
+
+
+TARGET = _paddlex_pipeline_path()
 
 ORIGINAL = """\
             images = batch_dict_by_pixel[pixel_key]["images"]

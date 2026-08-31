@@ -48,6 +48,7 @@ Thumbs.db
 # Distribution
 *.tar.gz
 *.zip
+.cache/
 
 # Data folders
 data/

@@ -2,6 +2,7 @@
 pipeline.py — Orchestration of the complete OCR pipeline
 """
 
+import importlib.util
 import logging
 import os
 import queue
@@ -80,10 +81,13 @@ def _is_port_in_use(port: int) -> bool:
 
 def _check_parallel_config(cfg) -> None:
     """Warn when n_parallel and parallel patch status are mismatched."""
-    import sys as _sys
+    spec = importlib.util.find_spec("paddlex")
+    if not spec or not spec.submodule_search_locations:
+        logger.warning("Cannot inspect the parallel patch because PaddleX was not found.")
+        return
     target = (
-        Path(_sys.prefix)
-        / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
+        Path(next(iter(spec.submodule_search_locations)))
+        / "inference/pipelines/paddleocr_vl/pipeline.py"
     )
     if not target.exists():
         return

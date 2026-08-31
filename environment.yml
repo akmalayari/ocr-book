@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python=3.10
   - pytest
+  - pandoc
   - pip
   - pip:
     - requests==2.33.0
@@ -16,6 +17,5 @@ dependencies:
     - pymupdf==1.25.3
     - ebooklib
     - pillow
-    - pandoc
     - markdownify
     - python-dotenv

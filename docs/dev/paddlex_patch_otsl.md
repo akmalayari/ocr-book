@@ -2,8 +2,15 @@
 
 ## Modified File
 
-```
-C:\path\to\miniforge3\envs\py-3.10\Lib\site-packages\paddlex\inference\pipelines\paddleocr_vl\pipeline.py
+The patch script discovers the active PaddleX package instead of assuming a
+platform-specific site-packages directory. Typical locations are:
+
+```text
+# Windows
+C:\path\to\miniforge3\envs\ocr-livre\Lib\site-packages\paddlex\inference\pipelines\paddleocr_vl\pipeline.py
+
+# Linux
+/path/to/miniforge3/envs/ocr-livre/lib/python3.10/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py
 ```
 
 ## Problem

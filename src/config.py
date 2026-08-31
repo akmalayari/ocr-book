@@ -3,6 +3,7 @@ config.py — Central configuration for the OCR pipeline
 """
 
 import os
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import overload
@@ -212,7 +213,7 @@ class Config:
             self.n_ctx = _env_opt_int("OCR_N_CTX") or self.n_parallel * 2048
 
     def validate_ocr_paths(self) -> None:
-        """Raise ValueError listing any missing required OCR server paths."""
+        """Resolve and validate the OCR executable and model paths."""
         missing = [
             name for name, val in [
                 ("llama_server_path", self.llama_server_path),
@@ -229,6 +230,45 @@ class Config:
                 "  Env: OCR_LLAMA_SERVER_PATH, OCR_MODEL_PATH, OCR_MMPROJ_PATH\n"
                 "  Or edit src/config.py directly."
             )
+
+        server_value = os.path.expandvars(os.path.expanduser(self.llama_server_path))
+        server_path = Path(server_value)
+        path_like = (
+            server_path.is_absolute()
+            or "/" in server_value
+            or "\\" in server_value
+            or server_path.is_file()
+        )
+        resolved_server = str(server_path.resolve()) if path_like and server_path.is_file() else None
+        if not path_like:
+            resolved_server = shutil.which(server_value)
+
+        problems = []
+        if not resolved_server:
+            hint = (
+                " Windows .exe paths cannot be used on Linux."
+                if os.name != "nt" and server_value.lower().endswith(".exe")
+                else ""
+            )
+            problems.append(f"llama-server executable not found: {server_value!r}.{hint}")
+        elif os.name != "nt" and not os.access(resolved_server, os.X_OK):
+            problems.append(
+                f"llama-server is not executable: {resolved_server!r}. "
+                f"Run: chmod +x {resolved_server!r}"
+            )
+        else:
+            self.llama_server_path = resolved_server
+
+        for attr, label in (("model_path", "model"), ("mmproj_path", "mmproj")):
+            value = os.path.expandvars(os.path.expanduser(getattr(self, attr)))
+            path = Path(value)
+            if not path.is_file():
+                problems.append(f"{label} file not found: {value!r}")
+            else:
+                setattr(self, attr, str(path.resolve()))
+
+        if problems:
+            raise ValueError("Invalid OCR configuration:\n  - " + "\n  - ".join(problems))
 
     @property
     def images_path(self) -> Path:

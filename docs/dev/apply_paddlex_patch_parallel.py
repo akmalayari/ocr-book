@@ -25,13 +25,25 @@ Usage :
 """
 
 import argparse
+import importlib.util
+import re
 import sys
+import sysconfig
 from pathlib import Path
 
-TARGET = (
-    Path(sys.prefix)
-    / "Lib/site-packages/paddlex/inference/pipelines/paddleocr_vl/pipeline.py"
-)
+
+def _paddlex_pipeline_path() -> Path:
+    """Locate PaddleX in the active environment on Windows, Linux, or macOS."""
+    spec = importlib.util.find_spec("paddlex")
+    if spec and spec.submodule_search_locations:
+        package_dir = Path(next(iter(spec.submodule_search_locations)))
+    else:
+        # Keep --help and the missing-package error useful before PaddleX exists.
+        package_dir = Path(sysconfig.get_paths()["purelib"]) / "paddlex"
+    return package_dir / "inference/pipelines/paddleocr_vl/pipeline.py"
+
+
+TARGET = _paddlex_pipeline_path()
 
 # Expected state: result of apply_paddlex_patch_otsl.py (sequential loop with OTSL)
 ORIGINAL = """\
@@ -70,7 +82,7 @@ ORIGINAL = """\
 # Global pool: all blocks from all pixel_keys submitted in a single pass.
 # VLM_PARALLEL must match -np in llama-server (src/pipeline.py).
 PATCHED = """\
-        _VLM_PARALLEL = 3  # must match -np in llama-server
+        _VLM_PARALLEL = 4  # must match -np in llama-server
 
         def _infer_block(args):
             _img, _qry, _kw = args
@@ -118,6 +130,12 @@ PATCHED = """\
             _idx += _n"""
 
 
+def _patched_parallel() -> str:
+    """Returns the worker count declared in PATCHED, so messages can't drift."""
+    match = re.search(r"_VLM_PARALLEL\s*=\s*(\d+)", PATCHED)
+    return match.group(1) if match else "?"
+
+
 def status(text: str) -> str:
     if PATCHED in text:
         return "patched"
@@ -163,7 +181,8 @@ def main() -> None:
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
     print("Parallel patch (global pool) applied.")
-    print("Make sure llama-server runs with -np 3 (VLM_PARALLEL in patch).")
+    print(f"Make sure llama-server runs with -np {_patched_parallel()} "
+          "(OCR_N_PARALLEL in .env, VLM_PARALLEL in this patch).")
 
 
 if __name__ == "__main__":

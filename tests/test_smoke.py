@@ -6,6 +6,7 @@ without requiring llama-server or the full model stack.
 import importlib
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -70,11 +71,16 @@ class TestConfig(unittest.TestCase):
         self.assertNotIn("llama_server_path", str(ctx.exception))
 
     def test_all_paths_set_does_not_raise(self):
-        cfg = _config_module.Config()
-        cfg.llama_server_path = "/fake/llama-server"
-        cfg.model_path = "/fake/model.gguf"
-        cfg.mmproj_path = "/fake/mmproj.gguf"
-        cfg.validate_ocr_paths()  # must not raise
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Path(tmp) / "model.gguf"
+            mmproj = Path(tmp) / "mmproj.gguf"
+            model.touch()
+            mmproj.touch()
+            cfg = _config_module.Config()
+            cfg.llama_server_path = sys.executable
+            cfg.model_path = str(model)
+            cfg.mmproj_path = str(mmproj)
+            cfg.validate_ocr_paths()  # must not raise
 
     def test_path_properties(self):
         cfg = _config_module.Config()
