@@ -29,6 +29,22 @@ conda activate ocr-livre
 python docs/dev/apply_paddlex_patch_parallel.py
 ```
 
+The normal setup downloads the pinned official PaddleOCR-VL-1.5 GGUF model and
+mmproj (about 1.82 GB total) when valid custom paths are not already configured.
+Interrupted downloads can be resumed by rerunning setup. Use these options when
+needed:
+
+```bash
+python setup.py --model-only       # download or verify model files only
+python setup.py --model-dir PATH   # use a custom model directory
+python setup.py --skip-model       # keep model setup fully manual
+```
+
+The default cache is `%LOCALAPPDATA%/ocr-book/models/` on Windows,
+`$XDG_CACHE_HOME/ocr-book/models/` on Linux when configured, and otherwise the
+platform's usual per-user cache. Existing valid `OCR_MODEL_PATH` and
+`OCR_MMPROJ_PATH` values are preserved.
+
 On Linux, setup can also fetch the latest llama.cpp `master`, build a Vulkan server in the user cache (`$XDG_CACHE_HOME/ocr-book` or `~/.cache/ocr-book`), verify its devices, and record its path in `.env`:
 
 ```bash
@@ -56,13 +72,18 @@ python docs/dev/apply_paddlex_patch_otsl.py
 
 # Apply optional intra-page parallelism patch (gain ~30%, hardware dependent)
 python docs/dev/apply_paddlex_patch_parallel.py
+
+# Download the pinned GGUF model and write its paths to .env
+python docs/dev/download_models.py
 ```
 
 ---
 
 ## Configuration
 
-Before running OCR, you must tell the pipeline where `llama-server` and the models are located.
+Before running OCR, you must tell the pipeline where `llama-server` is located.
+The normal setup configures the model files automatically; custom model paths
+remain supported.
 
 ### Option A: `.env` file (recommended)
 
@@ -72,18 +93,21 @@ Copy the example file and edit it:
 cp .env.example .env
 ```
 
-Fill in the three required paths in `.env`:
+Set the llama-server path in `.env`. Model paths are optional overrides:
 
 ```bash
 # Linux
 OCR_LLAMA_SERVER_PATH=/absolute/path/to/llama-server
-OCR_MODEL_PATH=/absolute/path/to/PaddleOCR-VL-1.5.gguf
-OCR_MMPROJ_PATH=/absolute/path/to/PaddleOCR-VL-1.5-mmproj.gguf
+OCR_MODEL_PATH=       # optional: automatic user-cache fallback
+OCR_MMPROJ_PATH=      # optional: automatic user-cache fallback
 
 # Windows uses C:/... paths and llama-server.exe instead.
 ```
 
 The server value may also be a command such as `llama-server` when it is available on `PATH`. The pipeline resolves the executable and validates all three files before starting OCR. A Windows `.exe` cannot be reused on Linux.
+
+If `.env` is removed, the standard model cache is still discovered
+automatically. Explicit CLI or `.env` paths take precedence over cached files.
 
 ### Option B: Environment Variables
 
@@ -138,6 +162,8 @@ conda activate ocr-livre
 python -c "import paddle; paddle.utils.run_check()"
 python -c "from paddleocr import PaddleOCRVL; print('OK')"
 python docs/dev/apply_paddlex_patch_otsl.py --check
+python docs/dev/apply_paddlex_patch_parallel.py --check
+python docs/dev/download_models.py
 llama-server --list-devices  # or the absolute path recorded in .env
 python -m pytest tests/ -v
 python main.py --help

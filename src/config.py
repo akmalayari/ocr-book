@@ -10,7 +10,14 @@ from typing import overload
 
 from dotenv import load_dotenv
 
+if __package__:
+    from .model_assets import default_model_paths
+else:
+    from model_assets import default_model_paths
+
 load_dotenv()
+
+_CACHED_MODEL_PATH, _CACHED_MMPROJ_PATH = default_model_paths()
 
 # Variables renamed when the OCR_ namespace was introduced. The old spellings
 # are still honoured so existing .env files keep working; `find_legacy_env()`
@@ -134,8 +141,14 @@ class Config:
     # ── llama-server ─────────────────────────────────────────────────────────
     # Set via environment variables, CLI arguments, or edit this file directly.
     llama_server_path: str | None = _env_str("OCR_LLAMA_SERVER_PATH")
-    model_path: str | None        = _env_str("OCR_MODEL_PATH")
-    mmproj_path: str | None       = _env_str("OCR_MMPROJ_PATH")
+    model_path: str | None        = _env_str(
+        "OCR_MODEL_PATH",
+        str(_CACHED_MODEL_PATH) if _CACHED_MODEL_PATH.is_file() else None,
+    )
+    mmproj_path: str | None       = _env_str(
+        "OCR_MMPROJ_PATH",
+        str(_CACHED_MMPROJ_PATH) if _CACHED_MMPROJ_PATH.is_file() else None,
+    )
     server_base_port: int  = _env_int("OCR_SERVER_BASE_PORT", 8080)  # 8080, 8081, … (one per server)
     server_timeout: int    = _env_int("OCR_SERVER_TIMEOUT", 60)      # seconds before declaring the server dead
 

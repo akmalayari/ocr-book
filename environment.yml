@@ -16,6 +16,7 @@ dependencies:
     - paddlex[ocr]==3.4.3
     - pymupdf==1.25.3
     - ebooklib
+    - huggingface_hub
     - pillow
     - markdownify
     - python-dotenv

@@ -6,6 +6,7 @@ Usage:
     python setup.py                    # Full Python environment setup
     python setup.py --build-llama      # Full setup + latest Vulkan llama-server
     python setup.py --llama-only       # Only build latest Vulkan llama-server
+    python setup.py --model-only       # Only download/verify model assets
     python setup.py --env-only         # Only recreate the conda environment
     python setup.py --patch-only       # Only install/patch/verify PaddleOCR
 """
@@ -169,6 +170,7 @@ def main() -> None:
     mode.add_argument("--env-only", action="store_true", help="Only create the conda environment")
     mode.add_argument("--patch-only", action="store_true", help="Only install and patch PaddleOCR")
     mode.add_argument("--llama-only", action="store_true", help="Only build llama-server (Linux)")
+    mode.add_argument("--model-only", action="store_true", help="Only download or verify model assets")
     parser.add_argument(
         "--build-llama", action="store_true",
         help="Build the latest Vulkan llama-server after the normal setup (Linux)",
@@ -185,15 +187,31 @@ def main() -> None:
         "--llama-jobs", type=int, default=8, metavar="N",
         help="Maximum parallel llama.cpp build jobs (default: 8)",
     )
+    parser.add_argument(
+        "--skip-model", action="store_true",
+        help="Skip the automatic PaddleOCR-VL model download",
+    )
+    parser.add_argument(
+        "--model-dir", metavar="PATH",
+        help="Model destination (default: platform-specific user cache)",
+    )
+    parser.add_argument(
+        "--model-revision", metavar="REV",
+        help="Override the pinned Hugging Face model revision",
+    )
     args = parser.parse_args()
     if args.llama_jobs < 1:
         parser.error("--llama-jobs must be at least 1")
+    if args.model_only and args.skip_model:
+        parser.error("--model-only cannot be combined with --skip-model")
+    if args.skip_model and (args.model_dir or args.model_revision):
+        parser.error("--model-dir/--model-revision cannot be combined with --skip-model")
 
     root = Path(__file__).resolve().parent
     llama_requested = args.build_llama or args.llama_only
     steps: list[tuple[list[str], str, bool]] = []
 
-    if not args.patch_only and not args.llama_only:
+    if not args.patch_only and not args.llama_only and not args.model_only:
         steps.extend([
             (["conda", "env", "remove", "-n", ENV_NAME, "--yes"],
              f"Remove old {ENV_NAME} env (if it exists)", True),
@@ -201,8 +219,8 @@ def main() -> None:
              "Create conda environment from environment.yml", False),
         ])
 
-    if not args.env_only and not args.llama_only:
-        conda_run = ["conda", "run", "-n", ENV_NAME, "--no-capture-output"]
+    conda_run = ["conda", "run", "-n", ENV_NAME, "--no-capture-output"]
+    if not args.env_only and not args.llama_only and not args.model_only:
         steps.extend([
             (conda_run + [
                 "python", "-m", "pip", "install",
@@ -214,6 +232,23 @@ def main() -> None:
                 "python", "-c", "from paddleocr import PaddleOCRVL; print('PaddleOCR loaded')",
             ], "Verify PaddleOCR import", False),
         ])
+
+    model_requested = args.model_only or (
+        not args.env_only
+        and not args.patch_only
+        and not args.llama_only
+        and not args.skip_model
+    )
+    if model_requested:
+        model_cmd = conda_run + [
+            "python", str(root / "docs/dev/download_models.py"),
+            "--env-file", str(root / ".env"),
+        ]
+        if args.model_dir:
+            model_cmd += ["--model-dir", args.model_dir, "--force-location"]
+        if args.model_revision:
+            model_cmd += ["--revision", args.model_revision]
+        steps.append((model_cmd, "Download or verify PaddleOCR-VL model assets", False))
 
     print("\n" + "=" * 60)
     print("ocr-livre setup — PaddleOCR version")
@@ -254,7 +289,10 @@ def main() -> None:
     if not args.llama_only:
         print("\nNext steps:")
         print(f"  1. conda activate {ENV_NAME} (if not already active)")
-        print("  2. Configure the model and mmproj paths in .env or through CLI flags")
+        if args.skip_model or args.env_only or args.patch_only:
+            print("  2. Configure the model and mmproj paths in .env or through CLI flags")
+        else:
+            print("  2. Model and mmproj paths are available through .env or the user cache")
         if not llama_path:
             print("  3. Configure OCR_LLAMA_SERVER_PATH or run: python setup.py --llama-only")
         print("  4. python main.py --help")
