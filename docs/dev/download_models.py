@@ -2,10 +2,13 @@
 """Download the pinned PaddleOCR-VL GGUF assets and record their paths."""
 
 import argparse
+from io import StringIO
 import os
 import re
 import sys
 from pathlib import Path
+
+from dotenv import dotenv_values
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -28,13 +31,8 @@ def _read_env_text(path: Path) -> str:
 
 
 def _env_file_value(text: str, name: str) -> str | None:
-    match = re.search(rf"^\s*{re.escape(name)}\s*=\s*(.*?)\s*$", text, re.MULTILINE)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        value = value[1:-1]
-    return value or None
+    value = dotenv_values(stream=StringIO(text)).get(name)
+    return value.strip() if value and value.strip() else None
 
 
 def _resolve_configured_path(text: str, name: str) -> Path | None:
@@ -54,7 +52,9 @@ def _set_env_values(path: Path, values: dict[str, Path]) -> None:
     newline = "\r\n" if "\r\n" in text else "\n"
     for name, value in values.items():
         assignment = f'{name}="{_portable_path(value)}"'
-        pattern = re.compile(rf"^\s*{re.escape(name)}\s*=.*$", re.MULTILINE)
+        pattern = re.compile(
+            rf"^\s*(?:export\s+)?{re.escape(name)}\s*=.*$", re.MULTILINE
+        )
         if pattern.search(text):
             text = pattern.sub(assignment, text)
         else:
@@ -82,13 +82,17 @@ def main() -> int:
     env_text = _read_env_text(env_file)
     configured_model = _resolve_configured_path(env_text, "OCR_MODEL_PATH")
     configured_mmproj = _resolve_configured_path(env_text, "OCR_MMPROJ_PATH")
-    if (
+    keep_model = (
         not args.force_location
         and configured_model is not None
         and configured_model.is_file()
+    )
+    keep_mmproj = (
+        not args.force_location
         and configured_mmproj is not None
         and configured_mmproj.is_file()
-    ):
+    )
+    if keep_model and keep_mmproj:
         print("Keeping existing model files:")
         print(f"  model : {configured_model.resolve()}")
         print(f"  mmproj: {configured_mmproj.resolve()}")
@@ -98,9 +102,14 @@ def main() -> int:
         os.environ.get("OCR_MODEL_CACHE_DIR", "").strip()
         or _env_file_value(env_text, "OCR_MODEL_CACHE_DIR")
     )
-    model_path, mmproj_path = default_model_paths(args.model_dir or configured_cache)
-    model_dir = model_path.parent
-    model_dir.mkdir(parents=True, exist_ok=True)
+    cached_model, cached_mmproj = default_model_paths(args.model_dir or configured_cache)
+    model_path = configured_model if keep_model else cached_model
+    mmproj_path = configured_mmproj if keep_mmproj else cached_mmproj
+
+    if configured_model and not keep_model and not args.force_location:
+        print(f"Ignoring missing configured model: {configured_model}")
+    if configured_mmproj and not keep_mmproj and not args.force_location:
+        print(f"Ignoring missing configured mmproj: {configured_mmproj}")
 
     try:
         from huggingface_hub import hf_hub_download
@@ -108,20 +117,31 @@ def main() -> int:
         print("[ERROR] huggingface_hub is not installed in the active environment.")
         return 1
 
-    print(f"Downloading pinned model revision {args.revision} to {model_dir}")
+    print(f"Downloading missing assets from pinned revision {args.revision}")
     try:
-        downloaded_model = Path(hf_hub_download(
-            repo_id=MODEL_REPO_ID,
-            filename=MODEL_FILENAME,
-            revision=args.revision,
-            local_dir=model_dir,
-        ))
-        downloaded_mmproj = Path(hf_hub_download(
-            repo_id=MODEL_REPO_ID,
-            filename=MMPROJ_FILENAME,
-            revision=args.revision,
-            local_dir=model_dir,
-        ))
+        if keep_model:
+            downloaded_model = configured_model
+            print(f"Keeping existing model: {downloaded_model.resolve()}")
+        else:
+            model_path.parent.mkdir(parents=True, exist_ok=True)
+            downloaded_model = Path(hf_hub_download(
+                repo_id=MODEL_REPO_ID,
+                filename=MODEL_FILENAME,
+                revision=args.revision,
+                local_dir=model_path.parent,
+            ))
+
+        if keep_mmproj:
+            downloaded_mmproj = configured_mmproj
+            print(f"Keeping existing mmproj: {downloaded_mmproj.resolve()}")
+        else:
+            mmproj_path.parent.mkdir(parents=True, exist_ok=True)
+            downloaded_mmproj = Path(hf_hub_download(
+                repo_id=MODEL_REPO_ID,
+                filename=MMPROJ_FILENAME,
+                revision=args.revision,
+                local_dir=mmproj_path.parent,
+            ))
     except Exception as exc:
         print(f"[ERROR] Model download failed: {exc}")
         print("Rerun the command to resume the download.")

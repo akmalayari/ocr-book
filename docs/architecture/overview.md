@@ -202,9 +202,9 @@ Configurable llama-server parameters in `Config`:
 | Parameter | Default | Effect |
 |-----------|--------|--------|
 | `n_servers` | 1 | Number of parallel llama-servers (one page per server simultaneously) |
-| `n_gpu_layers` | 99 | Layers offloaded to GPU (Vulkan) |
-| `n_batch` / `n_ubatch` | 512 | Batch sizes |
-| `kv_offload` | True | KV cache offload to CPU |
-| `n_ctx` | 6144 | Max context (2048 tokens/slot × n_parallel=3) |
-| `n_parallel` | 3 | Intra-page parallel slots (requires paddlex patch) |
+| `n_gpu_layers` | unset | Let llama-server auto-fit GPU offload |
+| `n_batch` / `n_ubatch` | unset | Let llama-server select its defaults and auto-fit |
+| `kv_offload` | unset | Let llama-server keep its default behavior |
+| `n_ctx` | `n_parallel × 2048` | Total context across all slots (2048 by default) |
+| `n_parallel` | 1 | Safe intra-page default; test 2 before higher values |
 | `page_timeout` | 120 | Max seconds per page before giving up and restarting server (0 = disabled) |

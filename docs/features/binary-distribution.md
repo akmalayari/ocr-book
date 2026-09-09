@@ -11,8 +11,7 @@ The current installation requires:
 - miniforge/conda
 - `conda activate ocr-livre`
 - `python setup.py`
-- Manual patch application
-- Manual configuration of `OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`
+- A platform-appropriate `llama-server` executable (the automated build is Linux-only)
 
 This is acceptable for development and technical users, but it is a barrier for a broader audience and for an "official release."
 
@@ -31,7 +30,7 @@ Instead of a frozen binary, ship a **portable, pre-configured Python environment
 
 1. Download `OCR-Book-Setup-x.x.x.exe`
 2. Run installer (Next → Next → Finish)
-3. Download or point to a PaddleOCR-VL-1.5 GGUF model
+3. Let the launcher download the model automatically, or select an existing one
 4. Launch from Start Menu or desktop shortcut
 
 Under the hood, the shortcut simply runs `python src/main.py` from an isolated, private Python copy.

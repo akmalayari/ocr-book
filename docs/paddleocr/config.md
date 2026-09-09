@@ -115,8 +115,12 @@ PaddleOCRVL(
 llama-server launched with:
 ```
 -m <model.gguf> --mmproj <mmproj.gguf>
--c 6144 -ngl 99 -b 512 -ub 512 -t 4 --prio 2 --temp 0.0 -kvo -np 3 -n 4096
+-c <n_ctx> --temp 0.0 -np <n_parallel> -n <max_tokens>
 ```
+
+GPU layers, batch sizes, CPU threads, process priority, and KV offload are unset
+by default so llama-server can auto-fit them. Their corresponding `OCR_*`
+variables opt into explicit values.
 
 ### Context tuning for dense tables
 
@@ -125,9 +129,9 @@ Each slot gets `n_ctx / n_parallel` tokens total (input image + prompt + generat
 
 | CLI | Default | Use case |
 |---|---|---|
-| `--n-ctx` | 6144 | Total KV cache size |
-| `--n-parallel` | 3 | Intra-page parallel slots |
+| `--n-ctx` | `n_parallel × 2048` | Total KV cache size |
+| `--n-parallel` | 1 | Safe intra-page default; test 2 first |
 | `--max-tokens` | 4096 | Max tokens to generate per request |
 
 **Rule of thumb:** if dense tables are truncated, increase `--n-ctx` or decrease `--n-parallel`.
-Example: `--n-ctx 12288 --n-parallel 3` gives 4096 tokens/slot.
+Example: `--n-ctx 8192 --n-parallel 2` gives 4096 tokens/slot.

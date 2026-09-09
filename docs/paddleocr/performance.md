@@ -10,7 +10,7 @@ Images: 4080×3072 px (12.5 MP), book page photos.
 |---|---|---|
 | -np 1, sequential (baseline) | ~60s | initial state |
 | -np 2, 2 workers (global pool) | ~49s | -11s |
-| -np 3, 3 workers (global pool) | ~46s | -14s, **retained** |
+| -np 3, 3 workers (global pool) | ~46s | -14s, best result on this machine |
 | -np 4, 4 workers | crash | vision encoder Vulkan saturated |
 | -np 6, 6 workers | hang | total GPU contention |
 
@@ -30,7 +30,9 @@ PaddleOCR processes blocks of a page sequentially. A patch (`docs/dev/apply_padd
 
 **Why "global pool" rather than "per pixel_key pool"**: the initial version (per pixel_key pool) recreated a pool for each block group — no overlap between groups. The global pool collects all blocks into a single list, workers pick continuously, results are redistributed by pixel_key afterwards.
 
-Limit: Vulkan vision encoder crashes from 4 simultaneous encodings. Floor at 3 workers.
+On this Radeon 890M test machine, four simultaneous encodings crashed the Vulkan
+vision encoder and three was the fastest stable setting. This limit is not
+portable: the project defaults to one worker and recommends testing two first.
 
 ### `-np N` Alone (without intra-page parallelism)
 **Result: counter-productive. Abandoned.**
@@ -54,11 +56,14 @@ Automatically enabled in llama-server.
 ### Increasing `n_ubatch`
 **Tested (512 → 1024), no gain.**
 
-## Retained llama-server Parameters
+## Historical Benchmark Parameters
+
+These values produced the results above on the Radeon 890M test machine. They
+are not project defaults and should not be copied without hardware validation.
 
 ```
 -c 6144      # context window (2048 tokens/slot × 3 slots)
--np 3         # parallel slots (consistent with VLM_PARALLEL=3 in patch)
+-np 3         # parallel slots; the patch now reads OCR_N_PARALLEL at runtime
 -ngl 99       # all layers on GPU
 -b 512        # batch size
 -ub 512       # ubatch size (tested 1024: 0 gain)
@@ -68,7 +73,8 @@ Automatically enabled in llama-server.
 -kvo          # KV cache offload
 ```
 
-KV cache with np=3: ~297 MiB × 3 / 2 ≈ 445 MiB. Total VRAM used: ~4.5 GiB out of 23 GiB.
+KV cache with np=3: ~297 MiB × 3 / 2 ≈ 445 MiB. Total VRAM used on the
+benchmark machine: ~4.5 GiB out of 23 GiB.
 
 ## Unexplored Paths
 

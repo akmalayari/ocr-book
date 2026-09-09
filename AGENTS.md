@@ -75,12 +75,12 @@ ocr-livre/
 - Windows or Linux (initially developed on Windows; Linux setup is supported)
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
 - [llama-server](https://github.com/ggerganov/llama.cpp) compiled with Vulkan (or another GPU backend)
-- GGUF model: [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5) (`.gguf` + `.mmproj.gguf`)
+- Enough disk space for the GGUF model and mmproj (downloaded automatically)
 
 ### Installation Commands
 
 ```bash
-# Full setup (creates conda env, installs deps, applies patch)
+# Full setup (creates conda env, installs deps, applies patches, downloads models)
 python setup.py
 
 # Activate environment
@@ -94,14 +94,15 @@ The `setup.py` script:
 1. Removes the old conda env `ocr-livre` (if it exists)
 2. Creates the env from `environment.yml`
 3. Installs `paddleocr` from the git repo (the PyPI version does not contain the `llama-cpp-server` backend)
-4. Applies the required patch `docs/dev/apply_paddlex_patch_otsl.py`
+4. Applies the OTSL and runtime-configurable parallel patches, in that order
+5. Downloads the pinned model and mmproj unless valid custom paths already exist
 
 ### Required paddlex patches
 
 | Patch | Status | Command |
 |-------|--------|----------|
 | **OTSL** (`apply_paddlex_patch_otsl.py`) | **Required** | `python docs/dev/apply_paddlex_patch_otsl.py` |
-| **Parallel** (`apply_paddlex_patch_parallel.py`) | Optional (~30% gain) | `python docs/dev/apply_paddlex_patch_parallel.py` |
+| **Parallel** (`apply_paddlex_patch_parallel.py`) | **Required; concurrency optional** | `python docs/dev/apply_paddlex_patch_parallel.py` |
 
 These patches discover the installed PaddleX package and modify its `inference/pipelines/paddleocr_vl/pipeline.py` on both Windows and Linux. They accept `--check` and `--revert` arguments.
 
@@ -180,7 +181,7 @@ photos/  →  main.py  →  pipeline.run_pipeline(cfg)
 
 - **Automatic resume** (`--resume`): each processed page is written to `output/parts/<page_id>.part`. On restart, existing parts are skipped. Disable with `--no-resume`.
 - **Timeout + fallback**: if `pipeline.predict()` exceeds `cfg.page_timeout` (120s default), servers are restarted and the page is reprocessed without layout detection (`use_layout_detection=False`).
-- **Parallelism**: `n_servers` llama-server instances on distinct ports (8080, 8081…). One page per server in parallel. The intra-page parallel patch (`-np 3`) allows processing multiple blocks of the same page simultaneously via a thread pool in paddlex.
+- **Parallelism**: `n_servers` llama-server instances use distinct ports (8080, 8081…). The installed intra-page patch reads `OCR_N_PARALLEL` at runtime. The safe default is 1; test 2 before hardware-dependent values of 3 or more.
 - **Figures**: crops of `image` regions are saved in `output/figures/<page_id>/imgs/`.
 
 ---
@@ -204,7 +205,9 @@ photos/  →  main.py  →  pipeline.run_pipeline(cfg)
 
 ### Key Configuration (`config.py`)
 
-Paths to llama-server and models are read from **environment variables** by default (`OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`). They can also be passed via CLI (`--llama-server`, `--model`, `--mmproj`) or edited directly in `src/config.py`.
+The llama-server path is read from `OCR_LLAMA_SERVER_PATH` or passed with
+`--llama-server`. Model paths use `OCR_MODEL_PATH` and `OCR_MMPROJ_PATH`, CLI
+overrides, or the automatically discovered platform-native user cache.
 
 Every llama-server tuning field also reads an `OCR_*` environment variable (`OCR_N_PARALLEL`, `OCR_N_CTX`, `OCR_N_THREADS`, `OCR_N_SERVERS`, `OCR_N_BATCH`, `OCR_N_UBATCH`, `OCR_N_GPU_LAYERS`, `OCR_MAX_TOKENS`, `OCR_KV_OFFLOAD`, `OCR_PAGE_TIMEOUT`, `OCR_SERVER_TIMEOUT`, `OCR_SERVER_BASE_PORT`, `OCR_PRIO`) via the `_env_int` / `_env_bool` helpers. This keeps machine-specific tuning in the gitignored `.env` instead of a local diff on `config.py`. Precedence: **CLI flag > `.env` > default**. An unparsable value raises `ValueError` naming the variable.
 
@@ -212,7 +215,7 @@ Every llama-server tuning field also reads an `OCR_*` environment variable (`OCR
 
 Important tuning parameters:
 - `n_servers`: number of parallel llama-servers (1 default, useless on single APU/GPU)
-- `n_parallel`: intra-page slots (1 default; set >1 only with the parallel patch applied)
+- `n_parallel`: intra-page slots (1 default; the setup installs the patch, so test 2 without reapplying it)
 - `n_ctx`: `None` default = auto (`n_parallel × 2048`, i.e. 2048 tokens/slot). Override with `--n-ctx` for large/dense tables.
 - `page_timeout`: 120s before giving up and restarting
 - `use_layout_detection`: True by default
@@ -286,8 +289,12 @@ python main.py --images photos/page_1.jpg --no-resume
 
 ## Security and Operational Considerations
 
-- **Path configuration**: llama-server and model paths are read from environment variables (`OCR_LLAMA_SERVER_PATH`, `OCR_MODEL_PATH`, `OCR_MMPROJ_PATH`) or CLI arguments. The user must set them before the first run.
-- **Patches on installed libraries**: patch scripts discover the active `paddlex` package and modify its installed pipeline file. They must be reapplied after each environment reinstallation.
+- **Path configuration**: llama-server must be configured. Model paths are
+  downloaded and recorded automatically, with platform-native cache discovery
+  as a fallback; environment variables and CLI arguments remain explicit overrides.
+- **Patches on installed libraries**: patch scripts discover the active `paddlex`
+  package and modify its installed pipeline file. The setup reapplies them after
+  every environment installation.
 - **GPU resources**: the pipeline launches `n_servers` llama-server processes. Each process loads the model into GPU memory. On an APU (shared CPU/GPU memory), `n_servers > 1` generally brings no gain due to Vulkan command queue serialization.
 - **Timeout and resume**: the parts mechanism makes the pipeline robust to crashes. However, a hard kill may leave orphan llama-server processes or unreleased resources (see `docs/issues.md`).
 - **No secrets / API keys**: everything is local (llama-server). No data is sent over the network.
@@ -300,11 +307,11 @@ python main.py --images photos/page_1.jpg --no-resume
 |----------|---------------|----------|
 | `paddlex file not found` | Conda env not activated | `conda activate ocr-livre` |
 | VLM 500 error on tables | OTSL patch not applied | `python docs/dev/apply_paddlex_patch_otsl.py` |
-| Dense tables cut off (first rows only) | Context slot too small (`n_ctx / n_parallel`) | Increase `--n-ctx` or decrease `--n-parallel` (e.g., `--n-ctx 12288 --n-parallel 3`) |
-| Vision encoder crash | `-np` too large (≥4) | Lower to `-np 3` |
+| Dense tables cut off (first rows only) | Context slot too small (`n_ctx / n_parallel`) | Increase `--n-ctx` or decrease `--n-parallel` (e.g., `--n-ctx 8192 --n-parallel 2`) |
+| Vision encoder crash | Concurrency too high for this hardware | Lower to `--n-parallel 2` or 1 |
 | No pages processed | `photos/` empty or wrong path | Check `--images` and extensions |
 | Timeout on all pages | llama-server not started or model not found | Check `--llama-server`, `--model`, `--mmproj` or the corresponding env vars |
-| llama-server hangs on startup | GPU memory held by other apps (Obsidian embedder, games, etc.) | Close GPU-heavy apps, verify free VRAM in Task Manager |
+| llama-server hangs on startup | GPU memory held by other apps (Obsidian embedder, games, etc.) | Close GPU-heavy apps and inspect memory with the platform's GPU tools |
 
 ---
 

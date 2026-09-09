@@ -105,8 +105,8 @@ python main.py --no-resume
 # Detailed logs
 python main.py --verbose
 
-# Dense tables — increase context if tables are truncated
-python main.py --n-ctx 12288 --n-parallel 3
+# Dense tables — increase the per-slot context if tables are truncated
+python main.py --n-ctx 8192 --n-parallel 2
 ```
 
 ---
@@ -206,8 +206,8 @@ Already processed pages are automatically skipped.
 --images PATH              Photo folder, PDF, or EPUB       (default: ./photos)
 --out FILE                 Output Markdown file             (default: output/book.md)
 --llama-server PATH        Path to llama-server executable  (env: OCR_LLAMA_SERVER_PATH)
---model PATH               Path to model .gguf              (env: OCR_MODEL_PATH)
---mmproj PATH              Path to mmproj .gguf             (env: OCR_MMPROJ_PATH)
+--model PATH               Optional model path override      (env: OCR_MODEL_PATH)
+--mmproj PATH              Optional mmproj path override     (env: OCR_MMPROJ_PATH)
 --mode {base,obsidian}     Output mode                      (default: base)
 --method {text,docling,paddleocrvl}  PDF extraction method  (default: paddleocrvl)
 --no-layout                Disable layout detection

@@ -89,10 +89,14 @@ remain supported.
 
 ### Option A: `.env` file (recommended)
 
-Copy the example file and edit it:
+Copy the example file and edit it.
 
 ```bash
+# Linux/macOS
 cp .env.example .env
+
+# Windows PowerShell
+Copy-Item .env.example .env
 ```
 
 Set the llama-server path in `.env`. Model paths are optional overrides:
@@ -157,7 +161,7 @@ python main.py --images ./book.pdf --out output/book.md
 python main.py --images ./book.epub --out output/book.md
 ```
 
-### Linux verification
+### Installation verification
 
 ```bash
 conda activate ocr-livre
@@ -179,6 +183,8 @@ Before processing a full book, run one representative page with `--no-resume` an
 
 - **paddlex file not found**: Verify the env is activated (`conda activate ocr-livre`)
 - **Patch fails**: paddlex state may be "unknown" if the version differs. See [apply_paddlex_patch_otsl.py](dev/apply_paddlex_patch_otsl.py) for details
-- **Missing required configuration**: You haven't set the llama-server or model paths. See the Configuration section above.
+- **Missing required configuration**: Configure `llama-server`. Model paths are
+  discovered from the user cache unless explicit overrides point to missing files.
+  See the Configuration section above.
 - **llama-server is not executable**: Run `chmod +x /path/to/llama-server`.
 - **No Vulkan device appears**: Run `vulkaninfo --summary`, verify the GPU driver, and rebuild with `-DGGML_VULKAN=ON`.
