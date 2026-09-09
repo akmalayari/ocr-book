@@ -76,6 +76,7 @@ PATCHED = """\
 # Short signatures used for detection — robust to surrounding restructuring (e.g. parallel patch applied on top)
 PATCHED_SIGNATURE = 'find("<fcel>")'
 ORIGINAL_SIGNATURE = "batch_results = list("
+PARALLEL_SIGNATURE = "_VLM_PARALLEL"
 
 
 def status(text: str) -> str:
@@ -111,7 +112,15 @@ def main() -> None:
         if state != "patched":
             print("[ERROR] Unknown state, manual modification required.")
             sys.exit(1)
-        TARGET.write_text(text.replace(PATCHED, ORIGINAL), encoding="utf-8")
+        if PARALLEL_SIGNATURE in text:
+            print("[ERROR] Parallel patch is active. Revert it before reverting the OTSL patch:")
+            print("  python docs/dev/apply_paddlex_patch_parallel.py --revert")
+            sys.exit(1)
+        reverted = text.replace(PATCHED, ORIGINAL)
+        if reverted == text:
+            print("[ERROR] OTSL patch payload was not found; no changes were made.")
+            sys.exit(1)
+        TARGET.write_text(reverted, encoding="utf-8")
         print("Patch removed.")
         return
 

@@ -6,7 +6,8 @@
 
 - Miniforge or Anaconda, with `conda` initialized in the current shell.
 - A 64-bit Python-compatible system. The project environment uses Python 3.10.
-- The PaddleOCR-VL model GGUF and mmproj GGUF files.
+- Enough disk space for the PaddleOCR-VL GGUF and mmproj files (about 1.82 GB),
+  which the normal setup downloads automatically.
 
 For an automated Vulkan llama-server build on Ubuntu:
 
@@ -25,9 +26,12 @@ python setup.py                    # Windows or an activated conda base shell
 # or
 python3 setup.py                   # Linux when only python3 is available
 conda activate ocr-livre
-# Optional: intra-page parallelism patch
-python docs/dev/apply_paddlex_patch_parallel.py
 ```
+
+The normal setup applies the required OTSL recovery patch and the
+runtime-configurable parallel patch. Parallelism remains disabled by default
+(`OCR_N_PARALLEL=1`); test `2` on representative pages before trying higher
+hardware-dependent values.
 
 The normal setup downloads the pinned official PaddleOCR-VL-1.5 GGUF model and
 mmproj (about 1.82 GB total) when valid custom paths are not already configured.
@@ -67,10 +71,8 @@ conda activate ocr-livre
 # Install PaddleOCR from git repo (dev version with llama-server compatibility)
 pip install "git+https://github.com/PaddlePaddle/PaddleOCR.git@740a04dc4"
 
-# Apply required paddlex patch
+# Apply the required paddlex patches, in this order
 python docs/dev/apply_paddlex_patch_otsl.py
-
-# Apply optional intra-page parallelism patch (gain ~30%, hardware dependent)
 python docs/dev/apply_paddlex_patch_parallel.py
 
 # Download the pinned GGUF model and write its paths to .env

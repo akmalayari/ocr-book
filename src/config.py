@@ -171,7 +171,8 @@ class Config:
     n_ctx: int | None     = None
     max_tokens: int       = _env_int("OCR_MAX_TOKENS", 4096)
     temperature: float    = 0.0    # 0 = deterministic; llama.cpp defaults to 0.8
-    # n_parallel > 1 requires apply_paddlex_patch_parallel.py; leave at 1 otherwise.
+    # The normal setup installs the runtime-configurable parallel patch. Keep 1 as
+    # the hardware-safe default; users should validate 2 before trying 3 or more.
     n_parallel: int       = _env_int("OCR_N_PARALLEL", 1)
     n_servers: int        = _env_int("OCR_N_SERVERS", 1)      # parallel llama-server instances
     page_timeout: int     = _env_int("OCR_PAGE_TIMEOUT", 120) # max seconds per page (0 = disabled)

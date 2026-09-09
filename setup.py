@@ -228,6 +228,8 @@ def main() -> None:
             ], "Install PaddleOCR from repo (with llama-server compatibility)", False),
             (conda_run + ["python", str(root / "docs/dev/apply_paddlex_patch_otsl.py")],
              "Apply paddlex patch (per-region VLM error recovery)", False),
+            (conda_run + ["python", str(root / "docs/dev/apply_paddlex_patch_parallel.py")],
+             "Apply paddlex patch (runtime-configurable VLM parallelism)", False),
             (conda_run + [
                 "python", "-c", "from paddleocr import PaddleOCRVL; print('PaddleOCR loaded')",
             ], "Verify PaddleOCR import", False),

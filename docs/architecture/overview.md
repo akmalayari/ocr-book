@@ -152,7 +152,7 @@ Markdown report written to `output/ocr_report.md`.
 
 Required paddlex patches:
 - `docs/dev/apply_paddlex_patch_otsl.py` — per-region VLM error handling (complex tables). See `docs/dev/paddlex_patch_otsl.md`.
-- `docs/dev/apply_paddlex_patch_parallel.py` — intra-page parallelism (`n_parallel`). Required if `n_parallel > 1`. See `docs/dev/paddlex_patch_parallel.md`.
+- `docs/dev/apply_paddlex_patch_parallel.py` — runtime-configurable intra-page parallelism (`n_parallel`). The normal setup installs it automatically; the safe default remains `1`. See `docs/dev/paddlex_patch_parallel.md`.
 
 ---
 

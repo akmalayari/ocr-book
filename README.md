@@ -9,7 +9,8 @@ using **PaddleOCR-VL-1.5** via **llama-server** (local inference).
 
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
 - [llama-server](https://github.com/ggerganov/llama.cpp) (Vulkan recommended on Windows)
-- GGUF model: [PaddleOCR-VL-1.5-GGUF](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5)
+- Enough disk space for the automatically downloaded PaddleOCR-VL-1.5 GGUF model
+  and multimodal projector (about 1.82 GB)
 
 ---
 
@@ -20,11 +21,14 @@ python setup.py
 conda activate ocr-livre
 ```
 
-Then configure the paths to `llama-server` and the models. The easiest way is to copy `.env.example` to `.env` and edit it, but you can also use environment variables or CLI arguments — see [docs/SETUP.md](docs/SETUP.md) for all options.
+The setup downloads the model files and applies both required PaddleX patches.
+Configure the path to `llama-server` in `.env`, with an environment variable, or
+with a CLI argument. See [docs/SETUP.md](docs/SETUP.md) for Windows and Linux
+instructions.
 
 ```bash
-cp .env.example .env
-# Edit .env and set OCR_LLAMA_SERVER_PATH, OCR_MODEL_PATH and OCR_MMPROJ_PATH
+cp .env.example .env  # Linux/macOS; use Copy-Item on PowerShell
+# Edit .env and set OCR_LLAMA_SERVER_PATH
 ```
 
 ### Hardware tuning (optional)
@@ -39,8 +43,8 @@ variables in your (gitignored) `.env` — see `.env.example` for the full list.
 Precedence is **CLI flag > `.env` > default**.
 
 ```bash
-OCR_N_PARALLEL=3        # intra-page slots; >1 requires the parallel patch
-OCR_N_CTX=12288         # total KV cache (per-slot budget = OCR_N_CTX / OCR_N_PARALLEL)
+OCR_N_PARALLEL=2        # default: 1; test 2 before hardware-dependent values of 3+
+OCR_N_CTX=4096          # total KV cache (per-slot budget = OCR_N_CTX / OCR_N_PARALLEL)
 OCR_N_THREADS=16        # CPU threads for llama-server
 ```
 
@@ -220,7 +224,7 @@ Already processed pages are automatically skipped.
 --dir-level                Folder-level order for --rename
 --max-tokens N             Max tokens generated per page    (default: 4096)
 --n-ctx N                  KV cache size (context window)   (default: n-parallel × 2048)
---n-parallel N             Intra-page parallel slots        (default: 1, >1 needs the parallel patch)
+--n-parallel N             Intra-page parallel slots        (default: 1; test 2 first)
 --n-threads N              CPU threads for llama-server     (default: llama-server auto)
 --n-servers N              Parallel llama-server instances  (default: 1)
 --no-kv-offload            Disable KV cache GPU offload

@@ -80,7 +80,7 @@ def _is_port_in_use(port: int) -> bool:
 
 
 def _check_parallel_config(cfg) -> None:
-    """Warn when n_parallel and parallel patch status are mismatched."""
+    """Warn when parallelism is requested without the installed patch."""
     spec = importlib.util.find_spec("paddlex")
     if not spec or not spec.submodule_search_locations:
         logger.warning("Cannot inspect the parallel patch because PaddleX was not found.")
@@ -96,12 +96,7 @@ def _check_parallel_config(cfg) -> None:
     except OSError:
         return
     patch_applied = "_VLM_PARALLEL" in text
-    if patch_applied and cfg.n_parallel == 1:
-        logger.warning(
-            "Parallel patch is applied but n_parallel=1 — no concurrency benefit. "
-            "Test --n-parallel 2 first, then increase it only after validating your hardware."
-        )
-    elif not patch_applied and cfg.n_parallel > 1:
+    if not patch_applied and cfg.n_parallel > 1:
         logger.warning(
             "n_parallel=%d but the parallel patch is not applied — "
             "%d context slots are allocated but only one is used at a time. "

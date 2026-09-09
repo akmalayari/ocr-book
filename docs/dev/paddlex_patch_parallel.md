@@ -8,7 +8,8 @@ PaddleOCR-VL processes blocks of a page sequentially: for each block detected by
 
 `docs/dev/apply_paddlex_patch_parallel.py` patches `paddlex/inference/pipelines/paddleocr_vl/pipeline.py` to replace the sequential loop with a single global `ThreadPoolExecutor`.
 
-**Must be applied after `apply_paddlex_patch_otsl.py` (OTSL patch).**
+The normal setup applies it automatically after `apply_paddlex_patch_otsl.py`.
+For a manual installation, the same order is required.
 
 ## How It Works
 
@@ -40,6 +41,7 @@ Context (`-c`) must still be sized for the selected concurrency:
 
 | OCR_N_PARALLEL / -np | Recommended -c | Tokens/slot |
 |---|---|---|
+| 1 (default) | 2048 | 2048 |
 | 2 | 4096 | 2048 |
 | 3 | 6144 | 2048 — hardware-dependent |
 | 4 | 8192 | 2048 — experimental, hardware-dependent |
@@ -57,7 +59,7 @@ Context (`-c`) must still be sized for the selected concurrency:
 ## Usage
 
 ```bash
-# Apply (OTSL patch must already be active)
+# Manual installation only (OTSL patch must already be active)
 python docs/dev/apply_paddlex_patch_parallel.py
 
 # Default remains sequential. Test two workers first.
@@ -73,6 +75,8 @@ python docs/dev/apply_paddlex_patch_parallel.py --revert
 Applying the script upgrades older patches with a hardcoded worker count.
 Reverting is also independent of the current `OCR_N_PARALLEL` value and leaves
 `.env` unchanged. Set the value back to `1` before running without the patch.
+To restore unpatched PaddleX completely, revert the parallel patch first and
+then the OTSL patch.
 
 ## Associated src/ Config
 
