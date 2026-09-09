@@ -30,18 +30,28 @@ _all_results = pool.map(_infer_block, _all_tasks)  # parallel
 
 ## Consistent Parameters
 
-`_VLM_PARALLEL` in the patch must match `-np` in llama-server, and `-c` must be sized accordingly:
+The patch reads `OCR_N_PARALLEL` at runtime. The pipeline publishes the resolved
+configuration value before prediction, so the PaddleX worker pool and
+llama-server's `-np` argument stay synchronized. CLI precedence remains
+`--n-parallel` > `.env` > default (`1`). Changing the value does not require
+reapplying the patch.
 
-| VLM_PARALLEL / -np | Recommended -c | Tokens/slot |
+Context (`-c`) must still be sized for the selected concurrency:
+
+| OCR_N_PARALLEL / -np | Recommended -c | Tokens/slot |
 |---|---|---|
 | 2 | 4096 | 2048 |
-| 3 | 6144 | 2048 — **retained** |
-| 4 | 8192 | 2048 — vision encoder crash |
+| 3 | 6144 | 2048 — hardware-dependent |
+| 4 | 8192 | 2048 — experimental, hardware-dependent |
 
 ## Limits
 
-- **Vision encoder Vulkan saturated at 4 workers**: 4 simultaneous image encodings crash the driver. Stable floor at 3 workers.
-- **Diminishing returns**: 60s → 49s → 43.4s text / 37s graph (2.4s gain between np=2 and np=3). Beyond 3, crash.
+- **Hardware-dependent limit**: higher concurrency can saturate or crash the
+  Vulkan vision encoder. Start at 2, validate representative pages, then test 3
+  or higher only if the hardware remains stable.
+- **Diminishing returns on the tested machine**: 60s → 49s → 43.4s text /
+  37s graph (2.4s gain between np=2 and np=3). These measurements and the
+  failure threshold are not portable to other GPUs.
 - **Pages with few blocks**: a page with 2 blocks only uses 2 workers even with np=3. Gain is proportional to the number of blocks.
 
 ## Usage
@@ -50,6 +60,9 @@ _all_results = pool.map(_infer_block, _all_tasks)  # parallel
 # Apply (OTSL patch must already be active)
 python docs/dev/apply_paddlex_patch_parallel.py
 
+# Default remains sequential. Test two workers first.
+python main.py --n-parallel 2
+
 # Check
 python docs/dev/apply_paddlex_patch_parallel.py --check
 
@@ -57,7 +70,11 @@ python docs/dev/apply_paddlex_patch_parallel.py --check
 python docs/dev/apply_paddlex_patch_parallel.py --revert
 ```
 
+Applying the script upgrades older patches with a hardcoded worker count.
+Reverting is also independent of the current `OCR_N_PARALLEL` value and leaves
+`.env` unchanged. Set the value back to `1` before running without the patch.
+
 ## Associated src/ Config
 
-`src/pipeline.py` : `-np 3`
-`src/config.py` : `n_ctx = 6144`
+`src/pipeline.py`: `-np` receives the resolved `n_parallel` value.
+`src/config.py`: `n_parallel = 1`; automatic `n_ctx = n_parallel * 2048`.

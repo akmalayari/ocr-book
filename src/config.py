@@ -207,6 +207,8 @@ class Config:
     verbose: bool    = False
 
     def __post_init__(self):
+        if self.n_parallel < 1:
+            raise ValueError("n_parallel must be at least 1")
         # Resolved here rather than in the field default so that the CLI passing
         # n_ctx=None (its default) still falls back to OCR_N_CTX, then to auto.
         if self.n_ctx is None:

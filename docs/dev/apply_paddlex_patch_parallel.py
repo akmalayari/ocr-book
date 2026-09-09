@@ -16,7 +16,9 @@ Principle:
 
     PaddleX architecture (asyncio.run_coroutine_threadsafe on global event loop)
     is thread-safe: multiple threads can call predict() simultaneously.
-    llama-server must be launched with -np N >= VLM_PARALLEL.
+    The worker count is read from OCR_N_PARALLEL at runtime. ocr-book exports
+    the resolved Config value so the pool and llama-server always use the same
+    concurrency, including when --n-parallel overrides .env.
 
 Usage :
     python docs/dev/apply_paddlex_patch_parallel.py           # apply
@@ -80,10 +82,8 @@ ORIGINAL = """\
             batch_dict_by_pixel[pixel_key]["vlm_results"] = batch_results"""
 
 # Global pool: all blocks from all pixel_keys submitted in a single pass.
-# VLM_PARALLEL must match -np in llama-server (src/pipeline.py).
-PATCHED = """\
-        _VLM_PARALLEL = 4  # must match -np in llama-server
-
+# The runtime environment is synchronized with -np by src/pipeline.py.
+PATCHED_BODY = """\
         def _infer_block(args):
             _img, _qry, _kw = args
             try:
@@ -130,15 +130,32 @@ PATCHED = """\
             _idx += _n"""
 
 
-def _patched_parallel() -> str:
-    """Returns the worker count declared in PATCHED, so messages can't drift."""
-    match = re.search(r"_VLM_PARALLEL\s*=\s*(\d+)", PATCHED)
-    return match.group(1) if match else "?"
+PATCHED = """\
+        import os as _os
+        _VLM_PARALLEL = max(1, int(_os.environ.get("OCR_N_PARALLEL", "1")))
+
+""" + PATCHED_BODY
+
+# Previous versions embedded the worker count in the installed PaddleX file.
+# Match any positive legacy value so apply/revert works across 2, 3, 4, or a
+# locally tuned value without depending on the current .env.
+LEGACY_PATCHED_RE = re.compile(
+    r"        _VLM_PARALLEL = (?P<workers>[1-9]\d*)  "
+    r"# must match -np in llama-server\n\n"
+    + re.escape(PATCHED_BODY)
+)
+
+
+def _legacy_patched(text: str) -> re.Match[str] | None:
+    return LEGACY_PATCHED_RE.search(text)
 
 
 def status(text: str) -> str:
     if PATCHED in text:
         return "patched"
+    legacy = _legacy_patched(text)
+    if legacy:
+        return f"legacy-patched ({legacy.group('workers')} workers)"
     if ORIGINAL in text:
         return "original"
     return "unknown"
@@ -166,23 +183,32 @@ def main() -> None:
         if state == "original":
             print("Already at original state (OTSL patch only), nothing to do.")
             return
-        if state != "patched":
+        patched_block = PATCHED if state == "patched" else None
+        if state.startswith("legacy-patched"):
+            patched_block = _legacy_patched(text).group(0)
+        if patched_block is None:
             print("[ERROR] Unknown state, manual modification required.")
             sys.exit(1)
-        TARGET.write_text(text.replace(PATCHED, ORIGINAL), encoding="utf-8")
+        TARGET.write_text(text.replace(patched_block, ORIGINAL), encoding="utf-8")
         print("Parallel patch removed — back to OTSL patch only.")
+        print("OCR_N_PARALLEL was not changed; set it to 1 when running without the patch.")
         return
 
     if state == "patched":
         print("Already patched, nothing to do.")
+        return
+    if state.startswith("legacy-patched"):
+        legacy = _legacy_patched(text)
+        TARGET.write_text(text.replace(legacy.group(0), PATCHED), encoding="utf-8")
+        print(f"Legacy parallel patch ({legacy.group('workers')} workers) upgraded.")
+        print("Worker count now follows OCR_N_PARALLEL at runtime (default: 1).")
         return
     if state != "original":
         print("[ERROR] Unknown state. Verify that apply_paddlex_patch_otsl.py was applied first.")
         sys.exit(1)
     TARGET.write_text(text.replace(ORIGINAL, PATCHED), encoding="utf-8")
     print("Parallel patch (global pool) applied.")
-    print(f"Make sure llama-server runs with -np {_patched_parallel()} "
-          "(OCR_N_PARALLEL in .env, VLM_PARALLEL in this patch).")
+    print("Worker count follows OCR_N_PARALLEL at runtime (default: 1; test 2 first).")
 
 
 if __name__ == "__main__":

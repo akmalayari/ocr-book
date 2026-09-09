@@ -99,7 +99,7 @@ def _check_parallel_config(cfg) -> None:
     if patch_applied and cfg.n_parallel == 1:
         logger.warning(
             "Parallel patch is applied but n_parallel=1 — no concurrency benefit. "
-            "Set --n-parallel 3 (or the VLM_PARALLEL value in the patch) to use it."
+            "Test --n-parallel 2 first, then increase it only after validating your hardware."
         )
     elif not patch_applied and cfg.n_parallel > 1:
         logger.warning(
@@ -168,6 +168,10 @@ def run_pipeline(cfg: Config) -> Stats:
     if ocr_queue:
         cfg.validate_ocr_paths()
 
+        # The installed PaddleX patch reads this at prediction time. Publishing
+        # the resolved Config value keeps CLI overrides, .env, the worker pool,
+        # and llama-server's -np argument synchronized without reapplying it.
+        os.environ["OCR_N_PARALLEL"] = str(cfg.n_parallel)
         _check_parallel_config(cfg)
 
         ports = []
