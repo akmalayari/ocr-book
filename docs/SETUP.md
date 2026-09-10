@@ -6,8 +6,7 @@
 
 - Miniforge or Anaconda, with `conda` initialized in the current shell.
 - A 64-bit Python-compatible system. The project environment uses Python 3.10.
-- Enough disk space for the PaddleOCR-VL GGUF and mmproj files (about 1.82 GB),
-  which the normal setup downloads automatically.
+- Enough disk space for the PaddleOCR-VL GGUF and mmproj files (about 1.82 GB).
 
 For an automated Vulkan llama-server build on Ubuntu:
 
@@ -33,14 +32,33 @@ runtime-configurable parallel patch. Parallelism remains disabled by default
 (`OCR_N_PARALLEL=1`); test `2` on representative pages before trying higher
 hardware-dependent values.
 
-The normal setup downloads the pinned official PaddleOCR-VL-1.5 GGUF model and
-mmproj (about 1.82 GB total) when valid custom paths are not already configured.
-Interrupted downloads can be resumed by rerunning setup. Use these options when
-needed:
+On Linux, the normal setup downloads the pinned official PaddleOCR-VL-1.5 GGUF
+model and mmproj (about 1.82 GB total) when valid files are not already
+configured. Interrupted downloads can be resumed by rerunning setup.
+
+On Windows, the normal setup never downloads model files automatically. It
+checks configured paths and the default cache, records valid files in `.env`, or
+prints browser download links and optional default destination paths. Files may
+instead be stored anywhere by setting `OCR_MODEL_PATH` and `OCR_MMPROJ_PATH` in
+`.env`. After downloading both files, rerun the local check:
 
 ```bash
-python setup.py --model-only       # download or verify model files only
-python setup.py --model-dir PATH   # use a custom model directory
+conda run -n ocr-livre python docs/dev/download_models.py --local-only
+```
+
+To keep browser downloads in another directory, place both files there and run:
+
+```bash
+conda run -n ocr-livre python docs/dev/download_models.py --local-only --model-dir "C:/path/to/models" --force-location
+```
+
+The local check verifies the pinned file sizes and GGUF headers before recording
+their paths. Automatic download remains available as an explicit Windows opt-in.
+Use these options when needed:
+
+```bash
+python setup.py --model-only       # explicitly download or verify model files
+python setup.py --model-dir PATH   # check this local directory during normal Windows setup
 python setup.py --skip-model       # keep model setup fully manual
 ```
 
@@ -75,8 +93,11 @@ pip install "git+https://github.com/PaddlePaddle/PaddleOCR.git@740a04dc4"
 python docs/dev/apply_paddlex_patch_otsl.py
 python docs/dev/apply_paddlex_patch_parallel.py
 
-# Download the pinned GGUF model and write its paths to .env
+# Linux: download the pinned GGUF model and write its paths to .env
 python docs/dev/download_models.py
+
+# Windows: validate browser-downloaded files and write their paths to .env
+python docs/dev/download_models.py --local-only --model-dir "C:/path/to/models" --force-location
 ```
 
 ---
@@ -84,8 +105,8 @@ python docs/dev/download_models.py
 ## Configuration
 
 Before running OCR, you must tell the pipeline where `llama-server` is located.
-The normal setup configures the model files automatically; custom model paths
-remain supported.
+The normal setup configures model files automatically on Linux and registers
+browser-downloaded files on Windows; custom model paths remain supported.
 
 ### Option A: `.env` file (recommended)
 
@@ -169,7 +190,8 @@ python -c "import paddle; paddle.utils.run_check()"
 python -c "from paddleocr import PaddleOCRVL; print('OK')"
 python docs/dev/apply_paddlex_patch_otsl.py --check
 python docs/dev/apply_paddlex_patch_parallel.py --check
-python docs/dev/download_models.py
+python docs/dev/download_models.py              # automatic download/verification
+python docs/dev/download_models.py --local-only # local verification without network
 llama-server --list-devices  # or the absolute path recorded in .env
 python -m pytest tests/ -v
 python main.py --help

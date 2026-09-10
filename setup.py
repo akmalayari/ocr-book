@@ -193,7 +193,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model-dir", metavar="PATH",
-        help="Model destination (default: platform-specific user cache)",
+        help="Model directory (default: platform-specific user cache)",
     )
     parser.add_argument(
         "--model-revision", metavar="REV",
@@ -246,11 +246,18 @@ def main() -> None:
             "python", str(root / "docs/dev/download_models.py"),
             "--env-file", str(root / ".env"),
         ]
+        if platform.system() == "Windows" and not args.model_only:
+            model_cmd.append("--local-only")
         if args.model_dir:
             model_cmd += ["--model-dir", args.model_dir, "--force-location"]
         if args.model_revision:
             model_cmd += ["--revision", args.model_revision]
-        steps.append((model_cmd, "Download or verify PaddleOCR-VL model assets", False))
+        model_desc = (
+            "Check/register local PaddleOCR-VL model assets"
+            if platform.system() == "Windows" and not args.model_only
+            else "Download or verify PaddleOCR-VL model assets"
+        )
+        steps.append((model_cmd, model_desc, False))
 
     print("\n" + "=" * 60)
     print("ocr-livre setup — PaddleOCR version")
@@ -293,10 +300,19 @@ def main() -> None:
         print(f"  1. conda activate {ENV_NAME} (if not already active)")
         if args.skip_model or args.env_only or args.patch_only:
             print("  2. Configure the model and mmproj paths in .env or through CLI flags")
+        elif platform.system() == "Windows" and not args.model_only:
+            print("  2. Model files were checked locally; follow the browser instructions above if missing")
         else:
             print("  2. Model and mmproj paths are available through .env or the user cache")
         if not llama_path:
-            print("  3. Configure OCR_LLAMA_SERVER_PATH or run: python setup.py --llama-only")
+            if platform.system() == "Linux":
+                print("  3. Configure OCR_LLAMA_SERVER_PATH or run: python setup.py --llama-only")
+            elif platform.system() == "Windows":
+                print("  3. Configure OCR_LLAMA_SERVER_PATH with an existing llama-server.exe")
+                print("     Automated --llama-only builds are Linux-only.")
+                print("     Windows build guide: https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md#vulkan")
+            else:
+                print("  3. Configure OCR_LLAMA_SERVER_PATH with an existing llama-server executable")
         print("  4. python main.py --help")
     print("=" * 60)
 

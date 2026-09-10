@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 from dotenv import dotenv_values
 
@@ -16,11 +17,61 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.model_assets import (  # noqa: E402
     MMPROJ_FILENAME,
+    MMPROJ_FILE_SIZE,
     MODEL_FILENAME,
+    MODEL_FILE_SIZE,
     MODEL_REPO_ID,
     MODEL_REVISION,
     default_model_paths,
 )
+
+
+def _asset_is_valid(path: Path | None, expected_size: int | None, label: str) -> bool:
+    if path is None or not path.is_file():
+        return False
+    try:
+        actual_size = path.stat().st_size
+        if expected_size is not None and actual_size != expected_size:
+            print(
+                f"Ignoring incomplete {label}: {path} "
+                f"({actual_size} bytes, expected {expected_size})"
+            )
+            return False
+        with path.open("rb") as stream:
+            if stream.read(4) != b"GGUF":
+                print(f"Ignoring invalid {label} (missing GGUF header): {path}")
+                return False
+    except OSError as exc:
+        print(f"Ignoring unreadable {label}: {path} ({exc})")
+        return False
+    return True
+
+
+def _download_url(filename: str, revision: str) -> str:
+    revision_path = quote(revision, safe="")
+    filename_path = quote(filename, safe="")
+    return (
+        f"https://huggingface.co/{MODEL_REPO_ID}/resolve/"
+        f"{revision_path}/{filename_path}?download=true"
+    )
+
+
+def _print_browser_instructions(
+    model_path: Path,
+    mmproj_path: Path,
+    revision: str,
+) -> None:
+    print("Windows automatic model download is disabled by default.")
+    print("Download both files in a browser:")
+    print(f"  model : {_download_url(MODEL_FILENAME, revision)}")
+    print(f"  mmproj: {_download_url(MMPROJ_FILENAME, revision)}")
+    print("Option 1 - Save them in the default locations (automatically detected):")
+    print(f"  model : {model_path.resolve()}")
+    print(f"  mmproj: {mmproj_path.resolve()}")
+    print("Option 2 - Save them anywhere and set their paths in .env:")
+    print('  OCR_MODEL_PATH="C:/path/to/PaddleOCR-VL-1.5.gguf"')
+    print('  OCR_MMPROJ_PATH="C:/path/to/PaddleOCR-VL-1.5-mmproj.gguf"')
+    print("Then rerun the model check to validate and record the paths.")
 
 
 def _read_env_text(path: Path) -> str:
@@ -76,21 +127,33 @@ def main() -> int:
         action="store_true",
         help="Use --model-dir even when valid model paths are already configured",
     )
+    parser.add_argument(
+        "--local-only",
+        action="store_true",
+        help="Validate/register local files without accessing Hugging Face",
+    )
     args = parser.parse_args()
 
     env_file = Path(args.env_file).expanduser()
     env_text = _read_env_text(env_file)
     configured_model = _resolve_configured_path(env_text, "OCR_MODEL_PATH")
     configured_mmproj = _resolve_configured_path(env_text, "OCR_MMPROJ_PATH")
+    exact_sizes = args.revision == MODEL_REVISION
     keep_model = (
         not args.force_location
-        and configured_model is not None
-        and configured_model.is_file()
+        and _asset_is_valid(
+            configured_model,
+            MODEL_FILE_SIZE if exact_sizes else None,
+            "model",
+        )
     )
     keep_mmproj = (
         not args.force_location
-        and configured_mmproj is not None
-        and configured_mmproj.is_file()
+        and _asset_is_valid(
+            configured_mmproj,
+            MMPROJ_FILE_SIZE if exact_sizes else None,
+            "mmproj",
+        )
     )
     if keep_model and keep_mmproj:
         print("Keeping existing model files:")
@@ -110,6 +173,32 @@ def main() -> int:
         print(f"Ignoring missing configured model: {configured_model}")
     if configured_mmproj and not keep_mmproj and not args.force_location:
         print(f"Ignoring missing configured mmproj: {configured_mmproj}")
+
+    cached_model_valid = keep_model or _asset_is_valid(
+        model_path,
+        MODEL_FILE_SIZE if exact_sizes else None,
+        "model",
+    )
+    cached_mmproj_valid = keep_mmproj or _asset_is_valid(
+        mmproj_path,
+        MMPROJ_FILE_SIZE if exact_sizes else None,
+        "mmproj",
+    )
+    if cached_model_valid and cached_mmproj_valid:
+        _set_env_values(env_file, {
+            "OCR_MODEL_PATH": model_path,
+            "OCR_MMPROJ_PATH": mmproj_path,
+        })
+        print(f"Recorded model paths in {env_file}")
+        print(f"  model : {model_path.resolve()}")
+        print(f"  mmproj: {mmproj_path.resolve()}")
+        return 0
+
+    if args.local_only:
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        mmproj_path.parent.mkdir(parents=True, exist_ok=True)
+        _print_browser_instructions(model_path, mmproj_path, args.revision)
+        return 0
 
     try:
         from huggingface_hub import hf_hub_download
@@ -147,8 +236,16 @@ def main() -> int:
         print("Rerun the command to resume the download.")
         return 1
 
-    if not downloaded_model.is_file() or not downloaded_mmproj.is_file():
-        print("[ERROR] Download completed without both expected model files.")
+    if not _asset_is_valid(
+        downloaded_model,
+        MODEL_FILE_SIZE if exact_sizes else None,
+        "model",
+    ) or not _asset_is_valid(
+        downloaded_mmproj,
+        MMPROJ_FILE_SIZE if exact_sizes else None,
+        "mmproj",
+    ):
+        print("[ERROR] Download completed without both valid model files.")
         return 1
 
     _set_env_values(env_file, {

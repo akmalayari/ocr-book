@@ -9,6 +9,8 @@ MODEL_REPO_ID = "PaddlePaddle/PaddleOCR-VL-1.5-GGUF"
 MODEL_REVISION = "cc977c16989848c264d813ec1705cb181b7a21ee"
 MODEL_FILENAME = "PaddleOCR-VL-1.5.gguf"
 MMPROJ_FILENAME = "PaddleOCR-VL-1.5-mmproj.gguf"
+MODEL_FILE_SIZE = 935_768_992
+MMPROJ_FILE_SIZE = 881_770_496
 
 
 def default_model_dir() -> Path:
