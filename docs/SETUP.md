@@ -62,10 +62,12 @@ python setup.py --model-dir PATH   # check this local directory during normal Wi
 python setup.py --skip-model       # keep model setup fully manual
 ```
 
-The default cache is `%LOCALAPPDATA%/ocr-book/models/` on Windows,
-`$XDG_CACHE_HOME/ocr-book/models/` on Linux when configured, and otherwise the
-platform's usual per-user cache. Existing valid `OCR_MODEL_PATH` and
-`OCR_MMPROJ_PATH` values are preserved.
+The default cache is
+`%LOCALAPPDATA%/ocr-book/models/PaddleOCR-VL-1.5-GGUF/` on Windows and
+`$XDG_CACHE_HOME/ocr-book/models/PaddleOCR-VL-1.5-GGUF/` on Linux when
+configured. Without `XDG_CACHE_HOME`, Linux uses
+`~/.cache/ocr-book/models/PaddleOCR-VL-1.5-GGUF/`. Existing valid
+`OCR_MODEL_PATH` and `OCR_MMPROJ_PATH` values are preserved.
 
 On Linux, setup can also fetch the latest llama.cpp `master`, build a Vulkan server in the user cache (`$XDG_CACHE_HOME/ocr-book` or `~/.cache/ocr-book`), verify its devices, and record its path in `.env`:
 
@@ -190,8 +192,11 @@ python -c "import paddle; paddle.utils.run_check()"
 python -c "from paddleocr import PaddleOCRVL; print('OK')"
 python docs/dev/apply_paddlex_patch_otsl.py --check
 python docs/dev/apply_paddlex_patch_parallel.py --check
-python docs/dev/download_models.py              # automatic download/verification
-python docs/dev/download_models.py --local-only # local verification without network
+# Linux: automatic download/verification
+python docs/dev/download_models.py
+
+# Windows: local verification without network
+python docs/dev/download_models.py --local-only
 llama-server --list-devices  # or the absolute path recorded in .env
 python -m pytest tests/ -v
 python main.py --help

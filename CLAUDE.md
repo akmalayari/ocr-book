@@ -75,12 +75,13 @@ ocr-livre/
 - Windows or Linux (initially developed on Windows; Linux setup is supported)
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
 - [llama-server](https://github.com/ggerganov/llama.cpp) compiled with Vulkan (or another GPU backend)
-- Enough disk space for the GGUF model and mmproj (downloaded automatically)
+- Enough disk space for the GGUF model and mmproj (automatic download on Linux;
+  browser download recommended on Windows)
 
 ### Installation Commands
 
 ```bash
-# Full setup (creates conda env, installs deps, applies patches, downloads models)
+# Full setup (downloads models on Linux; checks local models on Windows)
 python setup.py
 
 # Activate environment
@@ -95,7 +96,8 @@ The `setup.py` script:
 2. Creates the env from `environment.yml`
 3. Installs `paddleocr` from the git repo (the PyPI version does not contain the `llama-cpp-server` backend)
 4. Applies the OTSL and runtime-configurable parallel patches, in that order
-5. Downloads the pinned model and mmproj unless valid custom paths already exist
+5. Downloads the pinned model and mmproj on Linux; on Windows, checks local files
+   and prints browser links unless valid paths already exist
 
 ### Required paddlex patches
 

@@ -9,8 +9,8 @@ using **PaddleOCR-VL-1.5** via **llama-server** (local inference).
 
 - [miniforge](https://github.com/conda-forge/miniforge) or Anaconda
 - [llama-server](https://github.com/ggerganov/llama.cpp) (Vulkan recommended on Windows)
-- Enough disk space for the automatically downloaded PaddleOCR-VL-1.5 GGUF model
-  and multimodal projector (about 1.82 GB)
+- Enough disk space for the PaddleOCR-VL-1.5 GGUF model and multimodal projector
+  (about 1.82 GB)
 
 ---
 
@@ -21,7 +21,11 @@ python setup.py
 conda activate ocr-livre
 ```
 
-The setup downloads the model files and applies both required PaddleX patches.
+The setup downloads the model files automatically on Linux. On Windows, it
+prints browser download links and validates locally downloaded files; use
+`python setup.py --model-only` to opt into automatic download. Both required
+PaddleX patches are applied on either platform.
+
 Configure the path to `llama-server` in `.env`, with an environment variable, or
 with a CLI argument. See [docs/SETUP.md](docs/SETUP.md) for Windows and Linux
 instructions.

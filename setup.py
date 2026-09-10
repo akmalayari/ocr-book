@@ -48,7 +48,7 @@ def _missing_commands(names: tuple[str, ...]) -> list[str]:
 
 
 def _record_llama_path(root: Path, executable: Path) -> None:
-    """Record the server path, replacing only an obvious stale placeholder."""
+    """Record the server path while preserving a valid existing configuration."""
     env_path = root / ".env"
     text = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
     escaped = str(executable.resolve()).replace("\\", "\\\\").replace('"', '\\"')
@@ -62,12 +62,12 @@ def _record_llama_path(root: Path, executable: Path) -> None:
         current = existing.group(0).split("=", 1)[1].strip().strip("'\"")
         stale_windows_path = platform.system() == "Linux" and current.lower().endswith(".exe")
         placeholder = "/path/to/" in current or "/absolute/path/to/" in current
-        if not stale_windows_path and not placeholder:
+        if current and not stale_windows_path and not placeholder:
             print(f"Keeping the existing OCR_LLAMA_SERVER_PATH in {env_path}")
             print(f"Built executable (set it manually if needed): {executable.resolve()}")
             return
         text = text[:existing.start()] + assignment + text[existing.end():]
-        print(f"Replaced the stale OCR_LLAMA_SERVER_PATH in {env_path}")
+        print(f"Updated OCR_LLAMA_SERVER_PATH in {env_path}")
     else:
         if text and not text.endswith(("\n", "\r")):
             text += "\n"
